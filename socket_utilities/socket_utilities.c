@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #include "socket_utilities.h"
 #include "error_utilites.h"
@@ -69,6 +70,20 @@ void set_socket_to_reuse(int socketfd) {
         close(socketfd);
         ERR("setsockopt");
     }
+}
+
+int accept_client(int socketfd, int is_non_blocking) {
+    int clientfd = accept(socketfd, NULL, NULL);
+    if(clientfd == -1) {
+        if(errno != EWOULDBLOCK) {
+            close(socketfd);
+            ERR("accept");
+        } else {
+            printf("no new client\n");
+        }
+    }
+
+    return clientfd;
 }
 
 

@@ -21,15 +21,9 @@
 int run_main_thread() {
 
     int socketfd = create_tcp_socket("0.0.0.0", TRUE, TRUE);
+    int clientfd = accept_client(socketfd, TRUE);
 
-    int clientfd;
-    while((clientfd = accept(socketfd, NULL, NULL)) == -1) {
-        if(errno != EWOULDBLOCK) {
-            close(socketfd);
-            ERR("accept");
-        }
-
-        printf("no new client\n");
+    while ((clientfd = accept_client(socketfd, TRUE)) == -1) {
         sleep(1);
     }
 

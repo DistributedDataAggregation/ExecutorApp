@@ -10,6 +10,11 @@ add_executable(ExecutorApp main.c
         socket_utilities/socket_utilities.h
         socket_utilities/socket_utilities.c
         consts/boolean.h
+        socket_utilities/request_protocol/request_protocol.h
+        socket_utilities/request_protocol/request.h
+        socket_utilities/request_protocol/aggregation.h
+        socket_utilities/request_protocol/operation.h
+        socket_utilities/request_protocol/request_protocol.c
 )
 include_directories(
         error_utilites
