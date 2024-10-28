@@ -17,6 +17,7 @@
 #include "error_utilites.h"
 #include "socket_utilities.h"
 #include "boolean.h"
+#include "request_protocol/request_protocol.h"
 
 int run_main_thread() {
 
@@ -30,16 +31,16 @@ int run_main_thread() {
     printf("Client connected\n");
 
     char buffer[1024];
-    memset(buffer, 0, sizeof(buffer));
+    // memset(buffer, 0, sizeof(buffer));
     ssize_t bytes;
-    if ((bytes = read(clientfd, buffer, sizeof(buffer))) == -1) {
-        close(clientfd);
-        close(socketfd);
-        ERR("read");
-    }
+    // if ((bytes = read(clientfd, buffer, sizeof(buffer))) == -1) {
+    //     close(clientfd);
+    //     close(socketfd);
+    //     ERR_AND_EXIT("read");
+    // }
+    Request request;
+    int return_value = parse_incoming_request(clientfd, &request);
 
-    printf("Read %ld bytes\n", bytes);
-    printf("%s", buffer);
 
 
     char* lines = "3\n";
@@ -47,7 +48,7 @@ int run_main_thread() {
     if((bytes = write(clientfd, lines, lines_len)) == -1) {
         close(clientfd);
         close(socketfd);
-        ERR("write");
+        ERR_AND_EXIT("write");
     }
 
     printf("Written %ld bytes\n", bytes);
@@ -57,7 +58,7 @@ int run_main_thread() {
         if((bytes = write(clientfd, line, strlen(line))) == -1) {
             close(clientfd);
             close(socketfd);
-            ERR("write");
+            ERR_AND_EXIT("write");
         }
         printf("Written %ld bytes\n", bytes);
     }
@@ -65,7 +66,7 @@ int run_main_thread() {
     if ((bytes = read(clientfd, buffer, sizeof(buffer))) == -1) {
         close(clientfd);
         close(socketfd);
-        ERR("read");
+        ERR_AND_EXIT("read");
     }
 
     close(clientfd);

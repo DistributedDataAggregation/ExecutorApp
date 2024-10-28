@@ -15,7 +15,7 @@ struct request {
     char** grouping_columns;
 
     int aggregation_columns_count;
-    Aggregation* aggregation;
+    Aggregation* aggregations;
 };
 
 typedef struct request Request;

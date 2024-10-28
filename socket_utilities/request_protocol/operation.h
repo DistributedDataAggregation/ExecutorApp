@@ -5,11 +5,17 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
+#define summation "sum"
+#define minimum "min"
+#define maximum "max"
+#define average "avg"
+
 enum operation {
     SUM,
     MIN,
     MAX,
-    AVERAGE
+    AVERAGE,
+    UNDEFINED
 };
 
 typedef enum operation Operation;

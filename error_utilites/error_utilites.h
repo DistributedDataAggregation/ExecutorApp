@@ -16,6 +16,8 @@
         }))
 #endif
 
-#define ERR(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__), exit(EXIT_FAILURE))
+#define ERR_AND_EXIT(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__), exit(EXIT_FAILURE))
+
+#define REPORT_ERR(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__))
 
 #endif //ERROR_UTILITES_H
