@@ -16,40 +16,20 @@ int parse_delimited_strings(int strings_count, char** strings, char delimiter, c
 char* move_pointer_by_n_characters(char* string, int n);
 Aggregation parse_aggregation(char* aggregation_string);
 Operation parse_operation(char* operation_string);
+int get_elements_count(char* buffer, char** space_pos);
 
 int parse_incoming_request(int client_socket, Request* request) {
-    char buffer[BUFFER_SIZE];
-    memset(buffer, 0, sizeof(buffer));
+    char buffer[BUFFER_SIZE] = {0};
     ssize_t bytes = 0;
     ssize_t total_bytes_read = 0;
 
-    char* space_pos = 0;
-    while((bytes = read(client_socket, buffer + total_bytes_read, sizeof(buffer) - total_bytes_read - 1)) > 0) {
-        total_bytes_read += bytes;
-
-        space_pos = strchr(buffer, ' ');
-        if(space_pos != NULL) {
-            *space_pos = '\0';
-            break;
-        }
-
-        if(total_bytes_read >= BUFFER_SIZE - 1) {
-            fprintf(stderr, "Request buffer overflow");
-            return EXIT_FAILURE;
-        }
-    }
-
-    if(bytes < 0) {
+    if ((bytes = read(client_socket, buffer, BUFFER_SIZE)) < 0) {
         ERR_AND_EXIT("read");
+
     }
 
-    printf("Read %ld bytes\n", bytes);
-
-    int files_count = atoi(buffer);
-    if(files_count < 1) {
-        fprintf(stderr, "Invalid number of files count: %d\n", files_count);
-        return EXIT_FAILURE;
-    }
+    char* space_pos;
+    int files_count = get_elements_count(buffer, &space_pos);
 
     printf("Files count: %d\n", files_count);
     request->files_count = files_count;
@@ -64,29 +44,10 @@ int parse_incoming_request(int client_socket, Request* request) {
         return EXIT_FAILURE;
     }
 
-    for(int i=0; i< files_count; i++) {
-        printf("File number %d: %s\n", i, request->files[i]);
-    }
-
     remaining_string += 1;
-    printf("Remianing string:%s\n", remaining_string);
-
     space_pos = strchr(remaining_string, ' ');
-    int grouping_columns_count = 0;
-    if(space_pos != NULL) {
-        *space_pos = '\0';
-
-        grouping_columns_count = atoi(remaining_string);
-        remaining_string = space_pos + 1;
-        if(grouping_columns_count < 1) {
-            fprintf(stderr, "Invalid grouping columns count\n");
-            return EXIT_FAILURE;
-        }
-
-    }else {
-        fprintf(stderr, "Incorrect format for providing grouping columns\n");
-        return EXIT_FAILURE;
-    }
+    int grouping_columns_count = get_elements_count(remaining_string, &space_pos);
+    remaining_string = space_pos + 1;
 
     printf("Grouping columns count: %d\n", grouping_columns_count);
     request->grouping_columns_count = grouping_columns_count;
@@ -103,33 +64,21 @@ int parse_incoming_request(int client_socket, Request* request) {
 
     remaining_string+=1;
     space_pos = strchr(remaining_string, ' ');
-    int aggregations_count = 0;
-    if(space_pos != NULL) {
-        *space_pos = '\0';
-
-        aggregations_count = atoi(remaining_string);
-        remaining_string = space_pos + 1;
-        if(aggregations_count < 1) {
-            fprintf(stderr, "Invalid aggregations count\n");
-            return EXIT_FAILURE;
-        }
-
-    }else {
-        fprintf(stderr, "Incorrect format for providing aggregation operations\n");
-        return EXIT_FAILURE;
-    }
+    int aggregations_count = get_elements_count(remaining_string, &space_pos);
+    remaining_string = space_pos + 1;
 
     char** aggregations = malloc(aggregations_count * sizeof(char*));
     request->aggregation_columns_count = aggregations_count;
     request->aggregations = malloc(aggregations_count * sizeof(Aggregation));
     success = parse_delimited_strings(aggregations_count, aggregations, ',', &remaining_string);
 
-    for(int i=0; i< aggregations_count; i++) {
-        request->aggregations[i] = parse_aggregation(aggregations[i]);
+    if(success != EXIT_SUCCESS) {
+        fprintf(stderr, "failed to parse aggregation strings\n");
+        return EXIT_FAILURE;
     }
 
     for(int i=0; i< aggregations_count; i++) {
-        printf("Aggregation column number %d: %s\n", i, request->aggregations[i].column);
+        request->aggregations[i] = parse_aggregation(aggregations[i]);
     }
 
     free(aggregations);
@@ -185,4 +134,23 @@ Operation parse_operation(char* operation_string) {
     }
 
     return UNDEFINED;
+}
+
+
+int get_elements_count(char* buffer, char** space_pos) {
+
+    (*space_pos) = strchr(buffer, ' ');
+    if((*space_pos) != NULL) {
+        (**space_pos) = '\0';
+    } else {
+        printf("Invalid request string\n");
+    }
+
+    int elements_count = atoi(buffer);
+    if(elements_count < 1) {
+        fprintf(stderr, "Invalid number of elements count: %d\n", elements_count);
+        return EXIT_FAILURE;
+    }
+
+    return elements_count;
 }

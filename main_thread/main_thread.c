@@ -41,8 +41,6 @@ int run_main_thread() {
     Request request;
     int return_value = parse_incoming_request(clientfd, &request);
 
-
-
     char* lines = "3\n";
     ssize_t lines_len = strlen(lines);
     if((bytes = write(clientfd, lines, lines_len)) == -1) {
