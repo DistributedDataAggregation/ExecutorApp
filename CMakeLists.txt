@@ -3,6 +3,11 @@ project(ExecutorApp C)
 
 set(CMAKE_C_STANDARD 11)
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PARQUET REQUIRED parquet-glib)
+
+include_directories(${PARQUET_INCLUDE_DIRS})
+
 add_executable(ExecutorApp main.c
         main_thread/main_thread.h
         main_thread/main_thread.c
@@ -22,3 +27,5 @@ include_directories(
         main_thread
         socket_utilities
 )
+
+target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})
