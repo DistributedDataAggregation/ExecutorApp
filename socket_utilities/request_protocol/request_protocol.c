@@ -58,10 +58,6 @@ int parse_incoming_request(int client_socket, Request* request) {
         return EXIT_FAILURE;
     }
 
-    for(int i=0; i< grouping_columns_count; i++) {
-        printf("Grouping column number %d: %s\n", i, request->grouping_columns[i]);
-    }
-
     remaining_string+=1;
     space_pos = strchr(remaining_string, ' ');
     int aggregations_count = get_elements_count(remaining_string, &space_pos);

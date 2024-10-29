@@ -17,6 +17,7 @@
 #include "error_utilites.h"
 #include "socket_utilities.h"
 #include "boolean.h"
+#include "value.h"
 #include "request_protocol/request_protocol.h"
 
 int run_main_thread() {
@@ -34,6 +35,21 @@ int run_main_thread() {
 
     Request request;
     int return_value = parse_incoming_request(clientfd, &request);
+
+    Value value;
+    value.results.count = 3;
+    value.results.operations = (Operation*)malloc(sizeof(Operation) * value.results.count);
+    value.results.values = (ResultType*)malloc(sizeof(ResultType) * value.results.count);
+    value.grouping_value = "War_gr1|war_gr2";
+    for(int i = 0; i < value.results.count; i++) {
+        value.results.operations[i] = SUM;
+        value.results.values[i].singleResult.value = 1000000;
+    }
+
+    to_string(value);
+
+    free(value.results.operations);
+    free(value.results.values);
 
     char* lines = "3\n";
     ssize_t lines_len = strlen(lines);

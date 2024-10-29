@@ -78,8 +78,11 @@ int accept_client(int socketfd, int is_non_blocking) {
         if(errno != EWOULDBLOCK) {
             close(socketfd);
             ERR_AND_EXIT("accept");
-        } else {
+        } else if(is_non_blocking == TRUE) {
             printf("no new client\n");
+        } else {
+            close(socketfd);
+            ERR_AND_EXIT("accept");
         }
     }
 
