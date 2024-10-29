@@ -33,7 +33,10 @@ int parse_incoming_request(int client_socket, Request* request) {
 
     printf("Files count: %d\n", files_count);
     request->files_count = files_count;
-    request->files = malloc(files_count * sizeof(char*));
+    request->files = (char**)malloc(files_count * sizeof(char*));
+    if(request->files == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
 
 
     char* remaining_string = space_pos + 1;
@@ -51,6 +54,7 @@ int parse_incoming_request(int client_socket, Request* request) {
 
     printf("Grouping columns count: %d\n", grouping_columns_count);
     request->grouping_columns_count = grouping_columns_count;
+    request->grouping_columns = (char**)malloc(grouping_columns_count * sizeof(char*));
 
     success = parse_delimited_strings(grouping_columns_count, request->grouping_columns, ',', &remaining_string);
     if(success != EXIT_SUCCESS) {
@@ -63,9 +67,17 @@ int parse_incoming_request(int client_socket, Request* request) {
     int aggregations_count = get_elements_count(remaining_string, &space_pos);
     remaining_string = space_pos + 1;
 
-    char** aggregations = malloc(aggregations_count * sizeof(char*));
+    char** aggregations = (char**)malloc(aggregations_count * sizeof(char*));
+    if(aggregations == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+
     request->aggregation_columns_count = aggregations_count;
-    request->aggregations = malloc(aggregations_count * sizeof(Aggregation));
+    request->aggregations = (Aggregation*)malloc(aggregations_count * sizeof(Aggregation));
+    if(request->aggregations == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+
     success = parse_delimited_strings(aggregations_count, aggregations, ',', &remaining_string);
 
     if(success != EXIT_SUCCESS) {
@@ -84,10 +96,26 @@ int parse_incoming_request(int client_socket, Request* request) {
 
 
 int parse_delimited_strings(int strings_count, char** strings, char delimiter, char** remaining_string) {
+    if(strings == NULL) {
+        fprintf(stderr, "strings is NULL\n");
+        return EXIT_FAILURE;
+    }
+
+    if(remaining_string == NULL) {
+        fprintf(stderr, "remaining_string is NULL\n");
+        return EXIT_FAILURE;
+    }
+
     for(int i = 0; i < strings_count; i++) {
         char* delimiter_pos = strchr(*remaining_string, delimiter);
         if(delimiter_pos != NULL) {
             *delimiter_pos = '\0';
+
+            if(strings[i] == NULL) {
+                fprintf(stderr, "null pointer at strings[%d]\n", i);
+                return EXIT_FAILURE;
+            }
+
             strings[i] = strdup(*remaining_string);
             (*remaining_string) = delimiter_pos + 1;
         }else {
