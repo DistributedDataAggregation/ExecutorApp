@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "boolean.h"
+#include "error_utilites.h"
 
 #define SEPARATOR ','
 #define SEPARATOR_SIZE 1
@@ -20,6 +21,9 @@ char* to_string(const Value value) {
     string_length += strlen(value.grouping_value);
 
     int* results_lengths = (int*)(malloc(sizeof(int)* value.results.count));
+    if(results_lengths == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
 
     for(int i = 0; i < value.results.count; i++) {
         if(is_single_result_operation(value.results.operations[i])) {
@@ -35,25 +39,25 @@ char* to_string(const Value value) {
 
     char* result = (char*)malloc((string_length + 1) * sizeof(char));
     strcpy(result, value.grouping_value);
-    char* separator_string = malloc(SEPARATOR_SIZE * sizeof(char));
-    separator_string[0] = SEPARATOR;
+
     for(int i = 0; i < value.results.count; i++) {
-        strcat(result, separator_string);
+        snprintf(result+strlen(result), SEPARATOR_SIZE +1, "%c",SEPARATOR);
+
         const int current_length = results_lengths[i];
         char* value_string = malloc(sizeof(char) * current_length);
 
         if(is_single_result_operation(value.results.operations[i])) {
-            snprintf(value_string, current_length, "%ld", value.results.values[i].singleResult.value);
+            snprintf(result+strlen(result), current_length+1, "%ld",
+                value.results.values[i].singleResult.value);
         } else {
-            snprintf(value_string, current_length, "%ld", value.results.values[i].singleResult.value/ value.results.values[i].countedResult.count);
+            snprintf(result+strlen(result), current_length +1, "%ld",
+                value.results.values[i].singleResult.value/ value.results.values[i].countedResult.count);
         }
 
-        strcat(result, value_string);
         free(value_string);
     }
 
     free(results_lengths);
-    free(separator_string);
 
     printf("Result printed: %s\n", result);
     return result;
