@@ -24,6 +24,8 @@ add_executable(ExecutorApp main.c
         hash_table/results.h
         hash_table/result_type.h
         hash_table/value.c
+        hash_table/hash_table.h
+        socket_utilities/request_protocol/request.c
 )
 include_directories(
         error_utilites
