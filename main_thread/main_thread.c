@@ -22,8 +22,7 @@
 int run_main_thread() {
 
     int socketfd = create_tcp_socket("0.0.0.0", TRUE, TRUE);
-    int clientfd = accept_client(socketfd, TRUE);
-
+    int clientfd;
     while ((clientfd = accept_client(socketfd, TRUE)) == -1) {
         sleep(1);
     }
@@ -31,13 +30,8 @@ int run_main_thread() {
     printf("Client connected\n");
 
     char buffer[1024];
-    // memset(buffer, 0, sizeof(buffer));
     ssize_t bytes;
-    // if ((bytes = read(clientfd, buffer, sizeof(buffer))) == -1) {
-    //     close(clientfd);
-    //     close(socketfd);
-    //     ERR_AND_EXIT("read");
-    // }
+
     Request request;
     int return_value = parse_incoming_request(clientfd, &request);
 
