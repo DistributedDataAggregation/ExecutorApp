@@ -20,4 +20,6 @@ struct request {
 
 typedef struct request Request;
 
+void free_request(Request* request);
+
 #endif //REQUEST_H

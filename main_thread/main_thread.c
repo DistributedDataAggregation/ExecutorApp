@@ -33,20 +33,30 @@ int run_main_thread() {
     char buffer[1024];
     ssize_t bytes;
 
-    Request request;
-    int return_value = parse_incoming_request(clientfd, &request);
+    Request* request = malloc(sizeof(Request));
+    int return_value = parse_incoming_request(clientfd, request);
+    free_request(request);
 
     Value value;
     value.results.count = 3;
     value.results.operations = (Operation*)malloc(sizeof(Operation) * value.results.count);
+    if(value.results.operations == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+
     value.results.values = (ResultType*)malloc(sizeof(ResultType) * value.results.count);
+    if(value.results.values == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+
     value.grouping_value = "War_gr1|war_gr2";
     for(int i = 0; i < value.results.count; i++) {
         value.results.operations[i] = SUM;
-        value.results.values[i].singleResult.value = 1000000;
+        value.results.values[i].singleResult.value = 1000001;
     }
 
-    to_string(value);
+    char* value_string = to_string(value);
+    free(value_string);
 
     free(value.results.operations);
     free(value.results.values);
