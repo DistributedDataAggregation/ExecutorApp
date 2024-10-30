@@ -10,6 +10,7 @@
 struct value {
     char* grouping_value;
     Results results;
+    struct value * next;
 };
 
 typedef struct value Value;

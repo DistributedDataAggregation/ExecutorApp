@@ -4,9 +4,12 @@ project(ExecutorApp C)
 set(CMAKE_C_STANDARD 11)
 
 find_package(PkgConfig REQUIRED)
+find_package(Protobuf REQUIRED)
+
 pkg_check_modules(PARQUET REQUIRED parquet-glib)
 
-include_directories(${PARQUET_INCLUDE_DIRS})
+include_directories(${PARQUET_INCLUDE_DIRS} ${PROTOBUF_INCLUDE_DIRS})
+
 
 add_executable(ExecutorApp main.c
         main_thread/main_thread.h
@@ -26,6 +29,9 @@ add_executable(ExecutorApp main.c
         hash_table/value.c
         hash_table/hash_table.h
         socket_utilities/request_protocol/request.c
+        hash_table/hash_table.c
+        socket_utilities/query_request/query_request.pb-c.c
+        socket_utilities/query_request/query_request.pb-c.h
 )
 include_directories(
         error_utilites
@@ -36,3 +42,4 @@ include_directories(
 )
 
 target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})
+target_link_libraries(ExecutorApp protobuf-c)

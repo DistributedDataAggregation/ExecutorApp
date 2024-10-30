@@ -17,8 +17,9 @@
 #include "error_utilites.h"
 #include "socket_utilities.h"
 #include "boolean.h"
-#include "value.h"
 #include "request_protocol/request_protocol.h"
+#include "value.h"
+#include "query_request/query_request.pb-c.h"
 
 int run_main_thread() {
 
@@ -33,9 +34,8 @@ int run_main_thread() {
     char buffer[1024];
     ssize_t bytes;
 
-    Request* request = malloc(sizeof(Request));
-    int return_value = parse_incoming_request(clientfd, request);
-    free_request(request);
+    QueryRequest* request = parse_incoming_request(clientfd);
+    query_request__free_unpacked(request, NULL);
 
     Value value;
     value.results.count = 3;
