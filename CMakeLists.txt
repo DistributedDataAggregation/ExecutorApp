@@ -19,19 +19,13 @@ add_executable(ExecutorApp main.c
         socket_utilities/socket_utilities.c
         consts/boolean.h
         socket_utilities/request_protocol/request_protocol.h
-        socket_utilities/request_protocol/request.h
-        socket_utilities/request_protocol/aggregation.h
-        socket_utilities/request_protocol/operation.h
         socket_utilities/request_protocol/request_protocol.c
-        hash_table/value.h
-        hash_table/results.h
-        hash_table/result_type.h
-        hash_table/value.c
-        hash_table/hash_table.h
-        socket_utilities/request_protocol/request.c
-        hash_table/hash_table.c
-        socket_utilities/query_request/query_request.pb-c.c
-        socket_utilities/query_request/query_request.pb-c.h
+        socket_utilities/proto_definitions/query_request.pb-c.c
+        socket_utilities/proto_definitions/aggregate.pb-c.c
+        socket_utilities/proto_definitions/aggregate.pb-c.h
+        socket_utilities/proto_definitions/query_request.pb-c.h
+        socket_utilities/proto_definitions/result.pb-c.c
+        socket_utilities/proto_definitions/result.pb-c.h
 )
 include_directories(
         error_utilites
