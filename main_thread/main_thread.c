@@ -73,19 +73,23 @@ int run_main_thread() {
 
     ssize_t size = results__get_packed_size(&results);
 
-    uint8_t* buffer = (uint8_t*)malloc(size);
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
     if (buffer == NULL) {
         ERR_AND_EXIT("malloc");
     }
+    memset(buffer, 0, size);
 
-    ssize_t size_to_send = htonl(size);
+    int size_to_send = htonl(size);
     if(write(clientfd, &size_to_send, sizeof(size_to_send)) <= 0) {
         ERR_AND_EXIT("send");
     }
 
-    results__pack(&results, buffer);
+    int stored = results__pack(&results, buffer);
+    if(stored != size) {
+        ERR_AND_EXIT("results__pack");
+    }
 
-    if(write(clientfd, buffer, size) != size) {
+    if(send(clientfd, buffer, size, 0) != size) {
         ERR_AND_EXIT("send");
     }
 
@@ -93,6 +97,7 @@ int run_main_thread() {
     free(value.operation);
     free(results.values);
     free(buffer);
+
     close(clientfd);
     close(socketfd);
     return EXIT_SUCCESS;
