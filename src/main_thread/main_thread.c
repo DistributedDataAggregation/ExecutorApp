@@ -102,3 +102,8 @@ int run_main_thread() {
     close(socketfd);
     return EXIT_SUCCESS;
 }
+
+int gtest_check_method() {
+    return 1;
+}
+

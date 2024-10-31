@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "main_thread.h"
+#include "main_thread/main_thread.h"
 
 int main(void)
 {
