@@ -17,12 +17,18 @@ add_executable(ExecutorApp main.c
         consts/boolean.h
         socket_utilities/request_protocol/request_protocol.h
         socket_utilities/request_protocol/request_protocol.c
-        socket_utilities/proto_definitions/query_request.pb-c.c
-        socket_utilities/proto_definitions/aggregate.pb-c.c
-        socket_utilities/proto_definitions/aggregate.pb-c.h
-        socket_utilities/proto_definitions/query_request.pb-c.h
-        socket_utilities/proto_definitions/result.pb-c.c
-        socket_utilities/proto_definitions/result.pb-c.h
+        proto_definitions/query_request.pb-c.c
+        proto_definitions/aggregate.pb-c.c
+        proto_definitions/aggregate.pb-c.h
+        proto_definitions/query_request.pb-c.h
+        worker_group/workers/worker.h
+        worker_group/workers/worker.c
+        hash_table/hash_table.h
+        hash_table/hash_table.c
+        proto_definitions/query_response.pb-c.h
+        proto_definitions/query_response.pb-c.c
+        temporary_testing/test.h
+        temporary_testing/test.c
 )
 include_directories(
         error_utilites
@@ -30,6 +36,7 @@ include_directories(
         main_thread
         socket_utilities
         hash_table
+        proto_definitions
 )
 
 target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})
