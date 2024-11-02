@@ -29,6 +29,9 @@ add_executable(ExecutorApp main.c
         proto_definitions/query_response.pb-c.c
         temporary_testing/test.h
         temporary_testing/test.c
+        worker_group/worker_group.h
+        worker_group/worker_group.c
+        worker_group/thread_data.h
 )
 include_directories(
         error_utilites
@@ -37,6 +40,7 @@ include_directories(
         socket_utilities
         hash_table
         proto_definitions
+        worker_group
 )
 
 target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})

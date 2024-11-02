@@ -20,4 +20,6 @@
 
 #define REPORT_ERR(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__))
 
+#define INTERNAL_ERROR(reason) (fprintf(stderr, "%s: at %s:%d\n", reason, __FILE__, __LINE__))
+
 #endif //ERROR_UTILITES_H

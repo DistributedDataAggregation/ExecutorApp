@@ -22,6 +22,12 @@
 #include "query_response.pb-c.h"
 #include <google/protobuf-c/protobuf-c.h>
 
+#include <parquet-glib/arrow-file-reader.h>
+
+#include "hash_table.h"
+#include "worker_group.h"
+
+
 int run_main_thread() {
 
     int socketfd = create_tcp_socket("0.0.0.0", TRUE, TRUE);
@@ -34,6 +40,7 @@ int run_main_thread() {
     QueryRequest* request = parse_incoming_request(clientfd);
     query_request__free_unpacked(request, NULL);
 
+    HashTable** hts = run_request_on_worker_group(request);
     // TODO: fix sending back data to not cause segfault
     // Results results = RESULTS__INIT;
     // results.n_values = 1;
@@ -97,7 +104,6 @@ int run_main_thread() {
     // free(value.operation);
     // free(results.values);
     // free(buffer);
-
     close(clientfd);
     close(socketfd);
     return EXIT_SUCCESS;

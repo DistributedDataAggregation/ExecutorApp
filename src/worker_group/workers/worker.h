@@ -6,11 +6,8 @@
 #define WORKER_H
 
 #include "query_request.pb-c.h"
-#include "result.pb-c.h"
+#include "thread_data.h"
 
-
-
-
-
+void* compute_on_thread(void* arg);
 
 #endif //WORKER_H
