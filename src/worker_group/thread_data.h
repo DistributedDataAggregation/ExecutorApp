@@ -14,7 +14,7 @@ typedef enum AggregateFunction {
 } AggregateFunction;
 
 typedef struct SelectData {
-    char* column;
+    int column_index;
     AggregateFunction aggregate;
 } SelectData;
 
@@ -32,7 +32,7 @@ typedef struct thread_data {
     RowGroupsRange* file_row_groups_ranges;
 
     int n_group_columns;
-    char** group_columns;
+    int* group_columns_indices;
 
     int n_select;
     SelectData* selects;

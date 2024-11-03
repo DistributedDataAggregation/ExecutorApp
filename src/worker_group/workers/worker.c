@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <parquet-glib/arrow-file-reader.h>
 #include "hash_table.h"
+#include "../../parquet_helpers/parquet_helpers.h"
 
 void compute_file(const char* file,const ThreadData* data, HashTable* hash_table);
 void print_thread_data(ThreadData* data);
@@ -16,11 +17,13 @@ void* compute_on_thread(void* arg) {
 
     print_thread_data(data);
 
-    // HashTable* ht = create_hash_table(10);
-    // for(int i=0;i<data->n_files;i++) {
-    //     compute_file(data->file_names[i], data, ht);
-    // }
+    HashTable* ht = create_hash_table(10);
+    for(int i=0;i<data->n_files;i++) {
+        compute_file(data->file_names[i], data, ht);
+    }
+    free(data);
 
+    return ht;
 }
 
 void print_thread_data(ThreadData* data) {
@@ -44,7 +47,7 @@ void print_thread_data(ThreadData* data) {
     // Print group columns
     printf("Thread %d: Number of group columns: %d\n", data->thread_index, data->n_group_columns);
     for (int i = 0; i < data->n_group_columns; i++) {
-        printf("Thread %d: Group Column %d: %s\n", data->thread_index, i, data->group_columns[i]);
+        printf("Thread %d: Group Column %d: %d\n", data->thread_index, i, data->group_columns_indices[i]);
     }
 
     // Print selected columns and aggregate functions
@@ -58,15 +61,22 @@ void print_thread_data(ThreadData* data) {
             case MEDIAN: agg_func = "MEDIAN"; break;
             default: agg_func = "UNKNOWN"; break;
         }
-        printf("Thread %d: Select Column %d: %s, Aggregate Function: %s\n",
-                data->thread_index, i, data->selects[i].column, agg_func);
+        printf("Thread %d: Select Column %d: %d, Aggregate Function: %s\n",
+                data->thread_index, i, data->selects[i].column_index, agg_func);
     }
 }
 
 void compute_file(const char* file, const ThreadData* data, HashTable* hash_table) {
     GError* error = NULL;
-
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(file, &error);
+
+    if(reader == NULL) {
+        report_g_error(error);
+        // TODO: handle failing thread computation
+        return;
+    }
+
+
 
     
 }
