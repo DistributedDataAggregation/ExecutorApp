@@ -18,12 +18,18 @@ typedef struct SelectData {
     AggregateFunction aggregate;
 } SelectData;
 
+typedef struct RowGroupsRange{
+    int start;
+    int count;
+} RowGroupsRange;
+
 typedef struct thread_data {
     int num_threads;
     int thread_index;
 
     int n_files;
     char** file_names;
+    RowGroupsRange* file_row_groups_ranges;
 
     int n_group_columns;
     char** group_columns;

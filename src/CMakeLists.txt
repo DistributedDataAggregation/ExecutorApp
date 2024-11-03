@@ -32,6 +32,8 @@ add_executable(ExecutorApp main.c
         worker_group/worker_group.h
         worker_group/worker_group.c
         worker_group/thread_data.h
+        parquet_helpers/parquet_helpers.h
+        parquet_helpers/parquet_helpers.c
 )
 include_directories(
         error_utilites

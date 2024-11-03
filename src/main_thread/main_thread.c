@@ -38,10 +38,10 @@ int run_main_thread() {
     printf("Client connected\n");
 
     QueryRequest* request = parse_incoming_request(clientfd);
-    query_request__free_unpacked(request, NULL);
+
 
     HashTable** hts = run_request_on_worker_group(request);
-    // TODO: fix sending back data to not cause segfault
+    // TODO: replace this with an actual creation of a response entity and sending it back to controller
     // Results results = RESULTS__INIT;
     // results.n_values = 1;
     // results.values = malloc(sizeof(Value*)*results.n_values);
@@ -104,6 +104,7 @@ int run_main_thread() {
     // free(value.operation);
     // free(results.values);
     // free(buffer);
+    query_request__free_unpacked(request, NULL);
     close(clientfd);
     close(socketfd);
     return EXIT_SUCCESS;

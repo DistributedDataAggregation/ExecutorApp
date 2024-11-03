@@ -10,17 +10,22 @@
 #include <stdio.h>
 
 #include "error_utilites.h"
+#include <parquet-glib/arrow-file-reader.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#include "../parquet_helpers/parquet_helpers.h"
 #define NUM_THREADS 4
 
 
 
-ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int num_threads);
+ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int num_threads, RowGroupsRange* row_groups_ranges);
 void free_thread_data(ThreadData* thread_data);
 AggregateFunction map_aggregate_function(Aggregate aggregate);
+RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_threads);
+void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count);
 
 HashTable** run_request_on_worker_group(const QueryRequest* request) {
     long threads_count = sysconf(_SC_NPROCESSORS_ONLN);;
@@ -34,14 +39,11 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
         REPORT_ERR("malloc");
         return NULL;
     }
-    // TODO: precompute row groups per file assigned to each thread
-    // This formula solves it
-    // for (int i = 0; i < threads; ++i) {
-    //     int tasks_for_this_thread = tasks / threads + (i < tasks % threads);
-    // }
-    //
+
+    RowGroupsRange** row_group_ranges = get_row_group_ranges(request->n_files_names, request->files_names, threads_count);
+
     for(int i = 0; i < threads_count; i++) {
-        pthread_create(&threads[i], NULL, compute_on_thread, get_thread_data(request, i, threads_count));
+        pthread_create(&threads[i], NULL, compute_on_thread, get_thread_data(request, i, threads_count, row_group_ranges[i]));
     }
 
     for(int i = 0; i < threads_count; i++) {
@@ -55,7 +57,7 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
     return NULL;
 }
 
-ThreadData* get_thread_data(const QueryRequest* request, const int thread_index, const int num_threads) {
+ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int num_threads, RowGroupsRange* row_groups_ranges) {
     ThreadData* thread_data = malloc(sizeof(ThreadData));
     if (thread_data == NULL) {
         REPORT_ERR("malloc\n");
@@ -106,6 +108,7 @@ ThreadData* get_thread_data(const QueryRequest* request, const int thread_index,
         thread_data->selects[i].aggregate = map_aggregate_function(select->function);
     }
 
+    thread_data->file_row_groups_ranges = row_groups_ranges;
 
     return thread_data;
 }
@@ -152,4 +155,58 @@ void free_thread_data(ThreadData* thread_data) {
     }
 
     free(thread_data);
+}
+
+RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_threads) {
+    RowGroupsRange** row_group_ranges = malloc(sizeof(RowGroupsRange*) * num_threads);
+    if(row_group_ranges == NULL) {
+        REPORT_ERR("malloc\n");
+        return NULL;
+    }
+
+    for(int i=0; i<num_threads; i++) {
+        row_group_ranges[i] = malloc(sizeof(RowGroupsRange)*n_files);
+        if(row_group_ranges[i] == NULL) {
+            REPORT_ERR("malloc\n");
+            free_row_group_ranges(row_group_ranges, i);
+            return NULL;
+        }
+    }
+
+    for(int i=0; i<n_files; i++) {
+        GError* error = NULL;
+        printf("File name: %s\n", file_names[i]);
+        GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(file_names[i], &error);
+
+        if(reader == NULL) {
+            report_g_error(error);
+            free_row_group_ranges(row_group_ranges, n_files);
+            return NULL;
+        }
+
+        gint row_groups_count = gparquet_arrow_file_reader_get_n_row_groups(reader);
+
+        int start = 0;
+        for(int j=0 ;j <num_threads; j++) {
+            int count_for_thread_j = row_groups_count / num_threads + (j < row_groups_count % num_threads);
+            row_group_ranges[j][i].start = start;
+            row_group_ranges[j][i].count = count_for_thread_j;
+            start += count_for_thread_j;
+        }
+    }
+
+    return row_group_ranges;
+}
+
+void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count) {
+    if(row_group_ranges == NULL)
+        return;
+
+    for(int i=0; i<count; i++) {
+        if(row_group_ranges[i] != NULL) {
+            free(row_group_ranges[i]);
+        }
+    }
+
+    free(row_group_ranges);
 }
