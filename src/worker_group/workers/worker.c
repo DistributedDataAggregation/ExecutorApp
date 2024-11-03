@@ -76,8 +76,6 @@ void compute_file(const char* file, const ThreadData* data, HashTable* hash_tabl
         return;
     }
 
-
-
-    
+    //TODO: actual computation of the aggregates
 }
 
