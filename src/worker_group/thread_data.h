@@ -5,6 +5,13 @@
 #ifndef THREAD_DATA_H
 #define THREAD_DATA_H
 
+typedef enum ColumnDataType {
+    COLUMN_DATA_TYPE_INT32,
+    COLUMN_DATA_TYPE_INT64,
+    COLUMN_DATA_TYPE_STRING,
+    COLUMN_DATA_TYPE_UNKNOWN
+} ColumnDataType;
+
 typedef enum AggregateFunction {
     UNKNOWN = -1,
     MIN = 0,
@@ -12,11 +19,11 @@ typedef enum AggregateFunction {
     AVG = 2,
     MEDIAN = 3,
 } AggregateFunction;
-
-typedef struct SelectData {
-    int column_index;
-    AggregateFunction aggregate;
-} SelectData;
+//
+// typedef struct SelectData {
+//     int column_index;
+//     AggregateFunction aggregate;
+// } SelectData;
 
 typedef struct RowGroupsRange{
     int start;
@@ -33,9 +40,12 @@ typedef struct thread_data {
 
     int n_group_columns;
     int* group_columns_indices;
+    ColumnDataType* group_columns_data_types;
 
     int n_select;
-    SelectData* selects;
+    int* selects_indices;
+    AggregateFunction* selects_aggregate_functions;
+    ColumnDataType* select_columns_types;
 } ThreadData;
 
 #endif //THREAD_DATA_H

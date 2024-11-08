@@ -122,3 +122,30 @@ void delete(HashTable* table, const char* key) {
             current = current->next;
       }
 }
+
+void print(HashTable* ht) {
+      if (ht == NULL || ht->table == NULL) {
+            printf("HashTable is empty.\n");
+            return;
+      }
+
+      for (int i = 0; i < ht->size; ++i) {
+            HashTableEntry* entry = ht->table[i];
+            while (entry != NULL) {
+                  printf("Key: %s\n", entry->key);
+                  printf("Values:\n");
+
+                  for (int j = 0; j < entry->n_values; ++j) {
+                        HashTableValue* value = &entry->values[j];
+                        if (value->result_type == SINGLE_RESULT) {
+                              printf("  Value[%d]: %ld (Single Result)\n", j, value->value);
+                        } else if (value->result_type == COUNTED_RESULT) {
+                              printf("  Value[%d]: Accumulator = %ld, Count = %ld (Counted Result)\n", j, value->accumulator, value->count);
+                        }
+                  }
+                  printf("\n");
+
+                  entry = entry->next;  // Move to the next entry in the bucket (linked list)
+            }
+      }
+}

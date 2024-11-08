@@ -4,6 +4,9 @@
 
 #include <pthread.h>
 #include "worker_group.h"
+
+#include <error.h>
+
 #include "thread_data.h"
 #include "workers/worker.h"
 
@@ -28,6 +31,8 @@ AggregateFunction map_aggregate_function(Aggregate aggregate);
 RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_threads);
 int get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices) ;
 void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count);
+ColumnDataType map_arrow_data_type(GArrowDataType* data_type);
+ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename);
 
 HashTable** run_request_on_worker_group(const QueryRequest* request) {
     long threads_count = sysconf(_SC_NPROCESSORS_ONLN);;
@@ -75,6 +80,8 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
         return NULL;
     }
 
+
+
     ThreadData** thread_data = malloc(sizeof(ThreadData*) * threads_count);
     for(int i = 0; i < threads_count; i++) {
         thread_data[i] = get_thread_data(request, i, threads_count, row_group_ranges[i], grouping_indices, select_indices);
@@ -84,14 +91,12 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
     for(int i = 0; i < threads_count; i++) {
         void* result = NULL;
         pthread_join(threads[i], &result);
+        free_thread_data(thread_data[i]);
         HashTable* thread_ht = result;
     }
 
-    free(thread_data);
     free(threads);
-    free(row_group_ranges);
-    free(grouping_indices);
-    free(select_indices);
+    free(thread_data);
 
     return NULL;
 }
@@ -129,8 +134,15 @@ ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int n
 
     thread_data->group_columns_indices = grouping_indices;
 
-    thread_data->selects = malloc(sizeof(SelectData) * thread_data->n_select);
-    if(thread_data->selects == NULL) {
+    thread_data->selects_indices = malloc(sizeof(int) * thread_data->n_select);
+    if(thread_data->selects_indices == NULL) {
+        REPORT_ERR("malloc\n");
+        free_thread_data(thread_data);
+        return NULL;
+    }
+
+    thread_data->selects_aggregate_functions = malloc(sizeof(AggregateFunction) * thread_data->n_select);
+    if(thread_data->selects_aggregate_functions == NULL) {
         REPORT_ERR("malloc\n");
         free_thread_data(thread_data);
         return NULL;
@@ -138,11 +150,21 @@ ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int n
 
     for(int i=0; i<thread_data->n_select; i++) {
         Select* select = request->select[i];
-        thread_data->selects[i].column_index = select_indices[i];
-        thread_data->selects[i].aggregate = map_aggregate_function(select->function);
+        thread_data->selects_indices[i]= select_indices[i];
+        thread_data->selects_aggregate_functions[i] = map_aggregate_function(select->function);
     }
 
     thread_data->file_row_groups_ranges = row_groups_ranges;
+
+    thread_data->group_columns_data_types = get_columns_data_types(
+        thread_data->group_columns_indices,
+        thread_data->n_group_columns,
+        thread_data->file_names[0]);
+
+    thread_data->select_columns_types = get_columns_data_types(
+        thread_data->selects_indices,
+        thread_data->n_select,
+        thread_data->file_names[0]);
 
     return thread_data;
 }
@@ -169,13 +191,19 @@ void free_thread_data(ThreadData* thread_data) {
 
     if(thread_data->file_names != NULL) {
         for(int i=0; i<thread_data->n_files; i++) {
-            free(thread_data->file_names[i]);
+            if(thread_data->file_names[i] != NULL) {
+                free(thread_data->file_names[i]);
+            }
         }
         free(thread_data->file_names);
     }
 
     free(thread_data->group_columns_indices);
-    free(thread_data->selects);
+    free(thread_data->selects_indices);
+    free(thread_data->selects_aggregate_functions);
+    free(thread_data->file_row_groups_ranges);
+    free(thread_data->group_columns_data_types);
+    free(thread_data->select_columns_types);
     free(thread_data);
 }
 
@@ -273,4 +301,57 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
     }
 
     return TRUE;
+}
+
+ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename) {
+    ColumnDataType* data_types = malloc(sizeof(ColumnDataType) * indices_count);
+
+    GError* error = NULL;
+    GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(filename, &error);
+    if(reader == NULL) {
+        report_g_error(error);
+        return NULL;
+    }
+
+    GArrowSchema* schema = gparquet_arrow_file_reader_get_schema(reader, &error);
+    if(schema == NULL) {
+        report_g_error(error);
+        return NULL;
+    }
+
+    for(int i=0; i<indices_count; i++) {
+        GArrowField* field = garrow_schema_get_field(schema, indices[i]);
+        if(field == NULL) {
+            report_g_error(error);
+            free(data_types);
+            g_object_unref(field);
+            g_object_unref(schema);
+            g_object_unref(reader);
+            return NULL;
+        }
+
+        GArrowDataType* data_type = garrow_field_get_data_type(field);
+        data_types[i] = map_arrow_data_type(data_type);
+        g_object_unref(field);
+    }
+
+    g_object_unref(schema);
+    g_object_unref(reader);
+
+    return data_types;
+}
+
+ColumnDataType map_arrow_data_type(GArrowDataType* data_type) {
+    if(GARROW_IS_INT32_DATA_TYPE(data_type) ) {
+        return COLUMN_DATA_TYPE_INT32;
+    }
+
+    if (GARROW_IS_INT64_DATA_TYPE(data_type)) {
+        return COLUMN_DATA_TYPE_INT64;
+    }
+
+    if(GARROW_IS_STRING_DATA_TYPE(data_type)) {
+        return COLUMN_DATA_TYPE_STRING;
+    }
+    return COLUMN_DATA_TYPE_UNKNOWN;
 }

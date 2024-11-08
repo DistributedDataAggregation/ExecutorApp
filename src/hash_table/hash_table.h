@@ -39,5 +39,6 @@ void free_hash_table(HashTable* table);
 void insert(HashTable* table, HashTableEntry* entry);
 HashTableEntry* search(HashTable* table, const char* key);
 void delete(HashTable* table, const char* key);
+void print(HashTable* ht);
 
 #endif //HASH_TABLE_H
