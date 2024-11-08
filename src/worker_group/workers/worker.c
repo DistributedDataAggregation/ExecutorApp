@@ -201,7 +201,8 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                 }
 
                 printf("Grouping string: %s\n", grouping_string);
-                // sum all the groupings into one string
+
+                // TODO:
                 // calculate the aggregates
                 // search for matching grouping in hash table
                 // update or add grouping into hash table with its aggregate results
