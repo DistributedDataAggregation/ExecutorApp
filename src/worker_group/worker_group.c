@@ -35,7 +35,8 @@ ColumnDataType map_arrow_data_type(GArrowDataType* data_type);
 ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename);
 
 HashTable** run_request_on_worker_group(const QueryRequest* request) {
-    long threads_count = sysconf(_SC_NPROCESSORS_ONLN);;
+    long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
+
     if (threads_count == -1) {
         REPORT_ERR("sysconf");
         return NULL;
@@ -156,6 +157,8 @@ ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int n
 
     thread_data->file_row_groups_ranges = row_groups_ranges;
 
+    // TODO: calculate the column data types outside of this function as its shared between threads
+    // this is to avoid redundant calculations
     thread_data->group_columns_data_types = get_columns_data_types(
         thread_data->group_columns_indices,
         thread_data->n_group_columns,
@@ -303,6 +306,8 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
     return TRUE;
 }
 
+
+
 ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename) {
     ColumnDataType* data_types = malloc(sizeof(ColumnDataType) * indices_count);
 
@@ -331,6 +336,11 @@ ColumnDataType* get_columns_data_types(const int* indices, int indices_count, co
         }
 
         GArrowDataType* data_type = garrow_field_get_data_type(field);
+
+        gchar* data_type_string = garrow_data_type_to_string(data_type);
+        printf("Column %d has datatype %s\n", i, data_type_string);
+        g_free(data_type_string);
+
         data_types[i] = map_arrow_data_type(data_type);
         g_object_unref(field);
     }
