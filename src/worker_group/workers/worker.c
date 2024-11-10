@@ -325,20 +325,29 @@ HashTableValue get_hash_table_value(
     AggregateFunction aggregate_function){
 
     HashTableValue hash_table_value;
-    hash_table_value.result_type = UNKNOWN_RESULT;
+    hash_table_value.aggregate_function = UNKNOWN;
 
     switch(aggregate_function) {
-        case MIN:
-        case MAX:
-            hash_table_value.result_type = SINGLE_RESULT;
+        case MIN: {
+            hash_table_value.aggregate_function = MIN;
             break;
-        case AVG:
-        case MEDIAN:
-            hash_table_value.result_type = COUNTED_RESULT;
+        }
+        case MAX: {
+            hash_table_value.aggregate_function = MAX;
             break;
-        case UNKNOWN:
-            hash_table_value.result_type = UNKNOWN_RESULT;
+        }
+        case AVG: {
+            hash_table_value.aggregate_function = AVG;
             break;
+        }
+        case MEDIAN:{
+            hash_table_value.aggregate_function = MEDIAN;
+            break;
+        }
+        case UNKNOWN: {
+            hash_table_value.aggregate_function = UNKNOWN;
+            break;
+        }
     }
 
     long value = 0;
@@ -356,7 +365,7 @@ HashTableValue get_hash_table_value(
             fprintf(stderr, "Wrong column type for aggregation. Only integer types are allowed!\n");
     }
 
-    if(hash_table_value.result_type == COUNTED_RESULT) {
+    if(hash_table_value.aggregate_function == AVG) {
         hash_table_value.accumulator = value;
         hash_table_value.count = 1;
     }

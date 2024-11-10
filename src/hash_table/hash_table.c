@@ -138,10 +138,28 @@ void print(HashTable* ht) {
 
                   for (int j = 0; j < entry->n_values; ++j) {
                         HashTableValue* value = &entry->values[j];
-                        if (value->result_type == SINGLE_RESULT) {
-                              printf("  Value[%d]: %ld (Single Result)\n", j, value->value);
-                        } else if (value->result_type == COUNTED_RESULT) {
-                              printf("  Value[%d]: Accumulator = %ld, Count = %ld (Counted Result)\n", j, value->accumulator, value->count);
+
+                        switch(value->aggregate_function) {
+                              case MIN: {
+                                    printf("  Value[%d]: %ld (Min)\n", j, value->value);
+                                    break;
+                              }
+                              case MAX: {
+                                    printf("  Value[%d]: %ld (Max)\n", j, value->value);
+                                    break;
+                              }
+                              case AVG:{
+                                    printf("  Value[%d]: Accumulator = %ld, Count = %ld (Average)\n", j, value->accumulator, value->count);
+                                    break;
+                              }
+                              case MEDIAN:{
+                                    printf("  Value[%d]: %ld (Max)\n", j, value->value);
+                                    break;
+                              }
+                              case UNKNOWN: {
+                                    printf("  Value[%d]: (Unknown)\n", j);
+                                    break;
+                              }
                         }
                   }
                   printf("\n");
@@ -169,15 +187,26 @@ void combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2) {
 }
 
 HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value) {
-      switch (current_value.result_type) {
-            case SINGLE_RESULT:
-                  current_value.value += incoming_value.value;
-            break;
-            case COUNTED_RESULT:
+      switch (current_value.aggregate_function) {
+            case MIN: {
+                  current_value.value = incoming_value.value < current_value.value ? incoming_value.value : current_value.value;
+                  break;
+            }
+            case MAX: {
+                  current_value.value = incoming_value.value > current_value.value ? incoming_value.value : current_value.value;
+                  break;
+            }
+            case AVG: {
                   current_value.accumulator += incoming_value.accumulator;
-            current_value.count += incoming_value.count;
-            break;
-            case UNKNOWN_RESULT:
+                  current_value.count += incoming_value.count;
+                  break;
+            }
+            case MEDIAN: {
+                  // TODO: implement median calculation
+                  current_value.value = -1;
+                  break;
+            }
+            case UNKNOWN:
                   break;
       }
 

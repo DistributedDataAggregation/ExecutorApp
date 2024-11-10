@@ -5,11 +5,7 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-typedef enum ResultType {
-    UNKNOWN_RESULT,
-    SINGLE_RESULT,
-    COUNTED_RESULT,
-}ResultType;
+#include "aggregate_function.h"
 
 typedef struct HashTableValue {
     union {
@@ -19,7 +15,7 @@ typedef struct HashTableValue {
             long count;
         };
     };
-    ResultType result_type;
+    AggregateFunction aggregate_function;
 } HashTableValue;
 
 typedef struct HashTableEntry {

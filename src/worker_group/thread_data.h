@@ -1,9 +1,10 @@
 //
 // Created by karol on 02.11.24.
 //
-
 #ifndef THREAD_DATA_H
 #define THREAD_DATA_H
+#include "aggregate_function.h"
+
 
 typedef enum ColumnDataType {
     COLUMN_DATA_TYPE_INT32,
@@ -12,13 +13,7 @@ typedef enum ColumnDataType {
     COLUMN_DATA_TYPE_UNKNOWN
 } ColumnDataType;
 
-typedef enum AggregateFunction {
-    UNKNOWN = -1,
-    MIN = 0,
-    MAX = 1,
-    AVG = 2,
-    MEDIAN = 3,
-} AggregateFunction;
+
 //
 // typedef struct SelectData {
 //     int column_index;
