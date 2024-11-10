@@ -8,6 +8,6 @@
 #include "hash_table.h"
 #include "query_request.pb-c.h"
 
-HashTable** run_request_on_worker_group(const QueryRequest* request);
+HashTable* run_request_on_worker_group(const QueryRequest* request);
 
 #endif //WORKER_GROUP_H

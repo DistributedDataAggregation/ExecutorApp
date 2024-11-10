@@ -242,7 +242,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                     free(hash_table_values);
                     free(grouping_string);
                 }
-                printf("[%d] processed row index %d\n", data->thread_index, row_index);
+               // printf("[%d] processed row index %d\n", data->thread_index, row_index);
             }
 
 
@@ -271,10 +271,10 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
         free(select_chunked_arrays);
         g_object_unref(table);
 
-        printf("[%d] Finished row group number %d\n", data->thread_index, i);
+        //printf("[%d] Finished row group number %d\n", data->thread_index, i);
     }
 
-    printf("[%d] Finished calculations for file\n", data->thread_index);
+    //printf("[%d] Finished calculations for file\n", data->thread_index);
 
     free(columns_indices);
 }
@@ -367,18 +367,3 @@ HashTableValue get_hash_table_value(
     return hash_table_value;
 }
 
-HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value) {
-    switch (current_value.result_type) {
-        case SINGLE_RESULT:
-            current_value.value += incoming_value.value;
-            break;
-        case COUNTED_RESULT:
-            current_value.accumulator += incoming_value.accumulator;
-            current_value.count += incoming_value.count;
-            break;
-        case UNKNOWN_RESULT:
-            break;
-    }
-
-    return current_value;
-}

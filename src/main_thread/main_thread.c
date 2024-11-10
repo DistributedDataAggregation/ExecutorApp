@@ -40,7 +40,20 @@ int run_main_thread() {
     QueryRequest* request = parse_incoming_request(clientfd);
 
 
-    HashTable** hts = run_request_on_worker_group(request);
+    HashTable* ht = run_request_on_worker_group(request);
+    print(ht);
+    int total_count =0;
+    for(int i=0;i<ht->size;i++) {
+        HashTableEntry* entry = ht->table[i];
+        while(entry != NULL) {
+            total_count+= entry->values[0].count;
+            entry = entry->next;
+        }
+    }
+
+    printf("Total count: %d\n", total_count);
+
+    free_hash_table(ht);
     // TODO: replace this with an actual creation of a response entity and sending it back to controller
     // Results results = RESULTS__INIT;
     // results.n_values = 1;

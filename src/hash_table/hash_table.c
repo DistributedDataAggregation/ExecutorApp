@@ -8,6 +8,7 @@
 #include "error_utilites.h"
 #include <stdio.h>
 #include <string.h>
+HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value);
 
 unsigned int hash(const char* string, const int table_size) {
       unsigned int hash_value = 0;
@@ -148,4 +149,37 @@ void print(HashTable* ht) {
                   entry = entry->next;  // Move to the next entry in the bucket (linked list)
             }
       }
+}
+
+void combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2) {
+      if(entry1 == NULL || entry2 == NULL) {
+            INTERNAL_ERROR("Entry1 or Entry2 is NULL");
+            return;
+      }
+
+      if(entry1->n_values > entry2->n_values) {
+            INTERNAL_ERROR("Entry1 and Entry2 have different number of values");
+            return;
+      }
+      int size = entry1->n_values;
+
+      for(int i=0; i<size; i++) {
+            entry1->values[i] = update_value(entry1->values[i], entry2->values[i]);
+      }
+}
+
+HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value) {
+      switch (current_value.result_type) {
+            case SINGLE_RESULT:
+                  current_value.value += incoming_value.value;
+            break;
+            case COUNTED_RESULT:
+                  current_value.accumulator += incoming_value.accumulator;
+            current_value.count += incoming_value.count;
+            break;
+            case UNKNOWN_RESULT:
+                  break;
+      }
+
+      return current_value;
 }
