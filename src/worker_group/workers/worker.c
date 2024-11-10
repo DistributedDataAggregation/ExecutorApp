@@ -17,7 +17,14 @@
 
 void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table);
 void print_thread_data(ThreadData* data);
-char* get_grouping_string(GArrowChunkedArray* grouping_array, ColumnDataType data_type, int row_index);
+char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type, int row_index) ;
+char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arrays, int row_index, ColumnDataType* group_columns_data_types);
+HashTableValue get_hash_table_value(
+    GArrowArray* select_array,
+    int row_index,
+    ColumnDataType select_columns_data_types,
+    AggregateFunction aggregate_function);
+HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value);
 
 void* compute_on_thread(void* arg) {
     ThreadData* data = (ThreadData*)arg;
@@ -27,7 +34,10 @@ void* compute_on_thread(void* arg) {
     HashTable* ht = create_hash_table(10);
     for(int i=0;i<data->n_files;i++) {
         compute_file(i, data, ht);
+        printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
     }
+
+    printf("[%d] Finished\n", data->thread_index);
 
     return ht;
 }
@@ -142,8 +152,6 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
 
         for(int j = 0; j < data->n_group_columns; j++) {
             grouping_chunked_arrays[j] = garrow_table_get_column_data(table, j);
-            const char* type_str = column_data_type_to_string(data->group_columns_data_types[i]);
-            printf("Column Data Type: %s\n", type_str);
             if(grouping_chunked_arrays[j] == NULL) {
                 INTERNAL_ERROR("Can't find grouping_chunked_arrays");
             }
@@ -187,42 +195,91 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
             }
 
             for(int row_index = 0; row_index < number_of_rows; row_index++) {
-
                 int grouping_string_size = 0;
-                char* grouping_string = NULL;
-                for(int grouping_col_index = 0; grouping_col_index < data->n_group_columns; grouping_col_index++) {
-                    char* column_value_string = get_grouping_string(grouping_arrays[grouping_col_index], data->group_columns_data_types[grouping_col_index], row_index);
-                    int current_length = strlen(column_value_string);
-                    grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length);
-                    memset(grouping_string+(grouping_string_size), 0, current_length);
-                    grouping_string_size += current_length;
+                char* grouping_string = construct_grouping_string(data->n_group_columns, grouping_arrays, row_index, data->group_columns_data_types);
 
-                    grouping_string = strcat(grouping_string, column_value_string);
-                }
-
-                printf("Grouping string: %s\n", grouping_string);
+                //printf("Grouping string: %s\n", grouping_string);
 
                 // TODO:
                 // calculate the aggregates
-                // search for matching grouping in hash table
-                // update or add grouping into hash table with its aggregate results
-
+                // HashTableValue* hash_table_values = malloc(sizeof(HashTableValue)*data->n_select);
+                // if(hash_table_values == NULL) {
+                //     REPORT_ERR("malloc");
+                //     // TODO: memory deallocation
+                //     return;
+                // }
+                //
+                // for(int select_index=0; select_index<data->n_select; select_index++) {
+                //     hash_table_values[select_index] = get_hash_table_value(
+                //         select_arrays[select_index],
+                //         row_index,
+                //         data->select_columns_types[select_index],
+                //         data->selects_aggregate_functions[select_index]);
+                //
+                //
+                // }
+                //
+                // HashTableEntry* found = search(hash_table, grouping_string);
+                // if(found == NULL) {
+                //     // add grouping into hash table
+                //     HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
+                //     if(new_entry == NULL) {
+                //         REPORT_ERR("malloc");
+                //         return;
+                //     }
+                //
+                //     new_entry->key = grouping_string;
+                //     new_entry->values = hash_table_values;
+                //     new_entry->n_values = data->n_select;
+                //     new_entry->next = NULL;
+                //     insert(hash_table, new_entry);
+                // } else {
+                //     for(int value_index = 0; value_index < data->n_select; value_index++) {
+                //         found->values[value_index] = update_value(
+                //             found->values[value_index],
+                //             hash_table_values[value_index]);
+                //     }
+                //     free(hash_table_values);
+                //     free(grouping_string);
+                // }
                 free(grouping_string);
             }
+
+
+            for(int grouping = 0; grouping < data->n_group_columns; grouping++) {
+                g_object_unref(grouping_arrays[grouping]);
+            }
+
+            for(int select = 0; select < data->n_select; select++) {
+                g_object_unref(select_arrays[select]);
+            }
+
 
             free(select_arrays);
             free(grouping_arrays);
         }
 
+        for(int grouping_index=0; grouping_index < data->n_group_columns; grouping_index++) {
+            g_object_unref(grouping_chunked_arrays[grouping_index]);
+        }
+
+        for(int select_index=0; select_index < data->n_select; select_index++) {
+            g_object_unref(select_chunked_arrays[select_index]);
+        }
 
         free(grouping_chunked_arrays);
         free(select_chunked_arrays);
+        g_object_unref(table);
+
+        printf("[%d] Finished row group number %d\n", data->thread_index, i);
     }
+
+    printf("[%d] Finished calculations for file\n", data->thread_index);
 
     free(columns_indices);
 }
 
-char* get_grouping_string(GArrowChunkedArray* grouping_array, ColumnDataType data_type, int row_index) {
+char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type, int row_index) {
     switch (data_type) {
         case COLUMN_DATA_TYPE_INT32:
             GArrowInt32Array* int32_array = GARROW_INT32_ARRAY(grouping_array);
@@ -239,4 +296,88 @@ char* get_grouping_string(GArrowChunkedArray* grouping_array, ColumnDataType dat
         default:
             return NULL;
     }
+}
+
+char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arrays, int row_index, ColumnDataType* group_columns_data_types) {
+    char* grouping_string = NULL;
+    int grouping_string_size = 0;
+    for(int grouping_col_index = 0; grouping_col_index < n_group_columns; grouping_col_index++) {
+        char* column_value_string = get_grouping_string(
+            grouping_arrays[grouping_col_index],
+            group_columns_data_types[grouping_col_index],
+            row_index);
+
+        int current_length = strlen(column_value_string);
+        grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length);
+        memset(grouping_string+(grouping_string_size), 0, current_length);
+        grouping_string_size += current_length;
+        grouping_string = strcat(grouping_string, column_value_string);
+    }
+
+    return grouping_string;
+}
+
+HashTableValue get_hash_table_value(
+    GArrowArray* select_array,
+    int row_index,
+    ColumnDataType select_columns_data_types,
+    AggregateFunction aggregate_function){
+
+    HashTableValue hash_table_value;
+    hash_table_value.result_type = UNKNOWN_RESULT;
+
+    switch(aggregate_function) {
+        case MIN:
+        case MAX:
+            hash_table_value.result_type = SINGLE_RESULT;
+            break;
+        case AVG:
+        case MEDIAN:
+            hash_table_value.result_type = COUNTED_RESULT;
+            break;
+        case UNKNOWN:
+            hash_table_value.result_type = UNKNOWN_RESULT;
+            break;
+    }
+
+    long value = 0;
+    switch (select_columns_data_types) {
+        case COLUMN_DATA_TYPE_INT32:
+            GArrowInt32Array* int32_array = GARROW_INT32_ARRAY(select_array);
+            value= garrow_int32_array_get_value(int32_array, row_index);
+            break;
+        case COLUMN_DATA_TYPE_INT64:
+            GArrowInt64Array* int64_array = GARROW_INT64_ARRAY(select_array);
+            value = garrow_int64_array_get_value(int64_array, row_index);
+            break;
+        case COLUMN_DATA_TYPE_STRING:
+        case COLUMN_DATA_TYPE_UNKNOWN:
+            fprintf(stderr, "Wrong column type for aggregation. Only integer types are allowed!\n");
+    }
+
+    if(hash_table_value.result_type == COUNTED_RESULT) {
+        hash_table_value.accumulator = value;
+        hash_table_value.count = 1;
+    }
+    else {
+        hash_table_value.value = value;
+    }
+
+    return hash_table_value;
+}
+
+HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value) {
+    switch (current_value.result_type) {
+        case SINGLE_RESULT:
+            current_value.value += incoming_value.value;
+            break;
+        case COUNTED_RESULT:
+            current_value.accumulator += incoming_value.accumulator;
+            current_value.count += incoming_value.count;
+            break;
+        case UNKNOWN_RESULT:
+            break;
+    }
+
+    return current_value;
 }

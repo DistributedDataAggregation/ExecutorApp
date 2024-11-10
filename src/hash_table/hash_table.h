@@ -6,6 +6,7 @@
 #define HASH_TABLE_H
 
 typedef enum ResultType {
+    UNKNOWN_RESULT,
     SINGLE_RESULT,
     COUNTED_RESULT,
 }ResultType;

@@ -35,7 +35,8 @@ ColumnDataType map_arrow_data_type(GArrowDataType* data_type);
 ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename);
 
 HashTable** run_request_on_worker_group(const QueryRequest* request) {
-    long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
+    // long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
+    long threads_count = 4;
 
     if (threads_count == -1) {
         REPORT_ERR("sysconf");
@@ -82,7 +83,6 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
     }
 
 
-
     ThreadData** thread_data = malloc(sizeof(ThreadData*) * threads_count);
     for(int i = 0; i < threads_count; i++) {
         thread_data[i] = get_thread_data(request, i, threads_count, row_group_ranges[i], grouping_indices, select_indices);
@@ -94,6 +94,9 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
         pthread_join(threads[i], &result);
         free_thread_data(thread_data[i]);
         HashTable* thread_ht = result;
+
+        print(thread_ht);
+        free_hash_table(thread_ht);
     }
 
     free(threads);
