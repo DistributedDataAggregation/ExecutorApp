@@ -33,8 +33,9 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
 void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count);
 ColumnDataType map_arrow_data_type(GArrowDataType* data_type);
 ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename);
+void combine_hash_tables(HashTable* destination, HashTable* source);
 
-HashTable** run_request_on_worker_group(const QueryRequest* request) {
+HashTable* run_request_on_worker_group(const QueryRequest* request) {
     long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
 
     if (threads_count == -1) {
@@ -82,24 +83,31 @@ HashTable** run_request_on_worker_group(const QueryRequest* request) {
     }
 
 
-
     ThreadData** thread_data = malloc(sizeof(ThreadData*) * threads_count);
     for(int i = 0; i < threads_count; i++) {
         thread_data[i] = get_thread_data(request, i, threads_count, row_group_ranges[i], grouping_indices, select_indices);
         pthread_create(&threads[i], NULL, compute_on_thread, thread_data[i]);
     }
 
+    HashTable* ht = NULL;
     for(int i = 0; i < threads_count; i++) {
         void* result = NULL;
         pthread_join(threads[i], &result);
         free_thread_data(thread_data[i]);
         HashTable* thread_ht = result;
+
+        if(ht == NULL) {
+            ht = thread_ht;
+        }else {
+            combine_hash_tables(ht, thread_ht);
+            free_hash_table(thread_ht);
+        }
     }
 
     free(threads);
     free(thread_data);
 
-    return NULL;
+    return ht;
 }
 
 ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int num_threads,
@@ -306,8 +314,6 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
     return TRUE;
 }
 
-
-
 ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename) {
     ColumnDataType* data_types = malloc(sizeof(ColumnDataType) * indices_count);
 
@@ -364,4 +370,23 @@ ColumnDataType map_arrow_data_type(GArrowDataType* data_type) {
         return COLUMN_DATA_TYPE_STRING;
     }
     return COLUMN_DATA_TYPE_UNKNOWN;
+}
+
+void combine_hash_tables(HashTable* destination, HashTable* source) {
+    for(int i=0;i<source->size;i++) {
+        HashTableEntry* entry = source->table[i];
+        while(entry != NULL) {
+            HashTableEntry* next = entry->next;
+
+            HashTableEntry* found = search(destination, entry->key);
+            if(found == NULL) {
+                entry->next = NULL;
+                insert(destination, next);
+            } else {
+                combine_entries(found, entry);
+            }
+
+            entry = next;
+        }
+    }
 }

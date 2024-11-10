@@ -5,10 +5,7 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-typedef enum ResultType {
-    SINGLE_RESULT,
-    COUNTED_RESULT,
-}ResultType;
+#include "aggregate_function.h"
 
 typedef struct HashTableValue {
     union {
@@ -18,7 +15,7 @@ typedef struct HashTableValue {
             long count;
         };
     };
-    ResultType result_type;
+    AggregateFunction aggregate_function;
 } HashTableValue;
 
 typedef struct HashTableEntry {
@@ -40,5 +37,6 @@ void insert(HashTable* table, HashTableEntry* entry);
 HashTableEntry* search(HashTable* table, const char* key);
 void delete(HashTable* table, const char* key);
 void print(HashTable* ht);
+void combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2);
 
 #endif //HASH_TABLE_H

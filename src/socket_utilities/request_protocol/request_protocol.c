@@ -10,6 +10,8 @@
 #include <netinet/in.h>
 
 #include "error_utilites.h"
+#include "hash_table.h"
+#include "query_response.pb-c.h"
 
 QueryRequest* parse_incoming_request(int client_socket) {
 

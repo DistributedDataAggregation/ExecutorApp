@@ -35,7 +35,7 @@ void test_add_to_hash_table() {
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue)*entry->n_values);
     for (int i = 0; i < entry->n_values; i++) {
-        entry->values[i].result_type = SINGLE_RESULT;
+        entry->values[i].aggregate_function = MIN;
         entry->values[i].value = 100;
     }
 
@@ -46,7 +46,7 @@ void test_add_to_hash_table() {
     assert(returned->n_values == entry->n_values);
     assert(strcmp(returned->key, key) == 0);
     for (int i = 0; i < entry->n_values; i++) {
-        assert(returned->values[i].result_type == entry->values[i].result_type);
+        assert(returned->values[i].aggregate_function == entry->values[i].aggregate_function);
         assert(returned->values[i].value == entry->values[i].value);
     }
     returned->values[0].value += 100;
