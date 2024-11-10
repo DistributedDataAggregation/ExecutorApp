@@ -201,48 +201,48 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                 //printf("Grouping string: %s\n", grouping_string);
 
                 // TODO:
-                // calculate the aggregates
-                // HashTableValue* hash_table_values = malloc(sizeof(HashTableValue)*data->n_select);
-                // if(hash_table_values == NULL) {
-                //     REPORT_ERR("malloc");
-                //     // TODO: memory deallocation
-                //     return;
-                // }
-                //
-                // for(int select_index=0; select_index<data->n_select; select_index++) {
-                //     hash_table_values[select_index] = get_hash_table_value(
-                //         select_arrays[select_index],
-                //         row_index,
-                //         data->select_columns_types[select_index],
-                //         data->selects_aggregate_functions[select_index]);
-                //
-                //
-                // }
-                //
-                // HashTableEntry* found = search(hash_table, grouping_string);
-                // if(found == NULL) {
-                //     // add grouping into hash table
-                //     HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
-                //     if(new_entry == NULL) {
-                //         REPORT_ERR("malloc");
-                //         return;
-                //     }
-                //
-                //     new_entry->key = grouping_string;
-                //     new_entry->values = hash_table_values;
-                //     new_entry->n_values = data->n_select;
-                //     new_entry->next = NULL;
-                //     insert(hash_table, new_entry);
-                // } else {
-                //     for(int value_index = 0; value_index < data->n_select; value_index++) {
-                //         found->values[value_index] = update_value(
-                //             found->values[value_index],
-                //             hash_table_values[value_index]);
-                //     }
-                //     free(hash_table_values);
-                //     free(grouping_string);
-                // }
-                free(grouping_string);
+                //calculate the aggregates
+                HashTableValue* hash_table_values = malloc(sizeof(HashTableValue)*data->n_select);
+                if(hash_table_values == NULL) {
+                    REPORT_ERR("malloc");
+                    // TODO: memory deallocation
+                    return;
+                }
+
+                for(int select_index=0; select_index<data->n_select; select_index++) {
+                    hash_table_values[select_index] = get_hash_table_value(
+                        select_arrays[select_index],
+                        row_index,
+                        data->select_columns_types[select_index],
+                        data->selects_aggregate_functions[select_index]);
+
+
+                }
+
+                HashTableEntry* found = search(hash_table, grouping_string);
+                if(found == NULL) {
+                    // add grouping into hash table
+                    HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
+                    if(new_entry == NULL) {
+                        REPORT_ERR("malloc");
+                        return;
+                    }
+
+                    new_entry->key = grouping_string;
+                    new_entry->values = hash_table_values;
+                    new_entry->n_values = data->n_select;
+                    new_entry->next = NULL;
+                    insert(hash_table, new_entry);
+                } else {
+                    for(int value_index = 0; value_index < data->n_select; value_index++) {
+                        found->values[value_index] = update_value(
+                            found->values[value_index],
+                            hash_table_values[value_index]);
+                    }
+                    free(hash_table_values);
+                    free(grouping_string);
+                }
+                printf("[%d] processed row index %d\n", data->thread_index, row_index);
             }
 
 
@@ -312,6 +312,7 @@ char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arra
         memset(grouping_string+(grouping_string_size), 0, current_length);
         grouping_string_size += current_length;
         grouping_string = strcat(grouping_string, column_value_string);
+        free(column_value_string);
     }
 
     return grouping_string;
