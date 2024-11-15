@@ -45,7 +45,6 @@ int run_main_thread() {
     QueryResponse* response = convert_table(ht);
 
     ssize_t size = query_response__get_packed_size(response);
-
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
     if (buffer == NULL) {
         ERR_AND_EXIT("malloc");
