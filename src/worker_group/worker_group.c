@@ -106,6 +106,9 @@ HashTable* run_request_on_worker_group(const QueryRequest* request) {
 
     free(threads);
     free(thread_data);
+    free(select_indices);
+    free(grouping_indices);
+    free(row_group_ranges);
 
     return ht;
 }
@@ -209,8 +212,6 @@ void free_thread_data(ThreadData* thread_data) {
         free(thread_data->file_names);
     }
 
-    free(thread_data->group_columns_indices);
-    free(thread_data->selects_indices);
     free(thread_data->selects_aggregate_functions);
     free(thread_data->file_row_groups_ranges);
     free(thread_data->group_columns_data_types);

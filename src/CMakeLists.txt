@@ -35,6 +35,8 @@ add_executable(ExecutorApp main.c
         parquet_helpers/parquet_helpers.h
         parquet_helpers/parquet_helpers.c
         worker_group/aggregate_function.h
+        converters/hash_table_to_query_response_converter.h
+        converters/hash_table_to_query_response_converter.c
 )
 include_directories(
         error_utilites
@@ -44,8 +46,15 @@ include_directories(
         hash_table
         proto_definitions
         worker_group
+        converters
 )
 
 target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})
 target_link_libraries(ExecutorApp protobuf-c)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    # Enable AddressSanitizer for both the compiler and linker
+    target_compile_options(ExecutorApp PRIVATE -fsanitize=address -g)
+    target_link_options(ExecutorApp PRIVATE -fsanitize=address)
+endif()
 

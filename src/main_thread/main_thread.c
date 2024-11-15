@@ -26,6 +26,7 @@
 
 #include "hash_table.h"
 #include "worker_group.h"
+#include "hash_table_to_query_response_converter.h"
 
 
 int run_main_thread() {
@@ -39,19 +40,55 @@ int run_main_thread() {
 
     QueryRequest* request = parse_incoming_request(clientfd);
 
-
     HashTable* ht = run_request_on_worker_group(request);
-    print(ht);
-    int total_count =0;
-    for(int i=0;i<ht->size;i++) {
-        HashTableEntry* entry = ht->table[i];
-        while(entry != NULL) {
-            total_count+= entry->values[0].count;
-            entry = entry->next;
-        }
+
+    QueryResponse* response = convert_table(ht);
+
+    ssize_t size = query_response__get_packed_size(response);
+
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
+    if (buffer == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+    memset(buffer, 0, size);
+
+    int size_to_send = htonl(size);
+    if(write(clientfd, &size_to_send, sizeof(size_to_send)) <= 0) {
+        ERR_AND_EXIT("send");
     }
 
-    printf("Total count: %d\n", total_count);
+    int stored = query_response__pack(response, buffer);
+    if(stored != size) {
+        ERR_AND_EXIT("results__pack");
+    }
+
+    if(send(clientfd, buffer, size, 0) != size) {
+        ERR_AND_EXIT("send");
+    }
+
+    // for(int i=0;i<response.n_values;i++) {
+    //     free(response.values[i]->grouping_value);
+    //     int results_count = response.values[i]->n_results;
+    //     for(int j=0; j< results_count; j++) {
+    //         if(response.values[i]->results[j]->result_types_case == RESULT__RESULT_TYPES_COUNTED_RESULT)
+    //             free(response.values[i]->results[j]);
+    //     }
+    //     free(response.values[i]->results);
+    // }
+    // free(response.values);
+
+
+    // print(ht);
+    // int total_count =0;
+    // for(int i=0;i<ht->size;i++) {
+    //     HashTableEntry* entry = ht->table[i];
+    //     while(entry != NULL) {
+    //         total_count+= entry->values[0].count;
+    //         entry = entry->next;
+    //     }
+    // }
+
+    // printf("Total count: %d\n", total_count);
 
     free_hash_table(ht);
     // TODO: replace this with an actual creation of a response entity and sending it back to controller
