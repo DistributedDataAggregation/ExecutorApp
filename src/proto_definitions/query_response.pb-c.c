@@ -97,97 +97,52 @@ void   value__free_unpacked
   assert(message->base.descriptor == &value__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   result__init
-                     (Result         *message)
+void   partial_result__init
+                     (PartialResult         *message)
 {
-  static const Result init_value = RESULT__INIT;
+  static const PartialResult init_value = PARTIAL_RESULT__INIT;
   *message = init_value;
 }
-size_t result__get_packed_size
-                     (const Result *message)
+size_t partial_result__get_packed_size
+                     (const PartialResult *message)
 {
-  assert(message->base.descriptor == &result__descriptor);
+  assert(message->base.descriptor == &partial_result__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t result__pack
-                     (const Result *message,
+size_t partial_result__pack
+                     (const PartialResult *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &result__descriptor);
+  assert(message->base.descriptor == &partial_result__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t result__pack_to_buffer
-                     (const Result *message,
+size_t partial_result__pack_to_buffer
+                     (const PartialResult *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &result__descriptor);
+  assert(message->base.descriptor == &partial_result__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-Result *
-       result__unpack
+PartialResult *
+       partial_result__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (Result *)
-     protobuf_c_message_unpack (&result__descriptor,
+  return (PartialResult *)
+     protobuf_c_message_unpack (&partial_result__descriptor,
                                 allocator, len, data);
 }
-void   result__free_unpacked
-                     (Result *message,
+void   partial_result__free_unpacked
+                     (PartialResult *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &result__descriptor);
+  assert(message->base.descriptor == &partial_result__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   counted_result__init
-                     (CountedResult         *message)
-{
-  static const CountedResult init_value = COUNTED_RESULT__INIT;
-  *message = init_value;
-}
-size_t counted_result__get_packed_size
-                     (const CountedResult *message)
-{
-  assert(message->base.descriptor == &counted_result__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t counted_result__pack
-                     (const CountedResult *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &counted_result__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t counted_result__pack_to_buffer
-                     (const CountedResult *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &counted_result__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-CountedResult *
-       counted_result__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (CountedResult *)
-     protobuf_c_message_unpack (&counted_result__descriptor,
-                                allocator, len, data);
-}
-void   counted_result__free_unpacked
-                     (CountedResult *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &counted_result__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
-static const ProtobufCFieldDescriptor query_response__field_descriptors[2] =
+static const ProtobufCFieldDescriptor query_response__field_descriptors[1] =
 {
   {
     "values",
@@ -201,27 +156,14 @@ static const ProtobufCFieldDescriptor query_response__field_descriptors[2] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
-  {
-    "operations",
-    2,
-    PROTOBUF_C_LABEL_REPEATED,
-    PROTOBUF_C_TYPE_ENUM,
-    offsetof(QueryResponse, n_operations),
-    offsetof(QueryResponse, operations),
-    &aggregate__descriptor,
-    NULL,
-    PROTOBUF_C_FIELD_FLAG_PACKED,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
 };
 static const unsigned query_response__field_indices_by_name[] = {
-  1,   /* field[1] = operations */
   0,   /* field[0] = values */
 };
 static const ProtobufCIntRange query_response__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 1 }
 };
 const ProtobufCMessageDescriptor query_response__descriptor =
 {
@@ -231,7 +173,7 @@ const ProtobufCMessageDescriptor query_response__descriptor =
   "QueryResponse",
   "",
   sizeof(QueryResponse),
-  2,
+  1,
   query_response__field_descriptors,
   query_response__field_indices_by_name,
   1,  query_response__number_ranges,
@@ -259,7 +201,7 @@ static const ProtobufCFieldDescriptor value__field_descriptors[2] =
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(Value, n_results),
     offsetof(Value, results),
-    &result__descriptor,
+    &partial_result__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -289,105 +231,54 @@ const ProtobufCMessageDescriptor value__descriptor =
   (ProtobufCMessageInit) value__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor result__field_descriptors[2] =
+static const ProtobufCFieldDescriptor partial_result__field_descriptors[2] =
 {
-  {
-    "singleResult",
-    1,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT64,
-    offsetof(Result, result_types_case),
-    offsetof(Result, singleresult),
-    NULL,
-    NULL,
-    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "countedResult",
-    2,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_MESSAGE,
-    offsetof(Result, result_types_case),
-    offsetof(Result, countedresult),
-    &counted_result__descriptor,
-    NULL,
-    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned result__field_indices_by_name[] = {
-  1,   /* field[1] = countedResult */
-  0,   /* field[0] = singleResult */
-};
-static const ProtobufCIntRange result__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 2 }
-};
-const ProtobufCMessageDescriptor result__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "Result",
-  "Result",
-  "Result",
-  "",
-  sizeof(Result),
-  2,
-  result__field_descriptors,
-  result__field_indices_by_name,
-  1,  result__number_ranges,
-  (ProtobufCMessageInit) result__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCFieldDescriptor counted_result__field_descriptors[2] =
-{
-  {
-    "count",
-    1,
-    PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT64,
-    0,   /* quantifier_offset */
-    offsetof(CountedResult, count),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
   {
     "value",
+    1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT64,
+    0,   /* quantifier_offset */
+    offsetof(PartialResult, value),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "count",
     2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
-    offsetof(CountedResult, value),
+    offsetof(PartialResult, count),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned counted_result__field_indices_by_name[] = {
-  0,   /* field[0] = count */
-  1,   /* field[1] = value */
+static const unsigned partial_result__field_indices_by_name[] = {
+  1,   /* field[1] = count */
+  0,   /* field[0] = value */
 };
-static const ProtobufCIntRange counted_result__number_ranges[1 + 1] =
+static const ProtobufCIntRange partial_result__number_ranges[1 + 1] =
 {
   { 1, 0 },
   { 0, 2 }
 };
-const ProtobufCMessageDescriptor counted_result__descriptor =
+const ProtobufCMessageDescriptor partial_result__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "CountedResult",
-  "CountedResult",
-  "CountedResult",
+  "PartialResult",
+  "PartialResult",
+  "PartialResult",
   "",
-  sizeof(CountedResult),
+  sizeof(PartialResult),
   2,
-  counted_result__field_descriptors,
-  counted_result__field_indices_by_name,
-  1,  counted_result__number_ranges,
-  (ProtobufCMessageInit) counted_result__init,
+  partial_result__field_descriptors,
+  partial_result__field_indices_by_name,
+  1,  partial_result__number_ranges,
+  (ProtobufCMessageInit) partial_result__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

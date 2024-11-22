@@ -10,21 +10,14 @@
 
 #include "error_utilites.h"
 
-Result* convert_value(HashTableValue value);
+PartialResult* convert_value(HashTableValue value);
 Value* convert_entry(const HashTableEntry* entry);
 
 QueryResponse* convert_table(HashTable *table) {
     QueryResponse* query_response = malloc(sizeof(QueryResponse));
     query_response__init(query_response);
 
-    int values_counter = 0;
-    for(int i=0;i<table->size;i++) {
-        HashTableEntry* current = table->table[i];
-        while(current != NULL) {
-            values_counter++;
-            current = current->next;
-        }
-    }
+    int values_counter = table->entries_count;
 
     int index_of_non_empty = 0;
     HashTableEntry* entry = table->table[index_of_non_empty];
@@ -37,12 +30,6 @@ QueryResponse* convert_table(HashTable *table) {
         fprintf(stderr, "No entries to convert to query response\n");
         return query_response;
     }
-
-    // TODO: change this back if you use operations
-    //query_response.n_operations = entry->n_values;
-    query_response->n_operations = 0;
-    query_response->operations = NULL;
-
 
     query_response->n_values = values_counter;
     query_response->values = (malloc(sizeof(Value*)*query_response->n_values));
@@ -82,7 +69,7 @@ Value* convert_entry(const HashTableEntry* entry) {
 
     value->n_results = entry->n_values;
     value->grouping_value = strdup(entry->key);
-    value->results = malloc(sizeof(Result*) * value->n_results);
+    value->results = malloc(sizeof(PartialResult*) * value->n_results);
     for(int i=0; i<entry->n_values; i++) {
         value->results[i] = convert_value(entry->values[i]);
     }
@@ -90,27 +77,23 @@ Value* convert_entry(const HashTableEntry* entry) {
     return value;
 }
 
-Result* convert_value(HashTableValue value) {
-    Result* result = malloc(sizeof(Result));
-    result__init(result);
+PartialResult* convert_value(HashTableValue value) {
+    PartialResult* result = malloc(sizeof(PartialResult));
+    partial_result__init(result);
 
     switch (value.aggregate_function) {
         case MIN:
         case MAX: {
-            result->result_types_case = RESULT__RESULT_TYPES_SINGLE_RESULT;
-            result->singleresult = value.value;
+            result->value = value.value;
             break;
         }
         case AVG: {
-            result ->result_types_case = RESULT__RESULT_TYPES_COUNTED_RESULT;
-            result->countedresult = malloc(sizeof(CountedResult));
-            counted_result__init(result->countedresult);
-            result->countedresult->count = value.count;
-            result->countedresult->value = value.accumulator;
+            result->count = value.count;
+            result->value = value.accumulator;
             break;
         }
         default:
-            result->result_types_case = RESULT__RESULT_TYPES__NOT_SET;
+            result->value = 0;
             break;
     }
 

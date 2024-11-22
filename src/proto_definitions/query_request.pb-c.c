@@ -97,49 +97,49 @@ void   select__free_unpacked
   assert(message->base.descriptor == &select__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-void   main_executor__init
-                     (MainExecutor         *message)
+void   executor_information__init
+                     (ExecutorInformation         *message)
 {
-  static const MainExecutor init_value = MAIN_EXECUTOR__INIT;
+  static const ExecutorInformation init_value = EXECUTOR_INFORMATION__INIT;
   *message = init_value;
 }
-size_t main_executor__get_packed_size
-                     (const MainExecutor *message)
+size_t executor_information__get_packed_size
+                     (const ExecutorInformation *message)
 {
-  assert(message->base.descriptor == &main_executor__descriptor);
+  assert(message->base.descriptor == &executor_information__descriptor);
   return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
 }
-size_t main_executor__pack
-                     (const MainExecutor *message,
+size_t executor_information__pack
+                     (const ExecutorInformation *message,
                       uint8_t       *out)
 {
-  assert(message->base.descriptor == &main_executor__descriptor);
+  assert(message->base.descriptor == &executor_information__descriptor);
   return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
 }
-size_t main_executor__pack_to_buffer
-                     (const MainExecutor *message,
+size_t executor_information__pack_to_buffer
+                     (const ExecutorInformation *message,
                       ProtobufCBuffer *buffer)
 {
-  assert(message->base.descriptor == &main_executor__descriptor);
+  assert(message->base.descriptor == &executor_information__descriptor);
   return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
 }
-MainExecutor *
-       main_executor__unpack
+ExecutorInformation *
+       executor_information__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data)
 {
-  return (MainExecutor *)
-     protobuf_c_message_unpack (&main_executor__descriptor,
+  return (ExecutorInformation *)
+     protobuf_c_message_unpack (&executor_information__descriptor,
                                 allocator, len, data);
 }
-void   main_executor__free_unpacked
-                     (MainExecutor *message,
+void   executor_information__free_unpacked
+                     (ExecutorInformation *message,
                       ProtobufCAllocator *allocator)
 {
   if(!message)
     return;
-  assert(message->base.descriptor == &main_executor__descriptor);
+  assert(message->base.descriptor == &executor_information__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
 static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
@@ -187,7 +187,7 @@ static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
     PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
     offsetof(QueryRequest, executor),
-    &main_executor__descriptor,
+    &executor_information__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -270,7 +270,7 @@ const ProtobufCMessageDescriptor select__descriptor =
   (ProtobufCMessageInit) select__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor main_executor__field_descriptors[3] =
+static const ProtobufCFieldDescriptor executor_information__field_descriptors[4] =
 {
   {
     "is_current_node_main",
@@ -278,59 +278,72 @@ static const ProtobufCFieldDescriptor main_executor__field_descriptors[3] =
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_BOOL,
     0,   /* quantifier_offset */
-    offsetof(MainExecutor, is_current_node_main),
+    offsetof(ExecutorInformation, is_current_node_main),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "ip_address",
+    "main_ip_address",
     2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
-    offsetof(MainExecutor, ip_address),
+    offsetof(ExecutorInformation, main_ip_address),
     NULL,
     &protobuf_c_empty_string,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "port",
+    "main_port",
     3,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT32,
     0,   /* quantifier_offset */
-    offsetof(MainExecutor, port),
+    offsetof(ExecutorInformation, main_port),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "executors_count",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT32,
+    0,   /* quantifier_offset */
+    offsetof(ExecutorInformation, executors_count),
     NULL,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
 };
-static const unsigned main_executor__field_indices_by_name[] = {
-  1,   /* field[1] = ip_address */
+static const unsigned executor_information__field_indices_by_name[] = {
+  3,   /* field[3] = executors_count */
   0,   /* field[0] = is_current_node_main */
-  2,   /* field[2] = port */
+  1,   /* field[1] = main_ip_address */
+  2,   /* field[2] = main_port */
 };
-static const ProtobufCIntRange main_executor__number_ranges[1 + 1] =
+static const ProtobufCIntRange executor_information__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 3 }
+  { 0, 4 }
 };
-const ProtobufCMessageDescriptor main_executor__descriptor =
+const ProtobufCMessageDescriptor executor_information__descriptor =
 {
   PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "MainExecutor",
-  "MainExecutor",
-  "MainExecutor",
+  "ExecutorInformation",
+  "ExecutorInformation",
+  "ExecutorInformation",
   "",
-  sizeof(MainExecutor),
-  3,
-  main_executor__field_descriptors,
-  main_executor__field_indices_by_name,
-  1,  main_executor__number_ranges,
-  (ProtobufCMessageInit) main_executor__init,
+  sizeof(ExecutorInformation),
+  4,
+  executor_information__field_descriptors,
+  executor_information__field_indices_by_name,
+  1,  executor_information__number_ranges,
+  (ProtobufCMessageInit) executor_information__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

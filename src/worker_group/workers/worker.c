@@ -190,7 +190,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
             if(error != NULL) {
                 report_g_error(error);
                 g_object_unref(select_arrays);
-                g_object_unref(grouping_arrays);
+                free(grouping_arrays);
                 return;
             }
 
@@ -275,7 +275,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
     }
 
     //printf("[%d] Finished calculations for file\n", data->thread_index);
-
+    g_object_unref(reader);
     free(columns_indices);
 }
 

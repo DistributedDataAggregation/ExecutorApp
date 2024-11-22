@@ -29,7 +29,7 @@ void set_socket_to_nonblocking(int socketfd) {
     }
 }
 
-int create_tcp_socket(char* address_string, int so_reuse, int non_blocking) {
+int create_tcp_socket(char* address_string, int so_reuse, int non_blocking, int port) {
     int socketfd;
     if ((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
         ERR_AND_EXIT("socket");
@@ -45,7 +45,8 @@ int create_tcp_socket(char* address_string, int so_reuse, int non_blocking) {
 
     struct sockaddr_in address;
     address.sin_family = AF_INET;
-    address.sin_port = htons(8080);
+
+    address.sin_port = htons(port);
 
     if (inet_aton(address_string, &address.sin_addr) ==  0) {
         close(socketfd);
