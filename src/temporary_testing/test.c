@@ -24,12 +24,13 @@ void test_create_hash_table() {
     HashTable* ht = create_hash_table(10);
     assert(ht);
     assert(ht->size == 10);
+    free_hash_table(ht);
 }
 
 void test_add_to_hash_table() {
     HashTable* ht = create_hash_table(10);
 
-    const char* key = "war1|war2|war3|war4|war5";
+    char* key = "war1|war2|war3|war4|war5";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry->key = strdup(key);
     entry->n_values = 1;
@@ -59,4 +60,6 @@ void test_add_to_hash_table() {
     delete(ht, key);
     HashTableEntry* returned3 = search(ht, key);
     assert(returned3 == NULL);
+
+    free_hash_table(ht);
 }

@@ -1,0 +1,50 @@
+services:
+  executor1:
+    image: executor-image
+    container_name: executor1
+    networks:
+      executor_network:
+        ipv4_address: 172.20.0.2
+    env_file:
+      - .env
+    volumes:
+      - /home/data:/data
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+
+  executor2:
+    image: executor-image
+    container_name: executor2
+    networks:
+      executor_network:
+        ipv4_address: 172.20.0.3
+    env_file:
+      - .env
+    volumes:
+      - /home/data:/data
+    ports:
+      - "8082:8080"
+      - "8083:8081"
+
+  executor3:
+    image: executor-image
+    container_name: executor3
+    networks:
+      executor_network:
+        ipv4_address: 172.20.0.4
+    env_file:
+      - .env
+    volumes:
+      - /home/data:/data
+    ports:
+      - "8084:8080"
+      - "8085:8081"
+
+networks:
+  executor_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.20.0.0/24"

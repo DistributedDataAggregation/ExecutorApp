@@ -18,7 +18,7 @@ PROTOBUF_C__BEGIN_DECLS
 
 typedef struct QueryRequest QueryRequest;
 typedef struct Select Select;
-typedef struct MainExecutor MainExecutor;
+typedef struct ExecutorInformation ExecutorInformation;
 
 
 /* --- enums --- */
@@ -35,7 +35,7 @@ struct  QueryRequest
   char **group_columns;
   size_t n_select;
   Select **select;
-  MainExecutor *executor;
+  ExecutorInformation *executor;
 };
 #define QUERY_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&query_request__descriptor) \
@@ -53,16 +53,17 @@ struct  Select
     , (char *)protobuf_c_empty_string, AGGREGATE__Minimum }
 
 
-struct  MainExecutor
+struct  ExecutorInformation
 {
   ProtobufCMessage base;
   protobuf_c_boolean is_current_node_main;
-  char *ip_address;
-  int32_t port;
+  char *main_ip_address;
+  int32_t main_port;
+  int32_t executors_count;
 };
-#define MAIN_EXECUTOR__INIT \
- { PROTOBUF_C_MESSAGE_INIT (&main_executor__descriptor) \
-    , 0, (char *)protobuf_c_empty_string, 0 }
+#define EXECUTOR_INFORMATION__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&executor_information__descriptor) \
+    , 0, (char *)protobuf_c_empty_string, 0, 0 }
 
 
 /* QueryRequest methods */
@@ -103,24 +104,24 @@ Select *
 void   select__free_unpacked
                      (Select *message,
                       ProtobufCAllocator *allocator);
-/* MainExecutor methods */
-void   main_executor__init
-                     (MainExecutor         *message);
-size_t main_executor__get_packed_size
-                     (const MainExecutor   *message);
-size_t main_executor__pack
-                     (const MainExecutor   *message,
+/* ExecutorInformation methods */
+void   executor_information__init
+                     (ExecutorInformation         *message);
+size_t executor_information__get_packed_size
+                     (const ExecutorInformation   *message);
+size_t executor_information__pack
+                     (const ExecutorInformation   *message,
                       uint8_t             *out);
-size_t main_executor__pack_to_buffer
-                     (const MainExecutor   *message,
+size_t executor_information__pack_to_buffer
+                     (const ExecutorInformation   *message,
                       ProtobufCBuffer     *buffer);
-MainExecutor *
-       main_executor__unpack
+ExecutorInformation *
+       executor_information__unpack
                      (ProtobufCAllocator  *allocator,
                       size_t               len,
                       const uint8_t       *data);
-void   main_executor__free_unpacked
-                     (MainExecutor *message,
+void   executor_information__free_unpacked
+                     (ExecutorInformation *message,
                       ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
@@ -130,8 +131,8 @@ typedef void (*QueryRequest_Closure)
 typedef void (*Select_Closure)
                  (const Select *message,
                   void *closure_data);
-typedef void (*MainExecutor_Closure)
-                 (const MainExecutor *message,
+typedef void (*ExecutorInformation_Closure)
+                 (const ExecutorInformation *message,
                   void *closure_data);
 
 /* --- services --- */
@@ -141,7 +142,7 @@ typedef void (*MainExecutor_Closure)
 
 extern const ProtobufCMessageDescriptor query_request__descriptor;
 extern const ProtobufCMessageDescriptor select__descriptor;
-extern const ProtobufCMessageDescriptor main_executor__descriptor;
+extern const ProtobufCMessageDescriptor executor_information__descriptor;
 
 PROTOBUF_C__END_DECLS
 

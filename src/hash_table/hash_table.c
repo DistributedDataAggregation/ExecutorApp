@@ -21,6 +21,7 @@ unsigned int hash(const char* string, const int table_size) {
 
 HashTable* create_hash_table(int size) {
       HashTable* hash_table = malloc(sizeof(HashTable));
+      hash_table->entries_count = 0;
       if(hash_table == NULL) {
             ERR_AND_EXIT("malloc");
       }
@@ -78,6 +79,7 @@ void insert(HashTable* table, HashTableEntry* entry){
 
             current->next = entry;
       }
+      table->entries_count++;
 }
 
 HashTableEntry* search(HashTable* table, const char* key) {
@@ -114,8 +116,14 @@ void delete(HashTable* table, const char* key) {
                         prev->next = current->next;
                   }
 
+                  free(current->key);
+                  current->key = NULL;
                   free(current->values);
+                  current->values = NULL;
                   free(current);
+                  current = NULL;
+                  table->entries_count--;
+
                   return;
             }
 

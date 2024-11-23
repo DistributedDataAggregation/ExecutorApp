@@ -190,7 +190,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
             if(error != NULL) {
                 report_g_error(error);
                 g_object_unref(select_arrays);
-                g_object_unref(grouping_arrays);
+                free(grouping_arrays);
                 return;
             }
 
@@ -275,7 +275,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
     }
 
     //printf("[%d] Finished calculations for file\n", data->thread_index);
-
+    g_object_unref(reader);
     free(columns_indices);
 }
 
@@ -299,8 +299,10 @@ char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type,
 }
 
 char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arrays, int row_index, ColumnDataType* group_columns_data_types) {
-    char* grouping_string = NULL;
-    int grouping_string_size = 0;
+    char* grouping_string = malloc(1);
+    grouping_string[0] = '\0';
+
+    int grouping_string_size = 1;
     for(int grouping_col_index = 0; grouping_col_index < n_group_columns; grouping_col_index++) {
         char* column_value_string = get_grouping_string(
             grouping_arrays[grouping_col_index],
@@ -308,10 +310,11 @@ char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arra
             row_index);
 
         int current_length = strlen(column_value_string);
-        grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length);
-        memset(grouping_string+(grouping_string_size), 0, current_length);
+        grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length + 1);
+        memset(grouping_string+grouping_string_size - 1, 0, current_length);
         grouping_string_size += current_length;
         grouping_string = strcat(grouping_string, column_value_string);
+        grouping_string[grouping_string_size - 1] = '\0';
         free(column_value_string);
     }
 

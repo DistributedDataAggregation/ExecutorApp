@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 
 #include "error_utilites.h"
-#include "hash_table.h"
+#include "hash_table_to_query_response_converter.h"
 #include "query_response.pb-c.h"
 
 QueryRequest* parse_incoming_request(int client_socket) {
@@ -41,4 +41,31 @@ QueryRequest* parse_incoming_request(int client_socket) {
     }
 
     return request;
+}
+
+void send_reponse(int clientfd, HashTable* ht) {
+    QueryResponse* response = convert_table(ht);
+
+    ssize_t size = query_response__get_packed_size(response);
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
+    if (buffer == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+    memset(buffer, 0, size);
+
+    int size_to_send = htonl(size);
+    if(write(clientfd, &size_to_send, sizeof(size_to_send)) <= 0) {
+        ERR_AND_EXIT("send");
+    }
+
+    int stored = query_response__pack(response, buffer);
+    if(stored != size) {
+        ERR_AND_EXIT("results__pack");
+    }
+
+    if(send(clientfd, buffer, size, 0) != size) {
+        ERR_AND_EXIT("send");
+    }
+
+    query_response__free_unpacked(response, NULL);
 }

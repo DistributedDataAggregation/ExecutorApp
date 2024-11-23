@@ -27,6 +27,7 @@ typedef struct HashTableEntry {
 
 typedef struct HashTable {
     int size;
+    int entries_count;
     HashTableEntry** table;
 } HashTable;
 

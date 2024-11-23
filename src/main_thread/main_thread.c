@@ -26,97 +26,41 @@
 
 #include "hash_table.h"
 #include "worker_group.h"
+#include "hash_table_to_query_response_converter.h"
 
 
 int run_main_thread() {
 
-    int socketfd = create_tcp_socket("0.0.0.0", TRUE, TRUE);
+    const char* port_string = getenv("EXECUTOR_CONTROLLER_PORT");
+    if(port_string == NULL) {
+        fprintf(stderr, "EXECUTOR_CONTROLLER_PORT not set\n");
+        exit(EXIT_FAILURE);
+    }
+    printf("Controller socket: %s\n", port_string);
+
+
+    int socketfd = create_tcp_socket("0.0.0.0", TRUE, TRUE, atoi(port_string));
+
     int clientfd;
     while ((clientfd = accept_client(socketfd, TRUE)) == -1) {
         sleep(1);
     }
+
     printf("Client connected\n");
 
     QueryRequest* request = parse_incoming_request(clientfd);
 
-
-    HashTable* ht = run_request_on_worker_group(request);
-    print(ht);
-    int total_count =0;
-    for(int i=0;i<ht->size;i++) {
-        HashTableEntry* entry = ht->table[i];
-        while(entry != NULL) {
-            total_count+= entry->values[0].count;
-            entry = entry->next;
-        }
+    if(request->executor->is_current_node_main) {
+        printf("This node is main\n");
+    } else {
+        printf("This node is slave\n");
     }
 
-    printf("Total count: %d\n", total_count);
+    HashTable* ht = run_request_on_worker_group(request);
 
+    send_reponse(clientfd, ht);
     free_hash_table(ht);
-    // TODO: replace this with an actual creation of a response entity and sending it back to controller
-    // Results results = RESULTS__INIT;
-    // results.n_values = 1;
-    // results.values = malloc(sizeof(Value*)*results.n_values);
-    // if(results.values == NULL) {
-    //     ERR_AND_EXIT("malloc");
-    // }
-    //
-    // Value value = VALUE__INIT;
-    // value.grouping_value = "war1|war2|war3|war4|war5";
-    // value.n_result = 2;
-    // value.result = malloc(sizeof(Result*)*value.n_result);
-    // value.n_operation = 2;
-    // value.operation = (malloc(sizeof(Aggregate*)*value.n_operation));
-    //
-    // Aggregate aggregate1 = AGGREGATE__Minimum;
-    // Aggregate aggregate2 = AGGREGATE__Average;
-    //
-    // value.operation[0] = aggregate1;
-    // value.operation[1] = aggregate2;
-    //
-    // Result result1 = RESULT__INIT;
-    // result1.result_types_case = RESULT__RESULT_TYPES_SINGLE_RESULT;
-    // result1.singleresult = 1001;
-    //
-    // Result result2 = RESULT__INIT;
-    // result2.result_types_case = RESULT__RESULT_TYPES_COUNTED_RESULT;
-    // CountedResult counted_result = COUNTED_RESULT__INIT;
-    // counted_result.count = 1234;
-    // counted_result.value = 123141241;
-    // result2.countedresult = &counted_result;
-    //
-    // value.result[0] = &result1;
-    // value.result[1] = &result2;
-    //
-    // results.values[0] = &value;
-    //
-    // ssize_t size = results__get_packed_size(&results);
-    //
-    // uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
-    // if (buffer == NULL) {
-    //     ERR_AND_EXIT("malloc");
-    // }
-    // memset(buffer, 0, size);
-    //
-    // int size_to_send = htonl(size);
-    // if(write(clientfd, &size_to_send, sizeof(size_to_send)) <= 0) {
-    //     ERR_AND_EXIT("send");
-    // }
-    //
-    // int stored = results__pack(&results, buffer);
-    // if(stored != size) {
-    //     ERR_AND_EXIT("results__pack");
-    // }
-    //
-    // if(send(clientfd, buffer, size, 0) != size) {
-    //     ERR_AND_EXIT("send");
-    // }
-    //
-    // free(value.result);
-    // free(value.operation);
-    // free(results.values);
-    // free(buffer);
+
     query_request__free_unpacked(request, NULL);
     close(clientfd);
     close(socketfd);
