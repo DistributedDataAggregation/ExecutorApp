@@ -1,12 +1,17 @@
 # How to run multiple containers
 Make sure you have docker and docker-compose
 
-To start containers (in detatched state "-d flag")
+## 1. Build the image for executor app
+```bash
+./build-docker-image.sh
+```
+
+## 2. To start containers with compose (in detatched state "-d flag")
 ```bash
 docker-compose up -d 
 ```
 
-To stop containers
+## 3. Tear down containers
 ```bash
 docker-compose down
 ```
