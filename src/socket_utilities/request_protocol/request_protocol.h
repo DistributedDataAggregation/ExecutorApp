@@ -7,8 +7,10 @@
 
 #include "hash_table.h"
 #include "query_request.pb-c.h"
+#include "query_response.pb-c.h"
 
 QueryRequest* parse_incoming_request(int client_socket);
+QueryResponse* parse_query_response(int client_socket);
 void send_reponse(int clientfd, HashTable* ht) ;
 
 #endif //REQUEST_PROTOCOL_H

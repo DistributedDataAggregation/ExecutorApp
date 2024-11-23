@@ -66,7 +66,7 @@ int run_main_thread() {
             break;
         }
 
-        accept_clients(&client_array, socketfd, &read_fds);
+    printf("Client connected\n");
 
         for (size_t i = 0; i < client_array.count; i++) {
             if (FD_ISSET(client_array.clients[i], &read_fds)) {
@@ -91,12 +91,8 @@ int run_main_thread() {
 
 int handle_client(int clientfd) {
     QueryRequest* request = parse_incoming_request(clientfd);
-    if (!request) {
-        fprintf(stderr, "Failed to parse request\n");
-        return -1;
-    }
 
-    if (request->executor->is_current_node_main) {
+    if(request->executor->is_current_node_main) {
         printf("This node is main\n");
     } else {
         printf("This node is slave\n");
@@ -127,9 +123,9 @@ int handle_client(int clientfd) {
         printf("Accepted clients\n");
     } else {
         struct sockaddr_in server_addr;
-        memset(&server_addr, 0, sizeof(server_addr)); // Zero out the structure
-        server_addr.sin_family = AF_INET;             // IPv4 family
-        server_addr.sin_port = htons(request->executor->main_port);           // Convert port to network byte order
+        memset(&server_addr, 0, sizeof(server_addr));
+        server_addr.sin_family = AF_INET;
+        server_addr.sin_port = htons(request->executor->main_port);
 
         // 3. Convert the IP address from text to binary form
         if (inet_pton(AF_INET, request->executor->main_ip_address, &server_addr.sin_addr) <= 0) {
@@ -165,11 +161,17 @@ int handle_client(int clientfd) {
     HashTable* ht = run_request_on_worker_group(request);
 
     send_reponse(clientfd, ht);
-
     free_hash_table(ht);
 
     query_request__free_unpacked(request, NULL);
+    //TODO: remove this sleep its temporary fix to not close sockets too soon
+    close(executors_socket);
+    for(int i = 0; i < others_count; i++) {
+        close(other_nodes_sockets[i]);
+    }
+    free(other_nodes_sockets);
     close(clientfd);
+    close(socketfd);
     return EXIT_SUCCESS;
 }
 

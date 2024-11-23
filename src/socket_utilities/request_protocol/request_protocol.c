@@ -3,37 +3,25 @@
 //
 
 #include "request_protocol.h"
+
+#include <errno.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <asm-generic/errno.h>
 #include <netinet/in.h>
 
 #include "error_utilites.h"
 #include "hash_table_to_query_response_converter.h"
 #include "query_response.pb-c.h"
 
-QueryRequest* parse_incoming_request(int client_socket) {
+uint8_t* get_packed_protobuffer(int client_socket, uint32_t* message_size);
 
+QueryRequest* parse_incoming_request(int client_socket)
+{
     uint32_t message_size;
-    if (read(client_socket, &message_size, sizeof(message_size)) <= 0) {
-        ERR_AND_EXIT("read");
-    }
-    message_size = ntohl(message_size);
-
-    printf("Message size: %d\n", message_size);
-
-    uint8_t* buffer = (uint8_t*)malloc(message_size*sizeof(uint8_t));
-    ssize_t bytes = 0;
-    ssize_t total_bytes_read = 0;
-
-    while(total_bytes_read < message_size) {
-        bytes = read(client_socket, buffer+total_bytes_read, message_size-total_bytes_read);
-        if (bytes < 0) {
-            ERR_AND_EXIT("read");
-        }
-        total_bytes_read += bytes;
-    }
+    uint8_t* buffer = get_packed_protobuffer(client_socket, &message_size);
 
     QueryRequest* request = query_request__unpack(NULL, message_size, buffer);
     if(request == NULL) {
@@ -69,3 +57,43 @@ void send_reponse(int clientfd, HashTable* ht) {
 
     query_response__free_unpacked(response, NULL);
 }
+
+QueryResponse* parse_query_response(int client_socket)
+{
+    uint32_t message_size;
+    uint8_t* buffer = get_packed_protobuffer(client_socket, &message_size);
+
+    QueryResponse* request = query_response__unpack(NULL, message_size, buffer);
+    if(request == NULL) {
+        ERR_AND_EXIT("query_request__unpack");
+    }
+
+    return request;
+}
+
+uint8_t* get_packed_protobuffer(int client_socket, uint32_t* message_size)
+{
+    if (read(client_socket, message_size, sizeof(uint32_t)) <= 0) {
+        REPORT_ERR("read");
+    }
+    (*message_size) = ntohl((*message_size));
+
+    printf("Message size: %d\n", (*message_size));
+
+    uint8_t* buffer = (uint8_t*)malloc((*message_size)*sizeof(uint8_t));
+    ssize_t bytes = 0;
+    ssize_t total_bytes_read = 0;
+
+    while(total_bytes_read < (*message_size)) {
+        bytes = read(client_socket, buffer+total_bytes_read, (*message_size)-total_bytes_read);
+        if (bytes < 0) {
+            ERR_AND_EXIT("read");
+        }
+        total_bytes_read += bytes;
+    }
+
+    return buffer;
+}
+
+
+
