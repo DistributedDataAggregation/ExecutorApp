@@ -1,21 +1,21 @@
 # How to run multiple containers
 Make sure you have docker and docker-compose
 
-### Prerequisits
-You'll need to create folder for data under /home/data 
+## 1. Prerequisites
+You'll need to create folder for data under ***/home/data***
 and store files for queries there
 
-## 1. Build the image for executor app
+## 2. Build the image for executor app
 ```bash
 ./build-docker-image.sh
 ```
 
-## 2. To start containers with compose (in detatched state "-d flag")
+## 3. To start containers with compose (in detached state "-d flag")
 ```bash
 docker-compose up -d 
 ```
 
-## 3. Tear down containers
+## 4. Tear down containers
 ```bash
 docker-compose down
 ```
