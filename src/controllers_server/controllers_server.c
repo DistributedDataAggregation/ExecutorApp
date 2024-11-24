@@ -11,6 +11,7 @@
 
 #include "controllers_server.h"
 #include "socket_utilities.h"
+#include "error_utilites.h"
 
 void init_client_array(ClientArray* array, const size_t initial_capacity) {
     array->clients = malloc(initial_capacity * sizeof(int));
@@ -23,8 +24,7 @@ void add_client(ClientArray* array, int client_fd) {
         array->capacity *= 2;
         array->clients = realloc(array->clients, array->capacity * sizeof(int));
         if (!array->clients) {
-            perror("realloc");
-            exit(EXIT_FAILURE);
+            ERR_AND_EXIT("realloc failed");
         }
     }
     array->clients[array->count++] = client_fd;
