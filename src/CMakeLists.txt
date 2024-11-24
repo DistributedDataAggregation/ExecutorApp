@@ -39,6 +39,8 @@ add_executable(ExecutorApp main.c
         converters/hash_table_to_query_response_converter.c
         proto_definitions/query_result.pb-c.c
         proto_definitions/query_result.pb-c.h
+        controllers_server/controllers_server.h
+        controllers_server/controllers_server.c
 )
 include_directories(
         error_utilites
@@ -49,6 +51,7 @@ include_directories(
         proto_definitions
         worker_group
         converters
+        controllers_server
 )
 
 target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})
