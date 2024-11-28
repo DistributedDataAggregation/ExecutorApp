@@ -8,7 +8,7 @@ services:
     env_file:
       - .env
     volumes:
-      - /home/data:/data
+      - /home/data:/home/data
     ports:
       - "8080:8080"
       - "8081:8081"
@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     volumes:
-      - /home/data:/data
+      - /home/data:/home/data
     ports:
       - "8082:8080"
       - "8083:8081"
@@ -36,7 +36,7 @@ services:
     env_file:
       - .env
     volumes:
-      - /home/data:/data
+      - /home/data:/home/data
     ports:
       - "8084:8080"
       - "8085:8081"

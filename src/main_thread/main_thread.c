@@ -164,7 +164,6 @@ int handle_client(int clientfd) {
     free_hash_table(ht);
 
     query_request__free_unpacked(request, NULL);
-    //TODO: remove this sleep its temporary fix to not close sockets too soon
     close(executors_socket);
     for(int i = 0; i < others_count; i++) {
         close(other_nodes_sockets[i]);

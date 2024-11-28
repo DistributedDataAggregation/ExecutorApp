@@ -9,10 +9,8 @@
 #include "query_response.pb-c.h"
 
 typedef struct HashTableValue {
-    union {
-        long value;
-        long count;
-    };
+    long value;
+    long count;
     AggregateFunction aggregate_function;
 } HashTableValue;
 
