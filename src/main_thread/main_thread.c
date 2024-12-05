@@ -41,7 +41,6 @@ int run_main_thread() {
     }
     printf("Controller socket: %s\n", port_string);
 
-
     int socketfd = create_and_listen_on_tcp_socket("0.0.0.0", TRUE, TRUE, atoi(port_string));
 
     ClientArray client_array;
@@ -66,7 +65,7 @@ int run_main_thread() {
             break;
         }
 
-    printf("Client connected\n");
+        accept_clients(&client_array, socketfd, &read_fds);
 
         for (size_t i = 0; i < client_array.count; i++) {
             if (FD_ISSET(client_array.clients[i], &read_fds)) {
@@ -79,12 +78,6 @@ int run_main_thread() {
         }
     }
 
-    close(executors_socket);
-    for(int i = 0; i < others_count; i++) {
-        close(other_nodes_sockets[i]);
-    }
-    free(other_nodes_sockets);
-    close(clientfd);
     close(socketfd);
     return EXIT_SUCCESS;
 }
@@ -98,7 +91,7 @@ int handle_client(int clientfd) {
         printf("This node is slave\n");
     }
 
-    port_string = getenv("EXECUTOR_EXECUTOR_PORT");
+    const char* port_string = getenv("EXECUTOR_EXECUTOR_PORT");
     if(port_string == NULL) {
         fprintf(stderr, "EXECUTOR_EXECUTOR_PORT not set\n");
         exit(EXIT_FAILURE);
@@ -160,7 +153,21 @@ int handle_client(int clientfd) {
 
     HashTable* ht = run_request_on_worker_group(request);
 
-    send_reponse(clientfd, ht);
+    if (request->executor->is_current_node_main) {
+        int collected = 0;
+
+        while(collected != others_count) {
+            QueryResponse* response = parse_query_response(other_nodes_sockets[collected]);
+            combine_table_with_response(ht, response);
+            collected++;
+        }
+        printf("Collected from other nodes\n");
+        send_reponse(clientfd, ht);
+    } else {
+        send_reponse(executors_socket, ht);
+        printf("Sent results to main\n");
+    }
+
     free_hash_table(ht);
 
     query_request__free_unpacked(request, NULL);
@@ -169,9 +176,7 @@ int handle_client(int clientfd) {
         close(other_nodes_sockets[i]);
     }
     free(other_nodes_sockets);
-    close(clientfd);
-    close(socketfd);
-    return EXIT_SUCCESS;
+    return 1;
 }
 
 
