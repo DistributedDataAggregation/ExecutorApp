@@ -157,7 +157,7 @@ void print(HashTable* ht) {
                                     break;
                               }
                               case AVG:{
-                                    printf("  Value[%d]: Accumulator = %ld, Count = %ld (Average)\n", j, value->accumulator, value->count);
+                                    printf("  Value[%d]: Accumulator = %ld, Count = %ld (Average)\n", j, value->value, value->count);
                                     break;
                               }
                               case MEDIAN:{
@@ -205,7 +205,7 @@ HashTableValue update_value(HashTableValue current_value, HashTableValue incomin
                   break;
             }
             case AVG: {
-                  current_value.accumulator += incoming_value.accumulator;
+                  current_value.value += incoming_value.value;
                   current_value.count += incoming_value.count;
                   break;
             }
@@ -219,4 +219,29 @@ HashTableValue update_value(HashTableValue current_value, HashTableValue incomin
       }
 
       return current_value;
+}
+
+void combine_table_with_response(HashTable* ht, QueryResponse* query_reponse)
+{
+      for(int i=0; i<query_reponse->n_values; i++) {
+            Value* current = query_reponse->values[i];
+            HashTableValue* values = malloc(sizeof(HashTableValue)*current->n_results);
+
+            for(int j=0; j<current->n_results; j++) {
+                  values[j].value = current->results[j]->value;
+                  values[j].count = current->results[j]->count;
+            }
+
+            HashTableEntry* entry = malloc(sizeof(HashTableEntry));
+            entry->key = strdup(current->grouping_value);
+            entry->n_values = current->n_results;
+            entry->values = values;
+
+            HashTableEntry* found = search(ht, entry->key);
+            if(found == NULL) {
+                  insert(ht, entry);
+            } else {
+                  combine_entries(found, entry);
+            }
+      }
 }

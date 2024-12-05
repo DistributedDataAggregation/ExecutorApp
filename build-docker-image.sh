@@ -1,1 +1,1 @@
-docker build -t executor-image .
+sudo docker build -t executor-image .

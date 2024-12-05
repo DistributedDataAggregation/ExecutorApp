@@ -61,5 +61,4 @@ RUN make
 EXPOSE 8080
 EXPOSE 8081
 
-
 CMD ["./src/ExecutorApp"]

@@ -6,15 +6,11 @@
 #define HASH_TABLE_H
 
 #include "aggregate_function.h"
+#include "query_response.pb-c.h"
 
 typedef struct HashTableValue {
-    union {
-        long value;
-        struct {
-            long accumulator;
-            long count;
-        };
-    };
+    long value;
+    long count;
     AggregateFunction aggregate_function;
 } HashTableValue;
 
@@ -39,5 +35,6 @@ HashTableEntry* search(HashTable* table, const char* key);
 void delete(HashTable* table, const char* key);
 void print(HashTable* ht);
 void combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2);
+void combine_table_with_response(HashTable* ht, QueryResponse* query_reponse);
 
 #endif //HASH_TABLE_H

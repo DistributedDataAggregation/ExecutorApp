@@ -89,7 +89,7 @@ PartialResult* convert_value(HashTableValue value) {
         }
         case AVG: {
             result->count = value.count;
-            result->value = value.accumulator;
+            result->value = value.value;
             break;
         }
         default:

@@ -369,7 +369,7 @@ HashTableValue get_hash_table_value(
     }
 
     if(hash_table_value.aggregate_function == AVG) {
-        hash_table_value.accumulator = value;
+        hash_table_value.value = value;
         hash_table_value.count = 1;
     }
     else {
