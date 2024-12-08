@@ -29,15 +29,15 @@ HashTableValue update_value(HashTableValue current_value, HashTableValue incomin
 void* compute_on_thread(void* arg) {
     ThreadData* data = (ThreadData*)arg;
 
-    print_thread_data(data);
+    // print_thread_data(data);
 
     HashTable* ht = create_hash_table(10);
     for(int i=0;i<data->n_files;i++) {
         compute_file(i, data, ht);
-        printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
+        //printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
     }
 
-    printf("[%d] Finished\n", data->thread_index);
+    //printf("[%d] Finished\n", data->thread_index);
 
     return ht;
 }
@@ -136,9 +136,9 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
         columns_indices[i] = data->selects_indices[i-data->n_group_columns];
     }
 
-    for(int i=0;i<number_of_columns;i++) {
-        printf("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
-    }
+    // for(int i=0;i<number_of_columns;i++) {
+    //     printf("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
+    // }
 
     for(int i = start_row_group; i < end; i++) {
         GArrowTable* table = gparquet_arrow_file_reader_read_row_group(reader, i, columns_indices, number_of_columns, &error);
