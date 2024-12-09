@@ -100,7 +100,7 @@ HashTable* run_request_on_worker_group(const QueryRequest* request) {
             ht = thread_ht;
         }else {
             combine_hash_tables(ht, thread_ht);
-            free_hash_table(thread_ht);
+            hash_table_free(thread_ht);
         }
     }
 
@@ -379,12 +379,12 @@ void combine_hash_tables(HashTable* destination, HashTable* source) {
         while(entry != NULL) {
             HashTableEntry* next = entry->next;
 
-            HashTableEntry* found = search(destination, entry->key);
+            HashTableEntry* found = hash_table_search(destination, entry->key);
             if(found == NULL) {
                 entry->next = NULL;
-                insert(destination, next);
+                hash_table_insert(destination, next);
             } else {
-                combine_entries(found, entry);
+                hash_table_combine_entries(found, entry);
             }
 
             entry = next;

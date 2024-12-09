@@ -158,7 +158,7 @@ int handle_client(int clientfd) {
 
         while(collected != others_count) {
             QueryResponse* response = parse_query_response(other_nodes_sockets[collected]);
-            combine_table_with_response(ht, response);
+            hash_table_combine_table_with_response(ht, response);
             collected++;
         }
         printf("Collected from other nodes\n");
@@ -168,7 +168,7 @@ int handle_client(int clientfd) {
         printf("Sent results to main\n");
     }
 
-    free_hash_table(ht);
+    hash_table_free(ht);
 
     query_request__free_unpacked(request, NULL);
     close(executors_socket);
