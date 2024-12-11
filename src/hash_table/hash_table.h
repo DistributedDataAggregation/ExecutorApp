@@ -28,13 +28,13 @@ typedef struct HashTable {
 } HashTable;
 
 unsigned int hash(const char* string, const int table_size);
-HashTable* create_hash_table(int size);
-void free_hash_table(HashTable* table);
-void insert(HashTable* table, HashTableEntry* entry);
-HashTableEntry* search(HashTable* table, const char* key);
-void delete(HashTable* table, const char* key);
-void print(HashTable* ht);
-void combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2);
-void combine_table_with_response(HashTable* ht, QueryResponse* query_reponse);
+HashTable* hash_table_create(int size);
+void hash_table_free(HashTable* table);
+void hash_table_insert(HashTable* table, HashTableEntry* entry);
+HashTableEntry* hash_table_search(HashTable* table, const char* key);
+void hash_table_delete(HashTable* table, const char* key);
+void hash_table_print(HashTable* ht);
+void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2);
+void hash_table_combine_table_with_response(HashTable* ht, QueryResponse* query_reponse);
 
 #endif //HASH_TABLE_H

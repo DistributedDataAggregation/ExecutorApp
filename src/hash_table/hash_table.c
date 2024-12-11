@@ -19,7 +19,7 @@ unsigned int hash(const char* string, const int table_size) {
       return hash_value % table_size;
 }
 
-HashTable* create_hash_table(int size) {
+HashTable* hash_table_create(int size) {
       HashTable* hash_table = malloc(sizeof(HashTable));
       hash_table->entries_count = 0;
       if(hash_table == NULL) {
@@ -39,7 +39,7 @@ HashTable* create_hash_table(int size) {
       return hash_table;
 }
 
-void free_hash_table(HashTable* table) {
+void hash_table_free(HashTable* table) {
       for(int i = 0; i < table->size; i++) {
             if(table->table[i] != NULL) {
                   HashTableEntry* entry = table->table[i];
@@ -57,7 +57,7 @@ void free_hash_table(HashTable* table) {
       free(table);
 }
 
-void insert(HashTable* table, HashTableEntry* entry){
+void hash_table_insert(HashTable* table, HashTableEntry* entry){
       if(entry == NULL) {
             ERR_AND_EXIT("Entry is NULL");
       }
@@ -82,7 +82,7 @@ void insert(HashTable* table, HashTableEntry* entry){
       table->entries_count++;
 }
 
-HashTableEntry* search(HashTable* table, const char* key) {
+HashTableEntry* hash_table_search(HashTable* table, const char* key) {
       unsigned int hash_value = hash(key, table->size);
       if(table->table[hash_value] == NULL) {
             return NULL;
@@ -99,7 +99,7 @@ HashTableEntry* search(HashTable* table, const char* key) {
       return NULL;
 }
 
-void delete(HashTable* table, const char* key) {
+void hash_table_delete(HashTable* table, const char* key) {
       unsigned int hash_value = hash(key, table->size);
       if(table->table[hash_value] == NULL) {
             return;
@@ -132,7 +132,7 @@ void delete(HashTable* table, const char* key) {
       }
 }
 
-void print(HashTable* ht) {
+void hash_table_print(HashTable* ht) {
       if (ht == NULL || ht->table == NULL) {
             printf("HashTable is empty.\n");
             return;
@@ -177,7 +177,7 @@ void print(HashTable* ht) {
       }
 }
 
-void combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2) {
+void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2) {
       if(entry1 == NULL || entry2 == NULL) {
             INTERNAL_ERROR("Entry1 or Entry2 is NULL");
             return;
@@ -221,7 +221,7 @@ HashTableValue update_value(HashTableValue current_value, HashTableValue incomin
       return current_value;
 }
 
-void combine_table_with_response(HashTable* ht, QueryResponse* query_reponse)
+void hash_table_combine_table_with_response(HashTable* ht, QueryResponse* query_reponse)
 {
       for(int i=0; i<query_reponse->n_values; i++) {
             Value* current = query_reponse->values[i];
@@ -237,11 +237,11 @@ void combine_table_with_response(HashTable* ht, QueryResponse* query_reponse)
             entry->n_values = current->n_results;
             entry->values = values;
 
-            HashTableEntry* found = search(ht, entry->key);
+            HashTableEntry* found = hash_table_search(ht, entry->key);
             if(found == NULL) {
-                  insert(ht, entry);
+                  hash_table_insert(ht, entry);
             } else {
-                  combine_entries(found, entry);
+                  hash_table_combine_entries(found, entry);
             }
       }
 }

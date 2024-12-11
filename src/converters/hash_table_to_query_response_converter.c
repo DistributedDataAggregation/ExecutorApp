@@ -13,14 +13,16 @@
 PartialResult* convert_value(HashTableValue value);
 Value* convert_entry(const HashTableEntry* entry);
 
-QueryResponse* convert_table(HashTable *table) {
+QueryResponse* convert_hash_table_to_query_response(HashTable *table) {
+    // query response init
     QueryResponse* query_response = malloc(sizeof(QueryResponse));
     query_response__init(query_response);
 
+    // check if table is empty
     int values_counter = table->entries_count;
-
     int index_of_non_empty = 0;
     HashTableEntry* entry = table->table[index_of_non_empty];
+
     while(index_of_non_empty + 1 <= table->size && entry == NULL ) {
         index_of_non_empty++;
         entry = table->table[index_of_non_empty];
@@ -32,7 +34,7 @@ QueryResponse* convert_table(HashTable *table) {
     }
 
     query_response->n_values = values_counter;
-    query_response->values = (malloc(sizeof(Value*)*query_response->n_values));
+    query_response->values = malloc(sizeof(Value*)*query_response->n_values);
     if(query_response->values == NULL) {
         REPORT_ERR("malloc");
         query_response->n_values = 0;
@@ -45,7 +47,6 @@ QueryResponse* convert_table(HashTable *table) {
         while(current != NULL) {
             if(converted_values < query_response->n_values) {
                 query_response->values[converted_values] = convert_entry(current);
-
                 converted_values++;
                 current = current->next;
             }
