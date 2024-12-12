@@ -245,3 +245,23 @@ void hash_table_combine_table_with_response(HashTable* ht, QueryResponse* query_
             }
       }
 }
+
+
+void hash_table_combine_hash_tables(HashTable* destination, HashTable* source) {
+      for(int i=0;i<source->size;i++) {
+            HashTableEntry* entry = source->table[i];
+            while(entry != NULL) {
+                  HashTableEntry* next = entry->next;
+
+                  HashTableEntry* found = hash_table_search(destination, entry->key);
+                  if(found == NULL) {
+                        entry->next = NULL;
+                        hash_table_insert(destination, next);
+                  } else {
+                        hash_table_combine_entries(found, entry);
+                  }
+
+                  entry = next;
+            }
+      }
+}

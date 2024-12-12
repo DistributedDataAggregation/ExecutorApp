@@ -36,5 +36,6 @@ void hash_table_delete(HashTable* table, const char* key);
 void hash_table_print(HashTable* ht);
 void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2);
 void hash_table_combine_table_with_response(HashTable* ht, QueryResponse* query_reponse);
+void hash_table_combine_hash_tables(HashTable* destination, HashTable* source);
 
 #endif //HASH_TABLE_H

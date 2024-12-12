@@ -30,21 +30,21 @@
 
 #include "controllers_server.h"
 
-int handle_client(int clientfd);
+int main_thread_handle_client(int clientfd);
 
-int run_main_thread() {
+int main_thread_run() {
 
-    const char* port_string = getenv("EXECUTOR_CONTROLLER_PORT");
-    if(port_string == NULL) {
+    const char* exec_ctrl_port_str = getenv("EXECUTOR_CONTROLLER_PORT");
+    if(exec_ctrl_port_str == NULL) {
         fprintf(stderr, "EXECUTOR_CONTROLLER_PORT not set\n");
         exit(EXIT_FAILURE);
     }
-    printf("Controller socket: %s\n", port_string);
+    printf("Controller socket: %s\n", exec_ctrl_port_str);
 
-    int socketfd = create_and_listen_on_tcp_socket("0.0.0.0", TRUE, TRUE, atoi(port_string));
+    int socketfd = create_and_listen_on_tcp_socket("0.0.0.0", TRUE, TRUE, atoi(exec_ctrl_port_str));
 
     ClientArray client_array;
-    init_client_array(&client_array, 10);
+    controller_server_init_client_array(&client_array, 10);
 
     while (1) {
         fd_set read_fds;
@@ -52,7 +52,7 @@ int run_main_thread() {
         FD_SET(socketfd, &read_fds);
 
         int max_fd = socketfd;
-        set_clients(&client_array, &max_fd, &read_fds);
+        controller_server_set_clients(&client_array, &max_fd, &read_fds);
 
         struct timeval timeout;
         timeout.tv_sec = 1;
@@ -65,13 +65,13 @@ int run_main_thread() {
             break;
         }
 
-        accept_clients(&client_array, socketfd, &read_fds);
+        controller_server_accept_clients(&client_array, socketfd, &read_fds);
 
         for (size_t i = 0; i < client_array.count; i++) {
             if (FD_ISSET(client_array.clients[i], &read_fds)) {
-                if (handle_client(client_array.clients[i]) == -1) {
+                if (main_thread_handle_client(client_array.clients[i]) == -1) {
                     printf("Removing client: %d\n", client_array.clients[i]);
-                    remove_client(&client_array, i);
+                    controller_server_remove_client(&client_array, i);
                     i--;
                 }
             }
@@ -82,7 +82,7 @@ int run_main_thread() {
     return EXIT_SUCCESS;
 }
 
-int handle_client(int clientfd) {
+int main_thread_handle_client(int clientfd) {
     QueryRequest* request = parse_incoming_request(clientfd);
 
     if(request->executor->is_current_node_main) {
@@ -91,19 +91,18 @@ int handle_client(int clientfd) {
         printf("This node is slave\n");
     }
 
-    const char* port_string = getenv("EXECUTOR_EXECUTOR_PORT");
-    if(port_string == NULL) {
+    const char* exec_exec_port_string = getenv("EXECUTOR_EXECUTOR_PORT");
+    if(exec_exec_port_string == NULL) {
         fprintf(stderr, "EXECUTOR_EXECUTOR_PORT not set\n");
         exit(EXIT_FAILURE);
     }
-
-    printf("Executor socket: %s\n", port_string);
+    printf("Executor socket: %s\n", exec_exec_port_string);
     int executors_socket = -1;
 
     if (request->executor->is_current_node_main) {
-        executors_socket = create_and_listen_on_tcp_socket("0.0.0.0", TRUE, FALSE, atoi(port_string));
+        executors_socket = create_and_listen_on_tcp_socket("0.0.0.0", TRUE, FALSE, atoi(exec_exec_port_string));
     } else {
-        executors_socket = create_tcp_socket("0.0.0.0", TRUE, FALSE, atoi(port_string));
+        executors_socket = create_tcp_socket("0.0.0.0", TRUE, FALSE, atoi(exec_exec_port_string));
     }
 
     int others_count = request->executor->executors_count-1;
@@ -151,7 +150,15 @@ int handle_client(int clientfd) {
         printf("Connected to %s on port %d\n", request->executor->main_ip_address, request->executor->main_port);
     }
 
-    HashTable* ht = run_request_on_worker_group(request);
+    HashTable* ht = NULL;
+    int worker_group_result = worker_group_run_request(request, ht);
+
+    if(worker_group_result == -1)
+    {
+        perror("Failed to run worker group");
+        close(executors_socket);
+        exit(EXIT_FAILURE);
+    }
 
     if (request->executor->is_current_node_main) {
         int collected = 0;

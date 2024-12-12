@@ -37,6 +37,7 @@ target_include_directories(ExecutorLib PUBLIC
         hash_table
         proto_definitions
         worker_group
+        worker_group/workers
         converters
         controllers_server
 )

@@ -127,3 +127,50 @@ TEST(HashTableTest, CombineEntries) {
     free(entry1.values);
     free(entry2.values);
 }
+
+TEST(HashTableTest, CombineHashTables) {
+    HashTable* destination = hash_table_create(10);
+    HashTable* source = hash_table_create(10);
+
+    const char* key1 = "key1";
+    HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    entry1->key = strdup(key1);
+    entry1->n_values = 1;
+    entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1->n_values);
+    entry1->values[0].aggregate_function = MIN;
+    entry1->values[0].value = 300;
+
+    const char* key2 = "key2";
+    HashTableEntry* entry2 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    entry2->key = strdup(key2);
+    entry2->n_values = 1;
+    entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2->n_values);
+    entry2->values[0].aggregate_function = MIN;
+    entry2->values[0].value = 400;
+
+    hash_table_insert(source, entry1);
+    hash_table_insert(source, entry2);
+
+    const char* key1_duplicate = "key1";
+    HashTableEntry* entry1_duplicate = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    entry1_duplicate->key = strdup(key1_duplicate);
+    entry1_duplicate->n_values = 1;
+    entry1_duplicate->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1_duplicate->n_values);
+    entry1_duplicate->values[0].aggregate_function = MIN;
+    entry1_duplicate->values[0].value = 500;
+
+    hash_table_insert(destination, entry1_duplicate);
+
+    // hash_table_combine_hash_tables(destination, source);
+    //
+    // HashTableEntry* result_entry1 = hash_table_search(destination, key1);
+    // ASSERT_NE(result_entry1, nullptr);
+    // EXPECT_EQ(result_entry1->values[0].value, 300);
+    //
+    // HashTableEntry* result_entry2 = hash_table_search(destination, key2);
+    // ASSERT_NE(result_entry2, nullptr);
+    // EXPECT_EQ(result_entry2->values[0].value, 400);
+
+    hash_table_free(destination);
+    hash_table_free(source);
+}

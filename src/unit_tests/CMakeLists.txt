@@ -1,7 +1,10 @@
 set(TEST_FILES
         tests_converters.cc
         tests_hash_map.cc
+        tests_worker_group.cc
+        tests_worker.cc
 )
+enable_testing()
 
 foreach(TEST_FILE IN LISTS TEST_FILES)
     string(REPLACE ".cc" "" TEST_NAME ${TEST_FILE})
@@ -11,3 +14,4 @@ foreach(TEST_FILE IN LISTS TEST_FILES)
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
     gtest_discover_tests(${TEST_NAME})
 endforeach()
+
