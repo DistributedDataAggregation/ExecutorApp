@@ -41,6 +41,8 @@ add_executable(ExecutorApp main.c
         proto_definitions/query_result.pb-c.h
         controllers_server/controllers_server.h
         controllers_server/controllers_server.c
+        executors_server/executors_server.h
+        executors_server/executors_server.c
 )
 include_directories(
         error_utilites
@@ -52,6 +54,7 @@ include_directories(
         worker_group
         converters
         controllers_server
+        executors_server
 )
 
 target_link_libraries(ExecutorApp ${PARQUET_LIBRARIES})
