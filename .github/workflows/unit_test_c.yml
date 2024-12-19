@@ -71,4 +71,5 @@ jobs:
       - name: Run tests
         run: |
           cd build
+          cd src
           ctest --output-on-failure
