@@ -39,8 +39,8 @@ add_executable(ExecutorApp main.c
         converters/hash_table_to_query_response_converter.c
         proto_definitions/query_result.pb-c.c
         proto_definitions/query_result.pb-c.h
-        controllers_server/controllers_server.h
-        controllers_server/controllers_server.c
+        client_array/client_array.h
+        client_array/client_array.c
         executors_server/executors_server.h
         executors_server/executors_server.c
 )
@@ -53,7 +53,7 @@ include_directories(
         proto_definitions
         worker_group
         converters
-        controllers_server
+        client_array
         executors_server
 )
 

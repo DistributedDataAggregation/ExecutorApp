@@ -2,8 +2,8 @@
 // Created by weronika on 11/23/24.
 //
 
-#ifndef CONTROLLER_SERVER_H
-#define CONTROLLER_SERVER_H
+#ifndef CLIENT_ARRAY_H
+#define CLIENT_ARRAY_H
 
 #include <stdlib.h>
 
@@ -25,4 +25,4 @@ void remove_client(ClientArray* array, const size_t index);
 
 void free_client_array(ClientArray* array);
 
-#endif //CONTROLLER_SERVER_H
+#endif //CLIENT_ARRAY_H

@@ -28,7 +28,7 @@
 #include "worker_group.h"
 #include "hash_table_to_query_response_converter.h"
 
-#include "controllers_server.h"
+#include "client_array.h"
 #include "executors_server.h"
 
 int handle_client(int client_fd, ClientArray* executors_client_array, int executors_socket_fd,
@@ -37,13 +37,13 @@ int handle_client(int client_fd, ClientArray* executors_client_array, int execut
 int run_main_thread() {
 
     printf("Running main thread\n");
-    const char* controllers_port = "8080"; //getenv("EXECUTOR_CONTROLLER_PORT");
+    const char* controllers_port = getenv("EXECUTOR_CONTROLLER_PORT");
     if(controllers_port == NULL) {
         fprintf(stderr, "EXECUTOR_CONTROLLER_PORT not set\n");
         exit(EXIT_FAILURE);
     }
 
-    const char* executors_port = "8081"; //getenv("EXECUTOR_EXECUTOR_PORT");
+    const char* executors_port = getenv("EXECUTOR_EXECUTOR_PORT");
     if(executors_port == NULL) {
         fprintf(stderr, "EXECUTOR_EXECUTOR_PORT not set\n");
         exit(EXIT_FAILURE);

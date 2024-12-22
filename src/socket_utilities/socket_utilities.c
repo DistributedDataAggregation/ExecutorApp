@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <errno.h>
 
@@ -45,6 +46,8 @@ int create_tcp_socket(char* address_string, int so_reuse, int non_blocking, int 
     if ((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
         ERR_AND_EXIT("socket");
     }
+
+    setsockopt(socketfd, SOL_SOCKET, TCP_NODELAY, (int[]){1}, sizeof(int));
 
     if (non_blocking == TRUE) {
         set_socket_to_nonblocking(socketfd);

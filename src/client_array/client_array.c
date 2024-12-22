@@ -9,7 +9,7 @@
 #include <sys/socket.h>
 #include "boolean.h"
 
-#include "controllers_server.h"
+#include "client_array.h"
 #include "socket_utilities.h"
 #include "error_utilites.h"
 
