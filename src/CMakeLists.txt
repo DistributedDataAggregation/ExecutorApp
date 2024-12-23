@@ -22,7 +22,8 @@ add_library(ExecutorLib STATIC
         worker_group/worker_group.c
         worker_group/workers/worker.c
         parquet_helpers/parquet_helpers.c
-        controllers_server/controllers_server.c
+        client_array/client_array.c
+        executors_server/executors_server.c
         converters/hash_table_to_query_response_converter.c
         error_utilites/error_utilites.h
 )
@@ -39,7 +40,8 @@ target_include_directories(ExecutorLib PUBLIC
         worker_group
         worker_group/workers
         converters
-        controllers_server
+        client_array
+        executors_server
 )
 
 target_link_libraries(ExecutorLib ${PARQUET_LIBRARIES} protobuf-c)
