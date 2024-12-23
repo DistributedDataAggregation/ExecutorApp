@@ -103,7 +103,7 @@ TEST(WorkerGroupTests, FreeRowGroupRanges) {
 
 TEST(WorkerGroupTests, RunRequest_NullRequest) {
     HashTable* hash_table = nullptr;
-    int result = worker_group_run_request(nullptr, hash_table);
+    int result = worker_group_run_request(nullptr, &hash_table);
     EXPECT_EQ(result, -1);
 }
 

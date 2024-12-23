@@ -22,15 +22,13 @@
 #define NUM_THREADS 4
 
 
-
 // TODO() probably split this function
-int worker_group_run_request(const QueryRequest* request, HashTable* request_hash_table) {
+int worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table) {
     if(!request) {
         return -1;
     }
 
     long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
-
     if (threads_count == -1) {
         REPORT_ERR("sysconf");
         return -1;
@@ -62,7 +60,6 @@ int worker_group_run_request(const QueryRequest* request, HashTable* request_has
         REPORT_ERR("malloc");
         free(threads);
         free(row_group_ranges);
-        free(grouping_indices);
         return -1;
     }
 
@@ -75,7 +72,7 @@ int worker_group_run_request(const QueryRequest* request, HashTable* request_has
         return -1;
     }
 
-    ColumnDataType * grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices, request->n_select,
+    ColumnDataType * grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices, request->n_group_columns,
         request->files_names[0]);
     ColumnDataType * select_columns_data_type = worker_group_get_columns_data_types(select_indices, request->n_select,
         request->files_names[0]);
@@ -95,26 +92,27 @@ int worker_group_run_request(const QueryRequest* request, HashTable* request_has
         worker_group_free_thread_data(thread_data[i]);
         HashTable* thread_ht = (HashTable*) result;
 
-        if(request_hash_table == NULL) {
-            request_hash_table = thread_ht;
-        }
-        else {
-            hash_table_combine_hash_tables(request_hash_table, thread_ht);
+        if (*request_hash_table == NULL) {
+            *request_hash_table = thread_ht;
+        } else {
+            hash_table_combine_hash_tables(*request_hash_table, thread_ht);
             hash_table_free(thread_ht);
         }
     }
 
     free(threads);
-    free(thread_data);
     free(select_indices);
+    free(grouping_columns_data_type);
+    free(select_columns_data_type);
     free(grouping_indices);
+    free(thread_data);
     free(row_group_ranges);
 
     return 0;
 }
 
 ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread_index, int num_threads,
-    RowGroupsRange* row_groups_ranges, int* grouping_indices, const int* select_indices, ColumnDataType* group_columns_types,
+    RowGroupsRange* row_groups_ranges, int* grouping_indices, int* select_indices, ColumnDataType* group_columns_types,
     ColumnDataType* select_columns_types) {
 
     if(request == NULL || thread_index < 0 || thread_index >= num_threads) {
@@ -127,6 +125,9 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
         REPORT_ERR("malloc\n");
         return NULL;
     }
+    thread_data->file_row_groups_ranges = row_groups_ranges;
+    thread_data->group_columns_data_types = group_columns_types;
+    thread_data->select_columns_types = select_columns_types;
 
     thread_data->thread_index = thread_index;
     thread_data->num_threads = num_threads;
@@ -173,10 +174,6 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
         thread_data->selects_aggregate_functions[i] = worker_group_map_aggregate_function(select->function);
     }
 
-    thread_data->file_row_groups_ranges = row_groups_ranges;
-    thread_data->group_columns_data_types = group_columns_types;
-    thread_data->select_columns_types = select_columns_types;
-
     return thread_data;
 }
 
@@ -211,8 +208,6 @@ void worker_group_free_thread_data(ThreadData* thread_data) {
 
     free(thread_data->selects_aggregate_functions);
     free(thread_data->file_row_groups_ranges);
-    free(thread_data->group_columns_data_types);
-    free(thread_data->select_columns_types);
     free(thread_data);
 }
 
@@ -312,8 +307,8 @@ int worker_group_get_columns_indices(const QueryRequest* request, int* grouping_
     return TRUE;
 }
 
-ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indices_count, const char* filename) {
-    ColumnDataType* data_types = (ColumnDataType*) (sizeof(ColumnDataType) * indices_count);
+ColumnDataType* worker_group_get_columns_data_types(int* indices, int indices_count, const char* filename) {
+    ColumnDataType* data_types = malloc(sizeof(ColumnDataType) * indices_count);
     if(!data_types) {
         return NULL ;
     }

@@ -246,7 +246,6 @@ void hash_table_combine_table_with_response(HashTable* ht, QueryResponse* query_
       }
 }
 
-
 void hash_table_combine_hash_tables(HashTable* destination, HashTable* source) {
       for(int i=0;i<source->size;i++) {
             HashTableEntry* entry = source->table[i];

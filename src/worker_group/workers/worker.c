@@ -210,8 +210,6 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                         row_index,
                         data->select_columns_types[select_index],
                         data->selects_aggregate_functions[select_index]);
-
-
                 }
 
                 HashTableEntry* found = hash_table_search(hash_table, grouping_string);
@@ -249,9 +247,6 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                 g_object_unref(select_arrays[select]);
             }
 
-
-            free(select_arrays);
-            free(grouping_arrays);
         }
 
         for(int grouping_index=0; grouping_index < data->n_group_columns; grouping_index++) {
@@ -262,8 +257,6 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
             g_object_unref(select_chunked_arrays[select_index]);
         }
 
-        free(grouping_chunked_arrays);
-        free(select_chunked_arrays);
         g_object_unref(table);
 
         //printf("[%d] Finished row group number %d\n", data->thread_index, i);

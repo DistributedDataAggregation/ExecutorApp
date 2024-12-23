@@ -151,7 +151,7 @@ int main_thread_handle_client(int clientfd) {
     }
 
     HashTable* ht = NULL;
-    int worker_group_result = worker_group_run_request(request, ht);
+    int worker_group_result = worker_group_run_request(request, &ht);
 
     if(worker_group_result == -1)
     {
