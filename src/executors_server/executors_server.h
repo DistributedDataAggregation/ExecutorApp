@@ -18,8 +18,8 @@ typedef struct {
     size_t capacity;
 } MainExecutorsSockets;
 
-void init_main_executors_sockets(MainExecutorsSockets* sockets, size_t capacity);
-int find_or_add_main_socket(MainExecutorsSockets* sockets, const char* ip_address, const int port);
-void free_main_executors_sockets(MainExecutorsSockets* sockets);
+void executors_server_init_main_executors_sockets(MainExecutorsSockets* sockets, size_t capacity);
+int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, const char* ip_address, const int port);
+void executors_server_free_main_executors_sockets(MainExecutorsSockets* sockets);
 
 #endif //EXECUTORS_SERVER_H

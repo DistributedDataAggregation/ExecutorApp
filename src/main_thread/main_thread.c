@@ -61,7 +61,7 @@ int main_thread_run() {
     client_array_init(&executors_client_array, 10);
 
     MainExecutorsSockets main_executors_sockets;
-    init_main_executors_sockets(&main_executors_sockets, 10);
+    executors_server_init_main_executors_sockets(&main_executors_sockets, 10);
 
     while (1) {
 
@@ -161,7 +161,7 @@ int main_thread_handle_client(int client_fd, ClientArray* executors_client_array
 
     else {
         printf("This node is slave\n");
-        const int main_executor_socket = find_or_add_main_socket(main_executors_sockets,
+        const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
             request->executor->main_ip_address, request->executor->main_port);
         send_reponse(main_executor_socket, ht);
         printf("Sent results to main\n");

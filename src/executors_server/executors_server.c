@@ -15,20 +15,20 @@
 #include "socket_utilities.h"
 #include "executors_server.h"
 
-void init_main_executors_sockets(MainExecutorsSockets* sockets, size_t capacity) {
+void executors_server_init_main_executors_sockets(MainExecutorsSockets* sockets, size_t capacity) {
     sockets->sockets = malloc(sizeof(MainExecutorSocket) * capacity);
     sockets->count = 0;
     sockets->capacity = capacity;
 }
 
-void free_main_executors_sockets(MainExecutorsSockets* sockets) {
+void executors_server_free_main_executors_sockets(MainExecutorsSockets* sockets) {
     for (size_t i = 0; i < sockets->count; i++) {
         close(sockets->sockets[i].socket);
     }
     free(sockets->sockets);
 }
 
-int find_or_add_main_socket(MainExecutorsSockets* sockets, const char* ip_address, const int port) {
+int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, const char* ip_address, const int port) {
     for (size_t i = 0; i < sockets->count; i++) {
         if (strcmp(sockets->sockets[i].ip_address, ip_address) == 0) {
             printf("Found main socket %s\n", sockets->sockets[i].ip_address);
