@@ -345,7 +345,7 @@ ColumnDataType* get_columns_data_types(const int* indices, int indices_count, co
         GArrowDataType* data_type = garrow_field_get_data_type(field);
 
         gchar* data_type_string = garrow_data_type_to_string(data_type);
-        //printf("Column %d has datatype %s\n", i, data_type_string);
+        printf("Column %d has datatype %s\n", i, data_type_string);
         g_free(data_type_string);
 
         data_types[i] = map_arrow_data_type(data_type);
