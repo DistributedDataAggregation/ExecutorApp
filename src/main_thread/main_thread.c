@@ -31,10 +31,10 @@
 #include "client_array.h"
 #include "executors_server.h"
 
-int handle_client(int client_fd, ClientArray* executors_client_array, int executors_socket_fd,
+int main_thread_handle_client(int client_fd, ClientArray* executors_client_array, int executors_socket_fd,
     MainExecutorsSockets* main_executors_sockets);
 
-int run_main_thread() {
+int main_thread_run() {
 
     printf("Running main thread\n");
     const char* controllers_port = getenv("EXECUTOR_CONTROLLER_PORT");
@@ -55,10 +55,10 @@ int run_main_thread() {
         TRUE, TRUE, atoi(executors_port));
 
     ClientArray controllers_client_array;
-    init_client_array(&controllers_client_array, 10);
+    client_array_init(&controllers_client_array, 10);
 
     ClientArray executors_client_array;
-    init_client_array(&executors_client_array, 10);
+    client_array_init(&executors_client_array, 10);
 
     MainExecutorsSockets main_executors_sockets;
     init_main_executors_sockets(&main_executors_sockets, 10);
@@ -70,7 +70,7 @@ int run_main_thread() {
         FD_SET(controllers_socket_fd, &read_fds);
         int max_fd = controllers_socket_fd;
 
-        set_clients(&controllers_client_array, &max_fd, &read_fds);
+        client_array_set_clients(&controllers_client_array, &max_fd, &read_fds);
 
         struct timeval timeout;
         timeout.tv_sec = 1;
@@ -83,14 +83,14 @@ int run_main_thread() {
             break;
         }
 
-        accept_clients(&controllers_client_array, controllers_socket_fd, &read_fds);
+        client_array_accept_clients(&controllers_client_array, controllers_socket_fd, &read_fds);
 
         for (size_t i = 0; i < controllers_client_array.count; i++) {
             if (FD_ISSET(controllers_client_array.clients[i], &read_fds)) {
-                if (handle_client(controllers_client_array.clients[i], &executors_client_array,
+                if (main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
                     executors_socket_fd, &main_executors_sockets) != EXIT_SUCCESS) {
                     printf("Removing client: %d\n", controllers_client_array.clients[i]);
-                    remove_client(&controllers_client_array, i);
+                    client_array_remove_client(&controllers_client_array, i);
                     i--;
                 }
                 fflush(stdout);
@@ -98,17 +98,24 @@ int run_main_thread() {
         }
     }
 
-    free_client_array(&controllers_client_array);
-    free_client_array(&executors_client_array);
+    client_array_free(&controllers_client_array);
+    client_array_free(&executors_client_array);
     close(controllers_socket_fd);
     return EXIT_SUCCESS;
 }
 
-int handle_client(int client_fd, ClientArray* executors_client_array, const int executors_socket_fd,
+int main_thread_handle_client(int client_fd, ClientArray* executors_client_array, const int executors_socket_fd,
     MainExecutorsSockets* main_executors_sockets) {
 
     QueryRequest* request = parse_incoming_request(client_fd);
-    HashTable* ht = run_request_on_worker_group(request);
+    HashTable* ht = NULL;
+    int worker_group_result = worker_group_run_request(request, &ht);
+
+    if(worker_group_result == -1)
+    {
+        perror("Failed to run worker group");
+        exit(EXIT_FAILURE);
+    }
 
     if (request->executor->is_current_node_main) {
         printf("This node is main\n");
@@ -123,7 +130,7 @@ int handle_client(int client_fd, ClientArray* executors_client_array, const int 
             FD_SET(executors_socket_fd, &read_fds);
             int max_fd = executors_socket_fd;
 
-            set_clients(executors_client_array, &max_fd, &read_fds);
+            client_array_set_clients(executors_client_array, &max_fd, &read_fds);
 
             struct timeval timeout;
             timeout.tv_sec = 1;
@@ -136,12 +143,12 @@ int handle_client(int client_fd, ClientArray* executors_client_array, const int 
                 break;
             }
 
-            accept_clients(executors_client_array, executors_socket_fd, &read_fds);
+            client_array_accept_clients(executors_client_array, executors_socket_fd, &read_fds);
 
             for (size_t i = 0; i < executors_client_array->count && collected < others_count; i++) {
                 if (FD_ISSET(executors_client_array->clients[i], &read_fds)) {
                     QueryResponse* response = parse_query_response(executors_client_array->clients[i]);
-                    combine_table_with_response(ht, response);
+                    hash_table_combine_table_with_response(ht, response);
                     collected++;
                 }
             }
@@ -160,7 +167,7 @@ int handle_client(int client_fd, ClientArray* executors_client_array, const int 
         printf("Sent results to main\n");
     }
 
-    free_hash_table(ht);
+    hash_table_free(ht);
     query_request__free_unpacked(request, NULL);
     return EXIT_SUCCESS;
 }

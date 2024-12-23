@@ -3,10 +3,8 @@
 //
 
 #include "worker.h"
-
 #include <stdio.h>
 #include <parquet-glib/arrow-file-reader.h>
-
 #include "error_utilites.h"
 #include "hash_table.h"
 #include "../../parquet_helpers/parquet_helpers.h"
@@ -14,24 +12,12 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-
-void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table);
-void print_thread_data(ThreadData* data);
-char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type, int row_index) ;
-char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arrays, int row_index, ColumnDataType* group_columns_data_types);
-HashTableValue get_hash_table_value(
-    GArrowArray* select_array,
-    int row_index,
-    ColumnDataType select_columns_data_types,
-    AggregateFunction aggregate_function);
-HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value);
-
 void* compute_on_thread(void* arg) {
     ThreadData* data = (ThreadData*)arg;
 
     print_thread_data(data);
 
-    HashTable* ht = create_hash_table(10);
+    HashTable* ht = hash_table_create(10);
     for(int i=0;i<data->n_files;i++) {
         compute_file(i, data, ht);
         printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
@@ -104,7 +90,7 @@ const char* column_data_type_to_string(ColumnDataType type) {
 // renaming would probably be enough in that case
 
 
-void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table){
+void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table) {
     GError* error = NULL;
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(data->file_names[index_of_the_file], &error);
 
@@ -120,7 +106,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
     int end = start_row_group + count_row_groups;
 
 
-    int number_of_columns = (data->n_group_columns+ data->n_select);
+    int number_of_columns = (data->n_group_columns + data->n_select);
 
     gint* columns_indices = malloc(sizeof(gint) * number_of_columns);
     if(columns_indices == NULL) {
@@ -136,12 +122,20 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
         columns_indices[i] = data->selects_indices[i-data->n_group_columns];
     }
 
+    int *new_columns_indices = malloc(sizeof(int) * number_of_columns);
+    if(!new_columns_indices) {
+        report_g_error(error);
+        return;
+    }
+    worker_calculate_new_column_indices(new_columns_indices, columns_indices, number_of_columns);
+
     for(int i=0;i<number_of_columns;i++) {
         printf("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
     }
 
     for(int i = start_row_group; i < end; i++) {
         GArrowTable* table = gparquet_arrow_file_reader_read_row_group(reader, i, columns_indices, number_of_columns, &error);
+
         if(table == NULL) {
             report_g_error(error);
             return;
@@ -151,15 +145,16 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
         GArrowChunkedArray** select_chunked_arrays = malloc(sizeof(GArrowChunkedArray*) * data->n_select);
 
         for(int j = 0; j < data->n_group_columns; j++) {
-            grouping_chunked_arrays[j] = garrow_table_get_column_data(table, j);
+            grouping_chunked_arrays[j] = garrow_table_get_column_data(table, new_columns_indices[j]);
             if(grouping_chunked_arrays[j] == NULL) {
                 INTERNAL_ERROR("Can't find grouping_chunked_arrays");
             }
         }
 
         for(int j=0; j < data->n_select; j++) {
-            select_chunked_arrays[j] = garrow_table_get_column_data(table, j + data->n_group_columns);
+            select_chunked_arrays[j] = garrow_table_get_column_data(table,  new_columns_indices[j+data->n_group_columns]);
             if(select_chunked_arrays[j] == NULL) {
+                printf("ERROR [%d]",data->thread_index);
                 INTERNAL_ERROR("Can't find select_chunked_arrays");
             }
         }
@@ -215,11 +210,9 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                         row_index,
                         data->select_columns_types[select_index],
                         data->selects_aggregate_functions[select_index]);
-
-
                 }
 
-                HashTableEntry* found = search(hash_table, grouping_string);
+                HashTableEntry* found = hash_table_search(hash_table, grouping_string);
                 if(found == NULL) {
                     // add grouping into hash table
                     HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
@@ -232,7 +225,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                     new_entry->values = hash_table_values;
                     new_entry->n_values = data->n_select;
                     new_entry->next = NULL;
-                    insert(hash_table, new_entry);
+                    hash_table_insert(hash_table, new_entry);
                 } else {
                     for(int value_index = 0; value_index < data->n_select; value_index++) {
                         found->values[value_index] = update_value(
@@ -254,9 +247,6 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                 g_object_unref(select_arrays[select]);
             }
 
-
-            free(select_arrays);
-            free(grouping_arrays);
         }
 
         for(int grouping_index=0; grouping_index < data->n_group_columns; grouping_index++) {
@@ -267,8 +257,6 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
             g_object_unref(select_chunked_arrays[select_index]);
         }
 
-        free(grouping_chunked_arrays);
-        free(select_chunked_arrays);
         g_object_unref(table);
 
         //printf("[%d] Finished row group number %d\n", data->thread_index, i);
@@ -277,6 +265,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
     //printf("[%d] Finished calculations for file\n", data->thread_index);
     g_object_unref(reader);
     free(columns_indices);
+    free(new_columns_indices);
 }
 
 char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type, int row_index) {
@@ -379,3 +368,27 @@ HashTableValue get_hash_table_value(
     return hash_table_value;
 }
 
+// TODO () move this function before thread?
+void worker_calculate_new_column_indices(int *new_column_indices, const gint *old_column_indices, int number_of_columns) {
+    // change it
+    gint unique_values[number_of_columns];
+    int unique_count = 0;
+
+    for (int i = 0; i < number_of_columns; i++) {
+        int found = -1;
+        for (int j = 0; j < unique_count; j++) {
+            if (unique_values[j] == old_column_indices[i]) {
+                found = j;
+                break;
+            }
+        }
+
+        if (found == -1) {
+            unique_values[unique_count] = old_column_indices[i];
+            new_column_indices[i] = unique_count;
+            unique_count++;
+        } else {
+            new_column_indices[i] = found;
+        }
+    }
+}

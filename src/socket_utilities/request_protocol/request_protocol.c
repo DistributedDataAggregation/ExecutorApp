@@ -70,7 +70,7 @@ QueryRequest* parse_incoming_request(int client_socket)
 }
 
 void send_reponse(int clientfd, HashTable* ht) {
-    QueryResponse* response = convert_table(ht);
+    QueryResponse* response = convert_hash_table_to_query_response(ht);
     ssize_t size = query_response__get_packed_size(response);
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
     if (buffer == NULL) {

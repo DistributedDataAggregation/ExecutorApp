@@ -13,7 +13,6 @@
 #include <stdio.h>
 
 #include "error_utilites.h"
-#include <parquet-glib/arrow-file-reader.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -23,103 +22,112 @@
 #define NUM_THREADS 4
 
 
+// TODO() probably split this function
+int worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table) {
+    if(!request) {
+        return -1;
+    }
 
-ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int num_threads,
-    RowGroupsRange* row_groups_ranges, int* grouping_indices, int* select_indices);
-void free_thread_data(ThreadData* thread_data);
-AggregateFunction map_aggregate_function(Aggregate aggregate);
-RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_threads);
-int get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices) ;
-void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count);
-ColumnDataType map_arrow_data_type(GArrowDataType* data_type);
-ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename);
-void combine_hash_tables(HashTable* destination, HashTable* source);
-
-HashTable* run_request_on_worker_group(const QueryRequest* request) {
     long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
-
     if (threads_count == -1) {
         REPORT_ERR("sysconf");
-        return NULL;
+        return -1;
     }
 
-    pthread_t* threads = malloc(sizeof(pthread_t) * threads_count);
-    if(threads == NULL) {
+    pthread_t* threads = (pthread_t*) malloc(sizeof(pthread_t) * threads_count);
+    if(NULL == threads ) {
         REPORT_ERR("malloc");
-        return NULL;
+        return -1;
     }
 
-    RowGroupsRange** row_group_ranges = get_row_group_ranges(request->n_files_names, request->files_names, threads_count);
-    if(row_group_ranges == NULL) {
-        REPORT_ERR("get_row_group_ranges");
+    RowGroupsRange** row_group_ranges = worker_group_get_row_group_ranges(request->n_files_names, request->files_names, threads_count);
+    if(NULL == row_group_ranges)  {
+        REPORT_ERR("worker_group_get_row_group_ranges");
         free(threads);
-        return NULL;
+        return -1;
     }
 
-    int* grouping_indices = malloc(sizeof(int)*request->n_group_columns);
+    int* grouping_indices = (int*)malloc(sizeof(int)*request->n_group_columns);
     if(grouping_indices == NULL) {
         REPORT_ERR("malloc");
         free(threads);
         free(row_group_ranges);
-        return NULL;
+        return -1;
     }
 
-    int* select_indices = malloc(sizeof(int)*request->n_select);
+    int* select_indices = (int*)malloc(sizeof(int)*request->n_select);
     if(select_indices == NULL) {
         REPORT_ERR("malloc");
         free(threads);
         free(row_group_ranges);
-        free(grouping_indices);
-        return NULL;
+        return -1;
     }
 
-    if(!get_columns_indices(request, grouping_indices, select_indices)) {
-        REPORT_ERR("get_columns_indices");
+    if(!worker_group_get_columns_indices(request, grouping_indices, select_indices)) {
+        REPORT_ERR("worker_group_get_columns_indices");
         free(threads);
         free(row_group_ranges);
         free(grouping_indices);
         free(select_indices);
-        return NULL;
+        return -1;
     }
 
+    ColumnDataType * grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices, request->n_group_columns,
+        request->files_names[0]);
+    ColumnDataType * select_columns_data_type = worker_group_get_columns_data_types(select_indices, request->n_select,
+        request->files_names[0]);
 
-    ThreadData** thread_data = malloc(sizeof(ThreadData*) * threads_count);
+    ThreadData** thread_data = (ThreadData**)malloc(sizeof(ThreadData*) * threads_count);
     for(int i = 0; i < threads_count; i++) {
-        thread_data[i] = get_thread_data(request, i, threads_count, row_group_ranges[i], grouping_indices, select_indices);
+
+        thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
+            grouping_indices, select_indices,grouping_columns_data_type, select_columns_data_type);
+
         pthread_create(&threads[i], NULL, compute_on_thread, thread_data[i]);
     }
 
-    HashTable* ht = NULL;
     for(int i = 0; i < threads_count; i++) {
         void* result = NULL;
         pthread_join(threads[i], &result);
-        free_thread_data(thread_data[i]);
-        HashTable* thread_ht = result;
+        worker_group_free_thread_data(thread_data[i]);
+        HashTable* thread_ht = (HashTable*) result;
 
-        if(ht == NULL) {
-            ht = thread_ht;
-        }else {
-            combine_hash_tables(ht, thread_ht);
-            free_hash_table(thread_ht);
+        if (*request_hash_table == NULL) {
+            *request_hash_table = thread_ht;
+        } else {
+            hash_table_combine_hash_tables(*request_hash_table, thread_ht);
+            hash_table_free(thread_ht);
         }
     }
 
     free(threads);
-    free(thread_data);
     free(select_indices);
+    free(grouping_columns_data_type);
+    free(select_columns_data_type);
     free(grouping_indices);
+    free(thread_data);
     free(row_group_ranges);
 
-    return ht;
+    return 0;
 }
 
-ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int num_threads,
-    RowGroupsRange* row_groups_ranges, int* grouping_indices, int* select_indices) {
-    ThreadData* thread_data = malloc(sizeof(ThreadData));
+ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread_index, int num_threads,
+    RowGroupsRange* row_groups_ranges, int* grouping_indices, int* select_indices, ColumnDataType* group_columns_types,
+    ColumnDataType* select_columns_types) {
+
+    if(request == NULL || thread_index < 0 || thread_index >= num_threads) {
+        REPORT_ERR("worker_group_get_thread_data");
+        return NULL;
+    }
+
+    ThreadData* thread_data = (ThreadData*) malloc(sizeof(ThreadData));
     if (thread_data == NULL) {
         REPORT_ERR("malloc\n");
         return NULL;
     }
+    thread_data->file_row_groups_ranges = row_groups_ranges;
+    thread_data->group_columns_data_types = group_columns_types;
+    thread_data->select_columns_types = select_columns_types;
 
     thread_data->thread_index = thread_index;
     thread_data->num_threads = num_threads;
@@ -131,7 +139,7 @@ ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int n
     thread_data->file_names = (char**)malloc(sizeof(char*) * thread_data->n_files);
     if(thread_data->file_names == NULL) {
         REPORT_ERR("malloc\n");
-        free_thread_data(thread_data);
+        worker_group_free_thread_data(thread_data);
         return NULL;
     }
 
@@ -139,51 +147,37 @@ ThreadData* get_thread_data(const QueryRequest* request, int thread_index, int n
         thread_data->file_names[i] = strdup(request->files_names[i]);
         if(thread_data->file_names[i] == NULL) {
             REPORT_ERR("strdup\n");
-            free_thread_data(thread_data);
+            worker_group_free_thread_data(thread_data);
             return NULL;
         }
     }
 
     thread_data->group_columns_indices = grouping_indices;
 
-    thread_data->selects_indices = malloc(sizeof(int) * thread_data->n_select);
+    thread_data->selects_indices = (int*)malloc(sizeof(int) * thread_data->n_select);
     if(thread_data->selects_indices == NULL) {
         REPORT_ERR("malloc\n");
-        free_thread_data(thread_data);
+        worker_group_free_thread_data(thread_data);
         return NULL;
     }
 
-    thread_data->selects_aggregate_functions = malloc(sizeof(AggregateFunction) * thread_data->n_select);
+    thread_data->selects_aggregate_functions = (AggregateFunction*)malloc(sizeof(AggregateFunction) * thread_data->n_select);
     if(thread_data->selects_aggregate_functions == NULL) {
         REPORT_ERR("malloc\n");
-        free_thread_data(thread_data);
+        worker_group_free_thread_data(thread_data);
         return NULL;
     }
 
     for(int i=0; i<thread_data->n_select; i++) {
         Select* select = request->select[i];
         thread_data->selects_indices[i]= select_indices[i];
-        thread_data->selects_aggregate_functions[i] = map_aggregate_function(select->function);
+        thread_data->selects_aggregate_functions[i] = worker_group_map_aggregate_function(select->function);
     }
-
-    thread_data->file_row_groups_ranges = row_groups_ranges;
-
-    // TODO: calculate the column data types outside of this function as its shared between threads
-    // this is to avoid redundant calculations
-    thread_data->group_columns_data_types = get_columns_data_types(
-        thread_data->group_columns_indices,
-        thread_data->n_group_columns,
-        thread_data->file_names[0]);
-
-    thread_data->select_columns_types = get_columns_data_types(
-        thread_data->selects_indices,
-        thread_data->n_select,
-        thread_data->file_names[0]);
 
     return thread_data;
 }
 
-AggregateFunction map_aggregate_function(Aggregate aggregate) {
+AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate) {
     switch (aggregate) {
         case AGGREGATE__Minimum:
             return MIN;
@@ -199,7 +193,7 @@ AggregateFunction map_aggregate_function(Aggregate aggregate) {
     }
 }
 
-void free_thread_data(ThreadData* thread_data) {
+void worker_group_free_thread_data(ThreadData* thread_data) {
     if(thread_data == NULL)
         return;
 
@@ -214,23 +208,21 @@ void free_thread_data(ThreadData* thread_data) {
 
     free(thread_data->selects_aggregate_functions);
     free(thread_data->file_row_groups_ranges);
-    free(thread_data->group_columns_data_types);
-    free(thread_data->select_columns_types);
     free(thread_data);
 }
 
-RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_threads) {
-    RowGroupsRange** row_group_ranges = malloc(sizeof(RowGroupsRange*) * num_threads);
+RowGroupsRange** worker_group_get_row_group_ranges(int n_files, char** file_names, int num_threads) {
+    RowGroupsRange** row_group_ranges = (RowGroupsRange**) malloc(sizeof(RowGroupsRange*) * num_threads);
     if(row_group_ranges == NULL) {
         REPORT_ERR("malloc\n");
         return NULL;
     }
 
     for(int i=0; i<num_threads; i++) {
-        row_group_ranges[i] = malloc(sizeof(RowGroupsRange)*n_files);
+        row_group_ranges[i] = (RowGroupsRange*) malloc(sizeof(RowGroupsRange)*n_files);
         if(row_group_ranges[i] == NULL) {
             REPORT_ERR("malloc\n");
-            free_row_group_ranges(row_group_ranges, i);
+               worker_group_free_row_group_ranges(row_group_ranges, i);
             return NULL;
         }
     }
@@ -242,7 +234,7 @@ RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_th
 
         if(reader == NULL) {
             report_g_error(error);
-            free_row_group_ranges(row_group_ranges, n_files);
+            worker_group_free_row_group_ranges(row_group_ranges, n_files);
             return NULL;
         }
 
@@ -261,7 +253,7 @@ RowGroupsRange** get_row_group_ranges(int n_files, char** file_names, int num_th
     return row_group_ranges;
 }
 
-void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count) {
+void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, int count) {
     if(row_group_ranges == NULL)
         return;
 
@@ -274,9 +266,9 @@ void free_row_group_ranges(RowGroupsRange** row_group_ranges, int count) {
     free(row_group_ranges);
 }
 
-int get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices) {
+int worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices) {
     if(request->files_names == NULL || request->files_names[0] == NULL) {
-        INTERNAL_ERROR("get_columns_indices: File names is NULL\n");
+        INTERNAL_ERROR("worker_group_get_columns_indices: File names is NULL\n");
         return FALSE;
     }
 
@@ -297,7 +289,7 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
     for(int i=0; i<request->n_group_columns; i++) {
         grouping_indices[i] = garrow_schema_get_field_index(schema, request->group_columns[i]);
         if(grouping_indices[i] == -1) {
-            INTERNAL_ERROR("get_columns_indices: Cannot find provided column name\n");
+            INTERNAL_ERROR("worker_group_get_columns_indices: Cannot find provided column name\n");
             fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
             return FALSE;
         }
@@ -306,7 +298,7 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
     for(int i=0; i<request->n_select; i++) {
         select_indices[i] = garrow_schema_get_field_index(schema, request->select[i]->column);
         if(select_indices[i] == -1) {
-            INTERNAL_ERROR("get_columns_indices: Cannot find provided column name\n");
+            INTERNAL_ERROR("worker_group_get_columns_indices: Cannot find provided column name\n");
             fprintf(stderr, "Cannot find provided column: %s\n", request->select[i]->column);
             return FALSE;
         }
@@ -315,18 +307,23 @@ int get_columns_indices(const QueryRequest* request, int* grouping_indices, int*
     return TRUE;
 }
 
-ColumnDataType* get_columns_data_types(const int* indices, int indices_count, const char* filename) {
+ColumnDataType* worker_group_get_columns_data_types(int* indices, int indices_count, const char* filename) {
     ColumnDataType* data_types = malloc(sizeof(ColumnDataType) * indices_count);
+    if(!data_types) {
+        return NULL ;
+    }
 
     GError* error = NULL;
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(filename, &error);
     if(reader == NULL) {
         report_g_error(error);
+        free(data_types);
         return NULL;
     }
 
     GArrowSchema* schema = gparquet_arrow_file_reader_get_schema(reader, &error);
     if(schema == NULL) {
+        free(data_types);
         report_g_error(error);
         return NULL;
     }
@@ -348,17 +345,18 @@ ColumnDataType* get_columns_data_types(const int* indices, int indices_count, co
         printf("Column %d has datatype %s\n", i, data_type_string);
         g_free(data_type_string);
 
-        data_types[i] = map_arrow_data_type(data_type);
+        data_types[i] = worker_group_map_arrow_data_type(data_type);
         g_object_unref(field);
     }
 
     g_object_unref(schema);
     g_object_unref(reader);
 
+
     return data_types;
 }
 
-ColumnDataType map_arrow_data_type(GArrowDataType* data_type) {
+ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type) {
     if(GARROW_IS_INT32_DATA_TYPE(data_type) ) {
         return COLUMN_DATA_TYPE_INT32;
     }
@@ -373,21 +371,3 @@ ColumnDataType map_arrow_data_type(GArrowDataType* data_type) {
     return COLUMN_DATA_TYPE_UNKNOWN;
 }
 
-void combine_hash_tables(HashTable* destination, HashTable* source) {
-    for(int i=0;i<source->size;i++) {
-        HashTableEntry* entry = source->table[i];
-        while(entry != NULL) {
-            HashTableEntry* next = entry->next;
-
-            HashTableEntry* found = search(destination, entry->key);
-            if(found == NULL) {
-                entry->next = NULL;
-                insert(destination, next);
-            } else {
-                combine_entries(found, entry);
-            }
-
-            entry = next;
-        }
-    }
-}

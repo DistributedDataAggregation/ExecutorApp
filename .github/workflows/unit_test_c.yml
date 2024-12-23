@@ -1,0 +1,75 @@
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential autoconf libtool pkg-config \
+            protobuf-compiler libprotobuf-dev libprotoc-dev \
+            meson cmake wget libprotobuf-c-dev lsb-release gnupg2 \
+            libglib2.0-dev ninja-build ca-certificates
+
+      # 3. Add Apache Arrow's official APT source
+      - name: Add Apache Arrow's official APT source
+        run: |
+          wget https://apache.jfrog.io/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb \
+            --output-document apache-arrow-apt-source.deb
+          sudo apt-get install -y ./apache-arrow-apt-source.deb
+          sudo apt-get update
+          rm apache-arrow-apt-source.deb
+
+      # 4. Install Apache Arrow libraries
+      - name: Install Apache Arrow libraries
+        run: |
+          sudo apt-get install -y \
+            libarrow-dev libarrow-glib-dev libparquet-dev libparquet-glib-dev
+
+      # 5. Install and build protobuf-c
+      - name: Install and build protobuf-c
+        run: |
+          git clone https://github.com/protobuf-c/protobuf-c.git
+          cd protobuf-c
+          ./autogen.sh
+          ./configure
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+
+      # 6. Build and install Apache Arrow with parquet-glib
+      - name: Build and install Apache Arrow with parquet-glib
+        run: |
+          wget 'https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/arrow-17.0.0/apache-arrow-17.0.0.tar.gz' \
+            --output-document apache-arrow-17.0.0.tar.gz
+          tar xf apache-arrow-17.0.0.tar.gz
+          cd apache-arrow-17.0.0
+          meson setup c_glib.build c_glib --buildtype=release --prefix=/usr/local
+          meson compile -C c_glib.build
+          sudo meson install -C c_glib.build
+          sudo ldconfig
+
+      # 7. Build project
+      - name: Build project
+        run: |
+          mkdir -p build && cd build
+          cmake -DENABLE_UNIT_TESTING=ON ..
+          cmake --build .
+
+      # 8. Run tests
+      - name: Run tests
+        run: |
+          cd build
+          cd src
+          ctest --output-on-failure
