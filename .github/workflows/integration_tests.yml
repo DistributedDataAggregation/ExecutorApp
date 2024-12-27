@@ -35,12 +35,15 @@ jobs:
         
     - name: Run docker compose
       run: |
+        cd TestingSetup
+        ls
         cd github_actions
         docker compose up -d
     - name: Run Python Integration Tests
       run: |
+        cd TestingSetup/github_actions
         pip install -r requirements.txt
-        pytest --disable-warnings .
+        pytest --disable-warnings integration_test_actions.py
     - name: Stop services
       run: |
         docker compose down
