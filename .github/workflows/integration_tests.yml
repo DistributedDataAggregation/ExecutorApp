@@ -1,0 +1,49 @@
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout test repo
+      uses: actions/checkout@v4
+
+    - name: Build executor image
+      run: |
+        docker build -t executor-image .
+
+    - name: Clone controller repo
+      run: |
+        git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/DistributedDataAggregation/ControllerApp.git
+        cd ControllerApp
+        docker build -t controller-image .
+        cd ..
+        
+    - name: Clone testing repo
+      run: |
+        git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/DistributedDataAggregation/TestingSetup.git
+        cd TestingSetup
+        docker build -t lb-image ./load-balancer/
+        
+    - name: Run docker compose
+      run: |
+        cd TestingSetup
+        ls
+        cd github_actions
+        docker compose up -d
+    - name: Run Python Integration Tests
+      run: |
+        cd TestingSetup/github_actions
+        pip install -r requirements.txt
+        pytest --disable-warnings integration_test_actions.py
+    - name: Stop services
+      run: |
+        docker compose down
