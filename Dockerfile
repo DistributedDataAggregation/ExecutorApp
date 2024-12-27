@@ -55,7 +55,7 @@ WORKDIR /app
 COPY . /app
 RUN mkdir -p build
 WORKDIR /app/build
-RUN cmake ..
+RUN cmake -DCMAKE_BUILD_TYPE=Release ..
 RUN make
 
 EXPOSE 8080
