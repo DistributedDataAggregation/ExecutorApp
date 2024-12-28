@@ -37,22 +37,13 @@ int main_thread_handle_client(int client_fd, ClientArray* executors_client_array
 int main_thread_run() {
 
     printf("Running main thread\n");
-    const char* controllers_port = getenv("EXECUTOR_CONTROLLER_PORT");
-    if(controllers_port == NULL) {
-        fprintf(stderr, "EXECUTOR_CONTROLLER_PORT not set\n");
-        exit(EXIT_FAILURE);
-    }
-
-    const char* executors_port = getenv("EXECUTOR_EXECUTOR_PORT");
-    if(executors_port == NULL) {
-        fprintf(stderr, "EXECUTOR_EXECUTOR_PORT not set\n");
-        exit(EXIT_FAILURE);
-    }
+    const int controllers_port = get_port_from_env("EXECUTOR_CONTROLLER_PORT");
+    const int executors_port = get_port_from_env("EXECUTOR_EXECUTOR_PORT");
 
     const int controllers_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
-        TRUE, TRUE, atoi(controllers_port));
+        TRUE, TRUE, controllers_port);
     const int executors_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
-        TRUE, TRUE, atoi(executors_port));
+        TRUE, TRUE, executors_port);
 
     ClientArray controllers_client_array;
     client_array_init(&controllers_client_array, 10);

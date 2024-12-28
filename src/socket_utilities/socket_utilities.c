@@ -1,101 +1,121 @@
 //
 // Created by karol on 27.10.24.
 //
+#include <arpa/inet.h>
+#include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <netinet/tcp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#include <errno.h>
-
-#include "socket_utilities.h"
-#include "error_utilites.h"
+#include <unistd.h>
 #include "boolean.h"
+#include "error_handling.h"
+#include "socket_utilities.h"
 
-void set_socket_to_nonblocking(int socketfd);
-void set_socket_to_reuse(int socketfd);
+#define CONNECTIONS_MAX 3
 
-void set_socket_to_nonblocking(int socketfd) {
-    int flags = fcntl(socketfd, F_GETFL, 0);
-    if (flags == -1) {
-        close(socketfd);
-        ERR_AND_EXIT("fcntl");
+void set_socket_to_nonblocking(int socket_fd);
+void set_socket_to_reuse(int socket_fd);
+
+int create_and_listen_on_tcp_socket(char* address_string, const int so_reuse,
+        const int non_blocking, const int port) {
+
+    const int socket_fd = create_tcp_socket(address_string, so_reuse, non_blocking, port);
+
+    if(listen(socket_fd, CONNECTIONS_MAX) == -1) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Failed to listen on a socket");
     }
 
-    if (fcntl(socketfd, F_SETFL, flags | O_NONBLOCK) == -1) {
-        close(socketfd);
-        ERR_AND_EXIT("fcntl");
-    }
+    return socket_fd;
 }
 
-int create_and_listen_on_tcp_socket(char* address_string, int so_reuse, int non_blocking, int port) {
-    int socketfd = create_tcp_socket(address_string, so_reuse, non_blocking, port);
+int create_tcp_socket(const char* address_string, const int so_reuse, const int non_blocking, const int port) {
 
-    if(listen(socketfd, 3) == -1) {
-        close(socketfd);
-        ERR_AND_EXIT("listen");
+    const int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
+        LOG_ERR_AND_EXIT("Failed to create socket");
     }
 
-    return socketfd;
-}
-
-int create_tcp_socket(char* address_string, int so_reuse, int non_blocking, int port) {
-    int socketfd;
-    if ((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0 ) {
-        ERR_AND_EXIT("socket");
+    if (setsockopt(socket_fd, SOL_SOCKET, TCP_NODELAY, (int[]){1}, sizeof(int)) == -1) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Failed to set TCP_NODELAY on a socket");
     }
-
-    setsockopt(socketfd, SOL_SOCKET, TCP_NODELAY, (int[]){1}, sizeof(int));
 
     if (non_blocking == TRUE) {
-        set_socket_to_nonblocking(socketfd);
+        set_socket_to_nonblocking(socket_fd);
     }
 
     if(so_reuse == TRUE) {
-        set_socket_to_reuse(socketfd);
+        set_socket_to_reuse(socket_fd);
     }
 
-    struct sockaddr_in address;
-    address.sin_family = AF_INET;
+    struct sockaddr_in address = {
+        .sin_family = AF_INET,
+        .sin_port = htons(port)
+    };
 
-    address.sin_port = htons(port);
+    if (inet_aton(address_string, &address.sin_addr) == 0) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Invalid IP address format");
+    }
 
-    if (inet_aton(address_string, &address.sin_addr) ==  0) {
-        close(socketfd);
-        ERR_AND_EXIT("inet_aton");
+    if (bind(socket_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Failed to bind socket");
     }
-    if(bind(socketfd, (struct sockaddr*)&address, sizeof(address)) == -1) {
-        close(socketfd);
-        ERR_AND_EXIT("bind");
-    }
-    return socketfd;
+
+    return socket_fd;
 }
 
-void set_socket_to_reuse(int socketfd) {
-    int opt = 1;
-    if (setsockopt(socketfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-        close(socketfd);
-        ERR_AND_EXIT("setsockopt");
+void set_socket_to_reuse(const int socket_fd) {
+    const int opt = 1;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Failed to set SO_REUSEADDR on a socket");
     }
 }
 
-int accept_client(int socketfd, int is_non_blocking) {
-    int clientfd = accept(socketfd, NULL, NULL);
-    if(clientfd == -1) {
-        if(errno != EWOULDBLOCK) {
-            close(socketfd);
-            ERR_AND_EXIT("accept");
-        } else if(is_non_blocking == TRUE) {
-            printf("no new client\n");
+void set_socket_to_nonblocking(const int socket_fd) {
+
+    const int flags = fcntl(socket_fd, F_GETFL, 0);
+    if (flags == -1) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Failed to get socket flags");
+    }
+
+    if (fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        close(socket_fd);
+        LOG_ERR_AND_EXIT("Failed to set O_NONBLOCK socket flag");
+    }
+}
+
+int accept_client(const int socket_fd, const int is_non_blocking) {
+
+    const int client_fd = accept(socket_fd, NULL, NULL);
+    if(client_fd == -1) {
+        if(is_non_blocking == TRUE && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+            printf("No pending client connection\n");
         } else {
-            close(socketfd);
-            ERR_AND_EXIT("accept");
+            close(socket_fd);
+            LOG_ERR_AND_EXIT("Failed to accept a client connection");
         }
     }
 
-    return clientfd;
+    return client_fd;
 }
 
+int get_port_from_env(const char* env_var) {
+    const char* port_str = getenv(env_var);
+    if(port_str == NULL) {
+        LOG_ERR_AND_EXIT("Could not get port env variable");
+    }
 
+    const long int port = strtol(port_str, NULL, 10);
+    if (errno != 0) {
+        LOG_ERR_AND_EXIT("Could not get port number");
+    }
+
+    return (int)port;
+}
