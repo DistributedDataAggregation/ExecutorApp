@@ -58,7 +58,7 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
 
     if (inet_aton(address_string, &address.sin_addr) == 0) {
         close(socket_fd);
-        LOG_ERR_AND_EXIT("Invalid IP address format");
+        LOG_ERR_AND_EXIT("Failed to convert ip address '%s'", ip_address);
     }
 
     if (bind(socket_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
@@ -109,12 +109,12 @@ int accept_client(const int socket_fd, const int is_non_blocking) {
 int get_port_from_env(const char* env_var) {
     const char* port_str = getenv(env_var);
     if(port_str == NULL) {
-        LOG_ERR_AND_EXIT("Could not get port env variable");
+        LOG_ERR_AND_EXIT("Could not get port env variable '%s'", env_var);
     }
 
     const long int port = strtol(port_str, NULL, 10);
     if (errno != 0) {
-        LOG_ERR_AND_EXIT("Could not get port number");
+        LOG_ERR_AND_EXIT("Could not get port number from port string '%s'", port_str);
     }
 
     return (int)port;

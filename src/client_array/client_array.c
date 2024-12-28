@@ -1,30 +1,33 @@
 //
 // Created by weronika on 11/23/24.
 //
-#include <stdlib.h>
-#include <stdio.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <unistd.h>
 #include "boolean.h"
-
 #include "client_array.h"
+#include "error_handling.h"
 #include "socket_utilities.h"
-#include "error_utilites.h"
 
 void client_array_init(ClientArray* array, const size_t initial_capacity) {
     array->clients = malloc(initial_capacity * sizeof(int));
+    if (array->clients == NULL) {
+        LOG_ERR_AND_EXIT("Failed to allocate memory for a client array");
+    }
+
     array->count = 0;
     array->capacity = initial_capacity;
 }
 
-void client_array_add_client(ClientArray* array, int client_fd) {
+void client_array_add_client(ClientArray* array, const int client_fd) {
     if (array->count == array->capacity) {
         array->capacity *= 2;
         array->clients = realloc(array->clients, array->capacity * sizeof(int));
-        if (!array->clients) {
-            ERR_AND_EXIT("realloc failed");
+        if (array->clients == NULL) {
+            LOG_ERR_AND_EXIT("Failed to reallocate memory for a client array");
         }
     }
     array->clients[array->count++] = client_fd;
