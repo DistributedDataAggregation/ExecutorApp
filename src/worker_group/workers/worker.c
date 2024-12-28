@@ -8,6 +8,8 @@
 #include "error_utilites.h"
 #include "hash_table.h"
 #include "../../parquet_helpers/parquet_helpers.h"
+#include <arrow-glib/arrow-glib.h>
+#include <parquet-glib/parquet-glib.h>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -17,7 +19,7 @@ void* compute_on_thread(void* arg) {
 
     print_thread_data(data);
 
-    HashTable* ht = hash_table_create(10);
+    HashTable* ht = hash_table_create(100);
     for(int i=0;i<data->n_files;i++) {
         compute_file(i, data, ht);
         printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
@@ -92,7 +94,15 @@ const char* column_data_type_to_string(ColumnDataType type) {
 
 void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table) {
     GError* error = NULL;
-    GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(data->file_names[index_of_the_file], &error);
+
+    GArrowFileInputStream* input_file_stream = garrow_file_input_stream_new(data->file_names[index_of_the_file], &error);
+    if(input_file_stream == NULL) {
+        report_g_error(error);
+        // TODO: handle failing thread computation
+        return;
+    }
+
+    GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_arrow(GARROW_SEEKABLE_INPUT_STREAM(input_file_stream), &error);
 
     if(reader == NULL) {
         report_g_error(error);
@@ -128,6 +138,10 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
         return;
     }
     worker_calculate_new_column_indices(new_columns_indices, columns_indices, number_of_columns);
+
+    for(int i=0;i<number_of_columns;i++) {
+        printf("[%d] %dth column has new index %d\n", data->thread_index, i, new_columns_indices[i]);
+    }
 
     for(int i=0;i<number_of_columns;i++) {
         printf("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
@@ -271,16 +285,13 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
 char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type, int row_index) {
     switch (data_type) {
         case COLUMN_DATA_TYPE_INT32:
-            GArrowInt32Array* int32_array = GARROW_INT32_ARRAY(grouping_array);
-            int int32_value= garrow_int32_array_get_value(int32_array, row_index);
+            int int32_value= garrow_int32_array_get_value(GARROW_INT32_ARRAY(grouping_array), row_index);
             return g_strdup_printf("%d", int32_value);
         case COLUMN_DATA_TYPE_INT64:
-            GArrowInt64Array* int64_array = GARROW_INT64_ARRAY(grouping_array);
-            long int64_value = garrow_int64_array_get_value(int64_array, row_index);
+            long int64_value = garrow_int64_array_get_value(GARROW_INT64_ARRAY(grouping_array), row_index);
             return g_strdup_printf("%ld", int64_value);
         case COLUMN_DATA_TYPE_STRING:
-            GArrowStringArray* string_array = GARROW_STRING_ARRAY(grouping_array);
-            return garrow_string_array_get_string(string_array, row_index);
+            return garrow_string_array_get_string(GARROW_STRING_ARRAY(grouping_array), row_index);
         case COLUMN_DATA_TYPE_UNKNOWN:
         default:
             return NULL;
