@@ -85,9 +85,10 @@ int main_thread_run() {
                 main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
                     executors_socket_fd, &main_executors_sockets, &error_info);
                 if (error_info.error_code != NO_ERROR) {
-                    printf("Removing client: %d\n", controllers_client_array.clients[i]);
-                    client_array_remove_client(&controllers_client_array, i);
-                    i--;
+                    // printf("Removing client: %d\n", controllers_client_array.clients[i]);
+                    // client_array_remove_client(&controllers_client_array, i);
+                    // i--;
+                    // TODO handle failed request from client
                     CLEAR_ERROR(&error_info);
                 }
                 fflush(stdout);
@@ -105,8 +106,9 @@ int main_thread_run() {
 void main_thread_handle_client(const int client_fd, ClientArray* executors_client_array, const int executors_socket_fd,
     MainExecutorsSockets* main_executors_sockets, ErrorInfo* err) {
 
-    if (err == NULL)
-        return; // TODO send failure message
+    if (err == NULL) {
+        return; // TODO handle ??
+    }
 
     QueryRequest* request = parse_incoming_request(client_fd);
     HashTable* ht = NULL;
@@ -124,7 +126,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         int collected = 0;
         const int others_count = request->executor->executors_count-1;
 
-        while (collected < others_count) {
+        while (collected < others_count) {  // TODO timeout??
 
             fd_set read_fds;
             FD_ZERO(&read_fds);
@@ -133,9 +135,10 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
             client_array_set_clients(executors_client_array, &max_fd, &read_fds);
 
-            struct timeval timeout;
-            timeout.tv_sec = 1;
-            timeout.tv_usec = 0;
+            struct timeval timeout = {
+                .tv_sec = 1,
+                .tv_usec = 0
+            };
 
             const int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
 
@@ -159,7 +162,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
 
         printf("Collected from other nodes\n");
-        send_reponse(client_fd, ht);
+        send_response(client_fd, ht);
 
     }
 
@@ -168,7 +171,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
             request->executor->main_ip_address, request->executor->main_port, err);
         if (err->error_code == NO_ERROR) {
-            send_reponse(main_executor_socket, ht);
+            send_response(main_executor_socket, ht);
             printf("Sent results to main\n");
         }
         else {

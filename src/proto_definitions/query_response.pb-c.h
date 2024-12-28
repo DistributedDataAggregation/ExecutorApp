@@ -18,6 +18,7 @@ PROTOBUF_C__BEGIN_DECLS
 typedef struct QueryResponse QueryResponse;
 typedef struct Value Value;
 typedef struct PartialResult PartialResult;
+typedef struct Error Error;
 
 
 /* --- enums --- */
@@ -28,12 +29,13 @@ typedef struct PartialResult PartialResult;
 struct  QueryResponse
 {
   ProtobufCMessage base;
+  Error *error;
   size_t n_values;
   Value **values;
 };
 #define QUERY_RESPONSE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&query_response__descriptor) \
-    , 0,NULL }
+    , NULL, 0,NULL }
 
 
 struct  Value
@@ -57,6 +59,17 @@ struct  PartialResult
 #define PARTIAL_RESULT__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&partial_result__descriptor) \
     , 0, 0 }
+
+
+struct  Error
+{
+  ProtobufCMessage base;
+  char *message;
+  char *inner_message;
+};
+#define ERROR__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&error__descriptor) \
+    , (char *)protobuf_c_empty_string, (char *)protobuf_c_empty_string }
 
 
 /* QueryResponse methods */
@@ -116,6 +129,25 @@ PartialResult *
 void   partial_result__free_unpacked
                      (PartialResult *message,
                       ProtobufCAllocator *allocator);
+/* Error methods */
+void   error__init
+                     (Error         *message);
+size_t error__get_packed_size
+                     (const Error   *message);
+size_t error__pack
+                     (const Error   *message,
+                      uint8_t             *out);
+size_t error__pack_to_buffer
+                     (const Error   *message,
+                      ProtobufCBuffer     *buffer);
+Error *
+       error__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   error__free_unpacked
+                     (Error *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*QueryResponse_Closure)
@@ -127,6 +159,9 @@ typedef void (*Value_Closure)
 typedef void (*PartialResult_Closure)
                  (const PartialResult *message,
                   void *closure_data);
+typedef void (*Error_Closure)
+                 (const Error *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -136,6 +171,7 @@ typedef void (*PartialResult_Closure)
 extern const ProtobufCMessageDescriptor query_response__descriptor;
 extern const ProtobufCMessageDescriptor value__descriptor;
 extern const ProtobufCMessageDescriptor partial_result__descriptor;
+extern const ProtobufCMessageDescriptor error__descriptor;
 
 PROTOBUF_C__END_DECLS
 

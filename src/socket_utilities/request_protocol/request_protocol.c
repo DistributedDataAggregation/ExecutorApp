@@ -2,19 +2,17 @@
 // Created by karol on 27.10.24.
 //
 
-#include "request_protocol.h"
-
 #include <errno.h>
-#include <string.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
-#include <asm-generic/errno.h>
-#include <netinet/in.h>
-
+#include "error_handling.h"
 #include "error_utilites.h"
 #include "hash_table_to_query_response_converter.h"
 #include "query_response.pb-c.h"
+#include "request_protocol.h"
 
 uint8_t* get_packed_protobuffer(int client_socket, uint32_t* message_size);
 
@@ -56,10 +54,10 @@ void print_query_response(const QueryResponse *query_response) {
     }
 }
 
-QueryRequest* parse_incoming_request(int client_socket)
+QueryRequest* parse_incoming_request(const int client_fd)
 {
     uint32_t message_size;
-    uint8_t* buffer = get_packed_protobuffer(client_socket, &message_size);
+    uint8_t* buffer = get_packed_protobuffer(client_fd, &message_size);
 
     QueryRequest* request = query_request__unpack(NULL, message_size, buffer);
     if(request == NULL) {
@@ -69,7 +67,7 @@ QueryRequest* parse_incoming_request(int client_socket)
     return request;
 }
 
-void send_reponse(int clientfd, HashTable* ht) {
+void send_response(int clientfd, HashTable* ht) {
     QueryResponse* response = convert_hash_table_to_query_response(ht);
     ssize_t size = query_response__get_packed_size(response);
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
@@ -94,6 +92,58 @@ void send_reponse(int clientfd, HashTable* ht) {
 
     query_response__free_unpacked(response, NULL);
 }
+
+void send_failure_response(int client_fd, ErrorInfo *err) {
+    QueryResponse* response = malloc(sizeof(QueryResponse));
+    if (response == NULL) {
+        LOG_ERR("Failed to allocate memory for response");
+        // TODO handle
+        return;
+    }
+    query_response__init(response);
+    response->error = malloc(sizeof(Error));
+    if (response->error == NULL) {
+        free(response);
+        LOG_ERR("Failed to allocate memory for error in response");
+        // TODO handle
+        return;
+    }
+    error__init(response->error);
+    response->error->message = malloc(sizeof(err->error_message));
+    if (response->error->message == NULL) {
+        // TODO
+    }
+    response->error->inner_message = malloc(sizeof(err->inner_error_message));
+    if (response->error->inner_message == NULL) {
+        // TODO
+    }
+    strncpy(response->error->message, err->error_message, sizeof(response->error->message) - 1);
+    strncpy(response->error->inner_message, err->inner_error_message, sizeof(response->error->inner_message) - 1);
+
+    ssize_t size = query_response__get_packed_size(response);
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t)*size);
+    if (buffer == NULL) {
+        ERR_AND_EXIT("malloc");
+    }
+    memset(buffer, 0, size);
+
+    int size_to_send = htonl(size);
+    if(write(client_fd, &size_to_send, sizeof(size_to_send)) <= 0) {
+        ERR_AND_EXIT("send");
+    }
+
+    int stored = query_response__pack(response, buffer);
+    if(stored != size) {
+        ERR_AND_EXIT("results__pack");
+    }
+
+    if(send(client_fd, buffer, size, 0) != size) {
+        ERR_AND_EXIT("send");
+    }
+
+    query_response__free_unpacked(response, NULL);
+}
+
 
 QueryResponse* parse_query_response(int client_socket)
 {
