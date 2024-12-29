@@ -77,7 +77,7 @@ int main_thread_run() {
 
         client_array_accept_clients(&controllers_client_array, controllers_socket_fd, &read_fds, &error_info);
         if (error_info.error_code != NO_ERROR) {
-            CLEAR_ERROR(&error_info); // TODO handle failed connection from controller
+            CLEAR_ERR(&error_info); // TODO handle failed connection from controller
         }
 
         for (size_t i = 0; i < controllers_client_array.count; i++) {
@@ -89,7 +89,7 @@ int main_thread_run() {
                     // client_array_remove_client(&controllers_client_array, i);
                     // i--;
                     // TODO handle failed request from client
-                    CLEAR_ERROR(&error_info);
+                    CLEAR_ERR(&error_info);
                 }
                 fflush(stdout);
             }
@@ -110,7 +110,11 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         return; // TODO handle ??
     }
 
-    QueryRequest* request = parse_incoming_request(client_fd);
+    QueryRequest* request = parse_incoming_request(client_fd, err);
+    if (err->error_code != NO_ERROR) {
+        return; // TODO handle ??
+    }
+
     HashTable* ht = NULL;
     const int worker_group_result = worker_group_run_request(request, &ht);
 
@@ -149,12 +153,15 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
             client_array_accept_clients(executors_client_array, executors_socket_fd, &read_fds, err);
             if (err->error_code != NO_ERROR) {
-                CLEAR_ERROR(err); // TODO handle failed connection from executor
+                CLEAR_ERR(err); // TODO handle failed connection from executor
             }
 
             for (size_t i = 0; i < executors_client_array->count && collected < others_count; i++) {
                 if (FD_ISSET(executors_client_array->clients[i], &read_fds)) {
-                    QueryResponse* response = parse_query_response(executors_client_array->clients[i]);
+                    QueryResponse* response = parse_query_response(executors_client_array->clients[i], err);
+                    if (err->error_code != NO_ERROR) {
+                        return; // TODO handle ??
+                    }
                     hash_table_combine_table_with_response(ht, response);
                     collected++;
                 }
@@ -162,7 +169,10 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
 
         printf("Collected from other nodes\n");
-        send_response(client_fd, ht);
+        prepare_and_send_response(client_fd, ht, err);
+        if (err->error_code != NO_ERROR) {
+            return; // TODO handle ??
+        }
 
     }
 
@@ -171,12 +181,15 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
             request->executor->main_ip_address, request->executor->main_port, err);
         if (err->error_code == NO_ERROR) {
-            send_response(main_executor_socket, ht);
+            prepare_and_send_response(main_executor_socket, ht, err);
+            if (err->error_code != NO_ERROR) {
+                return; // TODO handle ??
+            }
             printf("Sent results to main\n");
         }
         else {
             printf("Failed to send results to main\n"); // TODO handle failed connection to main
-            CLEAR_ERROR(err);
+            CLEAR_ERR(err);
         }
     }
 

@@ -2,18 +2,16 @@
 // Created by karol on 15.11.24.
 //
 
-#include "hash_table_to_query_response_converter.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #include "error_utilites.h"
+#include "hash_table_to_query_response_converter.h"
 
 PartialResult* convert_value(HashTableValue value);
 Value* convert_entry(const HashTableEntry* entry);
 
-QueryResponse* convert_hash_table_to_query_response(HashTable *table) {
+QueryResponse* convert_hash_table_to_query_response(const HashTable *table, ErrorInfo* err) {
     // query response init
     QueryResponse* query_response = malloc(sizeof(QueryResponse));
     query_response__init(query_response);

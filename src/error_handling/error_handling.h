@@ -25,7 +25,7 @@ typedef struct ErrorInfo {
     } \
 } while (0)
 
-#define CLEAR_ERROR(err) do { \
+#define CLEAR_ERR(err) do { \
     if (err) { \
         (err)->error_code = NO_ERROR; \
         (err)->error_message[0] = '\0'; \
