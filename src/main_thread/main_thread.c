@@ -88,7 +88,7 @@ int main_thread_run() {
                     // printf("Removing client: %d\n", controllers_client_array.clients[i]);
                     // client_array_remove_client(&controllers_client_array, i);
                     // i--;
-                    // TODO handle failed request from client
+                    // TODO handle failed request from controller (connections errors and error while sending failure response)
                     CLEAR_ERR(&error_info);
                 }
                 fflush(stdout);
@@ -113,23 +113,21 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
     QueryRequest* request = parse_incoming_request(client_fd, err);
     if (err->error_code != NO_ERROR) {
-        return; // TODO handle ??
+        return; // TODO handle ?? error message should be send to controller but we dont know with executor is main
     }
 
     HashTable* ht = NULL;
-    worker_group_run_request(request, &ht, err);
-
-    if(err->error_code != NO_ERROR)
-    {
-        prepare_and_send_failure_response(client_fd, err);
-        CLEAR_ERR(err);
-        hash_table_free(ht);
-        query_request__free_unpacked(request, NULL);
-        return;
-    }
 
     if (request->executor->is_current_node_main) {
         printf("This node is main\n");
+
+        worker_group_run_request(request, &ht, err);
+
+        if(err->error_code != NO_ERROR)
+        {
+            // TODO send_failure response right away or wait for other executors to send their response?
+            // if we wait, we need to initialize the hash table because it may be null
+        }
 
         int collected = 0;
         const int others_count = request->executor->executors_count-1;
@@ -151,8 +149,9 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             const int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
 
             if (select_result < 0) {
-                perror("select");
-                break;
+                LOG_ERR("Failed on select waiting for other executors");
+                SET_ERR(err, errno, "Failed on select waiting for other executors", strerror(errno));
+                break; // TODO or exit_failure??
             }
 
             client_array_accept_clients(executors_client_array, executors_socket_fd, &read_fds, err);
@@ -164,15 +163,18 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                 if (FD_ISSET(executors_client_array->clients[i], &read_fds)) {
                     const QueryResponse* response = parse_query_response(executors_client_array->clients[i], err);
                     if (err->error_code != NO_ERROR) {
-                        prepare_and_send_failure_response(client_fd, err);
-                        // TODO free
-                        return;
+                        // TODO send_failure response right away or wait for other executors to send their response?
                     }
-                    hash_table_combine_table_with_response(ht, response, err);
-                    if (err->error_code != NO_ERROR) {
-                        prepare_and_send_failure_response(client_fd, err);
-                        // TODO free
-                        return;
+                    if (response->error != NULL) {
+                        LOG_INTERNAL_ERR("Received failure response from a slave executor");
+                        SET_ERR(err, INTERNAL_ERROR, response->error->message, response->error->inner_message); // TODO test it
+                        // TODO send_failure response right away or wait for other executors to send their response?
+                    }
+                    else {
+                        hash_table_combine_table_with_response(ht, response, err);
+                        if (err->error_code != NO_ERROR) {
+                            // TODO send_failure response right away or wait for other executors to send their response?
+                        }
                     }
                     collected++;
                 }
@@ -182,7 +184,8 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         printf("Collected from other nodes\n");
         prepare_and_send_response(client_fd, ht, err);
         if (err->error_code != NO_ERROR) {
-            return; // TODO handle ??
+            LOG_INTERNAL_ERR("Failed to send response to controller");
+            // TODO handle failed send to controller
         }
 
     }
@@ -191,16 +194,20 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         printf("This node is slave\n");
         const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
             request->executor->main_ip_address, request->executor->main_port, err);
-        if (err->error_code == NO_ERROR) {
-            prepare_and_send_response(main_executor_socket, ht, err);
-            if (err->error_code != NO_ERROR) {
-                return; // TODO handle ??
-            }
-            printf("Sent results to main\n");
+        if (err->error_code != NO_ERROR) {
+            LOG_INTERNAL_ERR("Failed to connect to main executor\n");
+            // TODO handle failed connection to main
         }
         else {
-            printf("Failed to send results to main\n"); // TODO handle failed connection to main
-            CLEAR_ERR(err);
+            worker_group_run_request(request, &ht, err);
+            prepare_and_send_response(main_executor_socket, ht, err);
+            if (err->error_code != NO_ERROR) {
+                LOG_INTERNAL_ERR("Failed to send response to main executor\n");
+                // TODO handle failed send to main
+            }
+            else {
+                printf("Sent results to main\n");
+            }
         }
     }
 

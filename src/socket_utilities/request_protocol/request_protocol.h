@@ -12,8 +12,8 @@
 
 QueryRequest* parse_incoming_request(int client_fd, ErrorInfo *err);
 QueryResponse* parse_query_response(int client_fd, ErrorInfo *err);
-void send_response(const int client_fd, const QueryResponse* response, ErrorInfo *err);
-void prepare_and_send_response(int client_fd, HashTable* ht, ErrorInfo *err);
+void send_response(int client_fd, const QueryResponse* response, ErrorInfo *err);
+void prepare_and_send_response(int client_fd, const HashTable* ht, ErrorInfo *err);
 void prepare_and_send_failure_response(int client_fd, ErrorInfo *err);
 void print_query_response(const QueryResponse *query_response);
 

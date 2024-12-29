@@ -234,8 +234,6 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
 
 HashTableValue hash_table_update_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
 
-      // TODO fix bug: when the if is uncommented every executor constantly logs: Passed error info was NULL: at /app/src/hash_table/hash_table.c:241 while running integration_test.py::test_response_multiple_selects.
-      // err was not null while debugging with same queries as in the integration test. Integration and system tests pass when the if is commented out
       if (err == NULL) {
             LOG_INTERNAL_ERR("Passed error info was NULL");
             return current_value;
