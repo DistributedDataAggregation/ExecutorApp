@@ -117,7 +117,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
-    const int worker_group_result = worker_group_run_request(request, &ht);
+    const int worker_group_result = worker_group_run_request(request, &ht, err);
 
     if(worker_group_result == -1)
     {
@@ -159,11 +159,18 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
             for (size_t i = 0; i < executors_client_array->count && collected < others_count; i++) {
                 if (FD_ISSET(executors_client_array->clients[i], &read_fds)) {
-                    QueryResponse* response = parse_query_response(executors_client_array->clients[i], err);
+                    const QueryResponse* response = parse_query_response(executors_client_array->clients[i], err);
                     if (err->error_code != NO_ERROR) {
-                        return; // TODO handle ??
+                        prepare_and_send_failure_response(client_fd, err);
+                        // TODO free
+                        return;
                     }
-                    hash_table_combine_table_with_response(ht, response);
+                    hash_table_combine_table_with_response(ht, response, err);
+                    if (err->error_code != NO_ERROR) {
+                        prepare_and_send_failure_response(client_fd, err);
+                        // TODO free
+                        return;
+                    }
                     collected++;
                 }
             }

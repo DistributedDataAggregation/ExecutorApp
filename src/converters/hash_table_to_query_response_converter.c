@@ -61,7 +61,7 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable *table, Erro
                 query_response->values[converted_values] = convert_entry(current, err);
                 if (err->error_code != NO_ERROR) {
                     LOG_INTERNAL_ERR("Failed to convert query response values\n");
-                    SET_ERR(err, CUSTOMER_ERROR, "Failed to convert query response values", "");
+                    SET_ERR(err, INTERNAL_ERROR, "Failed to convert query response values", "");
                     query_response->n_values = 0;
                     free_values(query_response->values, converted_values);
                     free(query_response);

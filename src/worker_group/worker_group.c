@@ -23,7 +23,7 @@
 
 
 // TODO() probably split this function
-int worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table) {
+int worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table, ErrorInfo* err) {
     if(!request) {
         return -1;
     }
@@ -95,7 +95,7 @@ int worker_group_run_request(const QueryRequest* request, HashTable** request_ha
         if (*request_hash_table == NULL) {
             *request_hash_table = thread_ht;
         } else {
-            hash_table_combine_hash_tables(*request_hash_table, thread_ht);
+            hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
             hash_table_free(thread_ht);
         }
     }

@@ -12,7 +12,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table);
+void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table, ErrorInfo* err);
 void print_thread_data(ThreadData* data);
 char* get_grouping_string(GArrowArray* grouping_array, ColumnDataType data_type, int row_index) ;
 char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arrays, int row_index, ColumnDataType* group_columns_data_types);

@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
 
 typedef struct ErrorInfo {
     int error_code;
@@ -16,7 +15,7 @@ typedef struct ErrorInfo {
 } ErrorInfo;
 
 #define NO_ERROR 0
-#define CUSTOMER_ERROR -1
+#define INTERNAL_ERROR -1
 
 #define SET_ERR(err, code, msg, inner_msg) do { \
     if (err) { \

@@ -6,6 +6,7 @@
 #define HASH_TABLE_H
 
 #include "aggregate_function.h"
+#include "error_handling.h"
 #include "query_response.pb-c.h"
 
 typedef struct HashTableValue {
@@ -27,15 +28,15 @@ typedef struct HashTable {
     HashTableEntry** table;
 } HashTable;
 
-unsigned int hash(const char* string, const int table_size);
-HashTable* hash_table_create(int size);
+unsigned int hash(const char* string, int table_size);
+HashTable* hash_table_create(int size, ErrorInfo* err);
 void hash_table_free(HashTable* table);
-void hash_table_insert(HashTable* table, HashTableEntry* entry);
-HashTableEntry* hash_table_search(HashTable* table, const char* key);
+void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err);
+HashTableEntry* hash_table_search(const HashTable* table, const char* key);
 void hash_table_delete(HashTable* table, const char* key);
-void hash_table_print(HashTable* ht);
-void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2);
-void hash_table_combine_table_with_response(HashTable* ht, QueryResponse* query_reponse);
-void hash_table_combine_hash_tables(HashTable* destination, HashTable* source);
+void hash_table_print(const HashTable* ht);
+void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err);
+void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
+void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err);
 
 #endif //HASH_TABLE_H

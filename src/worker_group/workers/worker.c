@@ -14,12 +14,12 @@
 
 void* compute_on_thread(void* arg) {
     ThreadData* data = (ThreadData*)arg;
-
+    ErrorInfo err= {0}; // TODO change that to array of errorinfo for each thread
     print_thread_data(data);
 
-    HashTable* ht = hash_table_create(10);
+    HashTable* ht = hash_table_create(10, &err);
     for(int i=0;i<data->n_files;i++) {
-        compute_file(i, data, ht);
+        compute_file(i, data, ht, &err);
         printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
     }
 
@@ -90,7 +90,7 @@ const char* column_data_type_to_string(ColumnDataType type) {
 // renaming would probably be enough in that case
 
 
-void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table) {
+void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_table, ErrorInfo* err) {
     GError* error = NULL;
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(data->file_names[index_of_the_file], &error);
 
@@ -225,7 +225,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
                     new_entry->values = hash_table_values;
                     new_entry->n_values = data->n_select;
                     new_entry->next = NULL;
-                    hash_table_insert(hash_table, new_entry);
+                    hash_table_insert(hash_table, new_entry, err);
                 } else {
                     for(int value_index = 0; value_index < data->n_select; value_index++) {
                         found->values[value_index] = update_value(

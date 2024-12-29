@@ -18,8 +18,11 @@
 
 int create_and_listen_on_tcp_socket(const char* address_string, const int so_reuse,
         const int non_blocking, const int port, ErrorInfo* err) {
-    if (err == NULL)
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was null\n");
         return -1;
+    }
 
     const int socket_fd = create_tcp_socket(address_string, so_reuse, non_blocking, port, err);
     if (err->error_code != NO_ERROR)
@@ -37,6 +40,11 @@ int create_and_listen_on_tcp_socket(const char* address_string, const int so_reu
 
 int create_tcp_socket(const char* address_string, const int so_reuse, const int non_blocking,
         const int port, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was null\n");
+        return -1;
+    }
 
     const int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
@@ -103,6 +111,11 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
 
 int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err) {
 
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was null\n");
+        return -1;
+    }
+
     const int client_fd = accept(socket_fd, NULL, NULL);
     if(client_fd == -1) {
         if(is_non_blocking == TRUE && (errno == EWOULDBLOCK || errno == EAGAIN)) {
@@ -119,6 +132,11 @@ int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err
 }
 
 int get_port_from_env(const char* env_var, ErrorInfo* err) {
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was null\n");
+        return -1;
+    }
+
     const char* port_str = getenv(env_var);
     if(port_str == NULL) {
         LOG_ERR("Could not get port env variable");
