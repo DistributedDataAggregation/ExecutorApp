@@ -27,11 +27,13 @@ void main_thread_handle_client(int client_fd, ClientArray* executors_client_arra
 
 int main_thread_run() {
 
+    errno = 0;
+
     printf("Running main thread\n");
     ErrorInfo error_info = {0};
 
-    const int controllers_port = 8080;//get_port_from_env("EXECUTOR_CONTROLLER_PORT", &error_info);
-    const int executors_port = 8081; //get_port_from_env("EXECUTOR_EXECUTOR_PORT", &error_info);
+    const int controllers_port = get_port_from_env("EXECUTOR_CONTROLLER_PORT", &error_info);
+    const int executors_port = get_port_from_env("EXECUTOR_EXECUTOR_PORT", &error_info);
     if (error_info.error_code != NO_ERROR)
         return EXIT_FAILURE;
 

@@ -9,8 +9,6 @@
 #include "worker.h"
 #include <sys/types.h>
 
-// TODO change LOG_ERR to LOG_THREAD_ERR
-
 void* compute_on_thread(void* arg) {
     ThreadData* data = (ThreadData*)arg;
     ErrorInfo err= {0}; // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
@@ -77,7 +75,7 @@ void print_thread_data(ThreadData* data) {
 void compute_file(const int index_of_the_file, const ThreadData* data, HashTable* hash_table, ErrorInfo* err) {
 
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was NULL");
+        LOG_INTERNAL_THREAD_ERR("Passed error info was NULL", data->thread_index);
         return;
     }
 
@@ -133,7 +131,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 
         GArrowChunkedArray** grouping_chunked_arrays = malloc(sizeof(GArrowChunkedArray*) * data->n_group_columns);
         if(grouping_chunked_arrays == NULL) {
-            LOG_ERR("Failed to allocate memory for grouping chunked arrays");
+            LOG_THREAD_ERR("Failed to allocate memory for grouping chunked arrays", data->thread_index);
             SET_ERR(err, errno, "Failed to allocate memory for grouping chunked arrays", strerror(errno));
             g_object_unref(reader);
             free(columns_indices);
@@ -144,7 +142,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 
         GArrowChunkedArray** select_chunked_arrays = malloc(sizeof(GArrowChunkedArray*) * data->n_select);
         if(select_chunked_arrays == NULL) {
-            LOG_ERR("Failed to allocate memory for select chunked arrays");
+            LOG_THREAD_ERR("Failed to allocate memory for select chunked arrays", data->thread_index);
             SET_ERR(err, errno, "Failed to allocate memory for select chunked arrays", strerror(errno));
             g_object_unref(reader);
             free(columns_indices);
@@ -157,7 +155,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         for(int j = 0; j < data->n_group_columns; j++) {
             grouping_chunked_arrays[j] = garrow_table_get_column_data(table, new_columns_indices[j]);
             if(grouping_chunked_arrays[j] == NULL) {
-                LOG_INTERNAL_ERR("Failed to find grouping chunked arrays");
+                LOG_INTERNAL_THREAD_ERR("Failed to find grouping chunked arrays", data->thread_index);
                 SET_ERR(err, INTERNAL_ERROR, "Failed to find grouping chunked arrays", "");
                 g_object_unref(reader);
                 free(columns_indices);
@@ -173,9 +171,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         }
 
         for(int j=0; j < data->n_select; j++) {
-            select_chunked_arrays[j] = garrow_table_get_column_data(table,  new_columns_indices[j+data->n_group_columns]);
+            select_chunked_arrays[j] = garrow_table_get_column_data(table, new_columns_indices[j+data->n_group_columns]);
             if(select_chunked_arrays[j] == NULL) {
-                LOG_INTERNAL_ERR("Failed to find select chunked arrays");
+                LOG_INTERNAL_THREAD_ERR("Failed to find select chunked arrays", data->thread_index);
                 SET_ERR(err, INTERNAL_ERROR, "Failed to find select chunked arrays", "");
                 g_object_unref(reader);
                 free(columns_indices);
@@ -198,7 +196,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 
             GArrowArray** grouping_arrays = malloc(sizeof(GArrowArray*) * data->n_group_columns);
             if(grouping_arrays == NULL) {
-                LOG_ERR("Failed to allocate memory for grouping arrays");
+                LOG_THREAD_ERR("Failed to allocate memory for grouping arrays", data->thread_index);
                 SET_ERR(err, errno, "Failed to allocate memory for grouping arrays", strerror(errno));
                 g_object_unref(reader);
                 free(columns_indices);
@@ -251,7 +249,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 //calculate the aggregates
                 HashTableValue* hash_table_values = malloc(sizeof(HashTableValue)*data->n_select);
                 if(hash_table_values == NULL) {
-                    LOG_ERR("Failed to allocate memory for hash table values");
+                    LOG_THREAD_ERR("Failed to allocate memory for hash table values", data->thread_index);
                     SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
                     // TODO free allocated data
                     return;
@@ -272,7 +270,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     // add grouping into hash table
                     HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
                     if(new_entry == NULL) {
-                        LOG_ERR("Failed to allocate memory for hash table entry");
+                        LOG_THREAD_ERR("Failed to allocate memory for hash table entry", data->thread_index);
                         SET_ERR(err, errno, "Failed to allocate memory for hash table entry", strerror(errno));
                         // TODO free allocated data
                         return;

@@ -25,14 +25,12 @@ add_library(ExecutorLib STATIC
         client_array/client_array.c
         executors_server/executors_server.c
         converters/hash_table_to_query_response_converter.c
-        error_utilites/error_utilites.h
         error_handling/error_handling.h
 )
 
 target_include_directories(ExecutorLib PUBLIC
         ${PARQUET_INCLUDE_DIRS}
         ${PROTOBUF_INCLUDE_DIRS}
-        error_utilites
         consts
         main_thread
         socket_utilities

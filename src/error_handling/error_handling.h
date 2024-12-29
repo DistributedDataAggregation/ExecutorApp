@@ -34,7 +34,6 @@ typedef struct ErrorInfo {
     } \
 } while (0)
 
-#define LOG_ERR_AND_EXIT(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__), exit(EXIT_FAILURE))
 
 #define LOG_ERR(source) (perror(source), fprintf(stderr, "%s:%d\n", __FILE__, __LINE__))
 #define LOG_THREAD_ERR(source, pid) (perror(source), fprintf(stderr, "[%d] %s:%d\n", pid, __FILE__, __LINE__))

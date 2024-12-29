@@ -145,12 +145,11 @@ int get_port_from_env(const char* env_var, ErrorInfo* err) {
         return -1;
     }
 
-    const long int port = strtol(port_str, NULL, 10);
+    const long int port = strtol(port_str, NULL, 0);
     if (errno != 0) {
         LOG_ERR("Could not get port number from port string");
         SET_ERR(err, -1, "Could not get port number from port string", "");
         return -1;
     }
-
     return (int)port;
 }
