@@ -107,6 +107,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     MainExecutorsSockets* main_executors_sockets, ErrorInfo* err) {
 
     if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was null\n");
         return; // TODO handle ??
     }
 

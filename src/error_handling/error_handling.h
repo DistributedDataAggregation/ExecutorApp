@@ -16,6 +16,7 @@ typedef struct ErrorInfo {
 } ErrorInfo;
 
 #define NO_ERROR 0
+#define CUSTOMER_ERROR -1
 
 #define SET_ERR(err, code, msg, inner_msg) do { \
     if (err) { \
