@@ -8,8 +8,6 @@
 #include <string.h>
 #include "hash_table.h"
 
-HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
-
 unsigned int hash(const char* string, const int table_size) {
       unsigned int hash_value = 0;
       while (*string) {
@@ -227,21 +225,21 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
       const int size = entry1->n_values;
 
       for(int i=0; i<size; i++) {
-            entry1->values[i] = update_value(entry1->values[i], entry2->values[i], err);
+            entry1->values[i] = hash_table_update_value(entry1->values[i], entry2->values[i], err);
             if (err->error_code != NO_ERROR) {
                   return;
             }
       }
 }
 
-HashTableValue update_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
+HashTableValue hash_table_update_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
 
       // TODO fix bug: when the if is uncommented every executor constantly logs: Passed error info was NULL: at /app/src/hash_table/hash_table.c:241 while running integration_test.py::test_response_multiple_selects.
       // err was not null while debugging with same queries as in the integration test. Integration and system tests pass when the if is commented out
-      // if (err == NULL) {
-      //       LOG_INTERNAL_ERR("Passed error info was NULL");
-      //       return current_value;
-      // }
+      if (err == NULL) {
+            LOG_INTERNAL_ERR("Passed error info was NULL");
+            return current_value;
+      }
 
       switch (current_value.aggregate_function) {
             case MIN: {
