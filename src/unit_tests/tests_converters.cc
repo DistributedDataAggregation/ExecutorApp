@@ -7,11 +7,13 @@ extern "C" {
 
 
 TEST(HashTableToQueryResponseTest, EmptyHashTable) {
-    HashTable* ht = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* ht = hash_table_create(10, &error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->entries_count, 0);
 
-    QueryResponse* response = convert_hash_table_to_query_response(ht);
+    QueryResponse* response = convert_hash_table_to_query_response(ht, &error_info);
 
     ASSERT_NE(response, nullptr);
     EXPECT_EQ(response->n_values, 0);
@@ -22,7 +24,9 @@ TEST(HashTableToQueryResponseTest, EmptyHashTable) {
 }
 
 TEST(HashTableToQueryResponseTest, NonEmptyHashTable) {
-    HashTable* ht = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* ht = hash_table_create(10, &error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->entries_count, 0);
 
@@ -35,9 +39,9 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable) {
     entry->values[0].aggregate_function = AVG;
     entry->next = nullptr;
 
-    hash_table_insert(ht, entry);
+    hash_table_insert(ht, entry, &error_info);
 
-    QueryResponse* response = convert_hash_table_to_query_response(ht);
+    QueryResponse* response = convert_hash_table_to_query_response(ht, &error_info);
 
     ASSERT_NE(response, nullptr);
     EXPECT_EQ(response->n_values, 1);

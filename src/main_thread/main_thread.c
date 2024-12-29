@@ -107,7 +107,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     MainExecutorsSockets* main_executors_sockets, ErrorInfo* err) {
 
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return; // TODO handle ??
     }
 
@@ -117,12 +117,15 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
-    const int worker_group_result = worker_group_run_request(request, &ht, err);
+    worker_group_run_request(request, &ht, err);
 
-    if(worker_group_result == -1)
+    if(err->error_code != NO_ERROR)
     {
-        perror("Failed to run worker group");
-        exit(EXIT_FAILURE);
+        prepare_and_send_failure_response(client_fd, err);
+        CLEAR_ERR(err);
+        hash_table_free(ht);
+        query_request__free_unpacked(request, NULL);
+        return;
     }
 
     if (request->executor->is_current_node_main) {

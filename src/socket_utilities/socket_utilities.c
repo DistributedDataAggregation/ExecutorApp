@@ -20,7 +20,7 @@ int create_and_listen_on_tcp_socket(const char* address_string, const int so_reu
         const int non_blocking, const int port, ErrorInfo* err) {
 
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 
@@ -42,7 +42,7 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
         const int port, ErrorInfo* err) {
 
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 
@@ -112,7 +112,7 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
 int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err) {
 
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 
@@ -132,8 +132,9 @@ int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err
 }
 
 int get_port_from_env(const char* env_var, ErrorInfo* err) {
+
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 

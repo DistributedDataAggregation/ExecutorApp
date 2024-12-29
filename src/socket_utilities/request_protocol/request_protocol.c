@@ -55,7 +55,7 @@ void print_query_response(const QueryResponse *query_response) {
 QueryRequest* parse_incoming_request(const int client_fd, ErrorInfo *err)
 {
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return NULL;
     }
 
@@ -194,7 +194,7 @@ void prepare_and_send_failure_response(const int client_fd, ErrorInfo *err) {
 QueryResponse* parse_query_response(const int client_fd, ErrorInfo *err)
 {
     if (err == NULL) {
-        LOG_INTERNAL_ERR("Passed error info was null\n");
+        LOG_INTERNAL_ERR("Passed error info was NULL");
         return NULL;
     }
 

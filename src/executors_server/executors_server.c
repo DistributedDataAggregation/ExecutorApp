@@ -16,6 +16,12 @@
 
 void executors_server_init_main_executors_sockets(MainExecutorsSockets* sockets,
         const size_t initial_capacity, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return;
+    }
+
     sockets->sockets = malloc(sizeof(MainExecutorSocket) * initial_capacity);
     if (sockets->sockets == NULL) {
         LOG_ERR("Failed to allocate memory for main executors sockets array");
@@ -39,6 +45,11 @@ void executors_server_free(MainExecutorsSockets* sockets) {
 
 int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, const char* ip_address,
         const int port, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return -1;
+    }
 
     for (size_t i = 0; i < sockets->count; i++) {
         if (strcmp(sockets->sockets[i].ip_address, ip_address) == 0) {

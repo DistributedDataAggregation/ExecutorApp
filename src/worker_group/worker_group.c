@@ -3,92 +3,153 @@
 //
 
 #include <pthread.h>
-#include "worker_group.h"
-
-#include <error.h>
-
-#include "thread_data.h"
-#include "workers/worker.h"
-
 #include <stdio.h>
-
-#include "error_utilites.h"
-
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
 #include "../parquet_helpers/parquet_helpers.h"
+#include "thread_data.h"
+#include "worker_group.h"
+#include "workers/worker.h"
+
 #define NUM_THREADS 4
 
-
 // TODO() probably split this function
-int worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table, ErrorInfo* err) {
-    if(!request) {
-        return -1;
+void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return;
     }
 
-    long threads_count = sysconf(_SC_NPROCESSORS_ONLN);
+    if(request == NULL) {
+        LOG_INTERNAL_ERR("Failed to run worker group: Request was NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Request was NULL");
+        return;
+    }
+
+    const int threads_count = (int)sysconf(_SC_NPROCESSORS_ONLN);
     if (threads_count == -1) {
-        REPORT_ERR("sysconf");
-        return -1;
+        LOG_ERR("Failed to get the number of processors on the system");
+        SET_ERR(err, errno, "Failed to get the number of processors on the system", strerror(errno));
+        return;
     }
 
     pthread_t* threads = (pthread_t*) malloc(sizeof(pthread_t) * threads_count);
-    if(NULL == threads ) {
-        REPORT_ERR("malloc");
-        return -1;
+    if(threads == NULL) {
+        LOG_ERR("Failed to allocate memory for the threads");
+        SET_ERR(err, errno, "Failed to allocate memory for the threads", strerror(errno));
+        return;
     }
 
-    RowGroupsRange** row_group_ranges = worker_group_get_row_group_ranges(request->n_files_names, request->files_names, threads_count);
-    if(NULL == row_group_ranges)  {
-        REPORT_ERR("worker_group_get_row_group_ranges");
+    RowGroupsRange** row_group_ranges = worker_group_get_row_group_ranges((int)request->n_files_names,
+        request->files_names, threads_count, err);
+    if(err->error_code != NO_ERROR)  {
         free(threads);
-        return -1;
+        free(row_group_ranges);
+        return;
     }
 
     int* grouping_indices = (int*)malloc(sizeof(int)*request->n_group_columns);
     if(grouping_indices == NULL) {
-        REPORT_ERR("malloc");
+        LOG_ERR("Failed to allocate memory for grouping indices");
+        SET_ERR(err, errno, "Failed to allocate memory for grouping indices", strerror(errno));
         free(threads);
         free(row_group_ranges);
-        return -1;
+        return;
     }
 
     int* select_indices = (int*)malloc(sizeof(int)*request->n_select);
     if(select_indices == NULL) {
-        REPORT_ERR("malloc");
+        LOG_ERR("Failed to allocate memory for select indices");
+        SET_ERR(err, errno, "Failed to allocate memory for select indices", strerror(errno));
         free(threads);
         free(row_group_ranges);
-        return -1;
+        free(grouping_indices);
+        return;
     }
 
-    if(!worker_group_get_columns_indices(request, grouping_indices, select_indices)) {
-        REPORT_ERR("worker_group_get_columns_indices");
+    worker_group_get_columns_indices(request, grouping_indices, select_indices, err);
+    if (err->error_code != NO_ERROR)
+    {
         free(threads);
         free(row_group_ranges);
         free(grouping_indices);
         free(select_indices);
-        return -1;
+        return;
     }
 
-    ColumnDataType * grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices, request->n_group_columns,
-        request->files_names[0]);
-    ColumnDataType * select_columns_data_type = worker_group_get_columns_data_types(select_indices, request->n_select,
-        request->files_names[0]);
+    ColumnDataType* grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices,
+        (int)request->n_group_columns, request->files_names[0], err);
+    ColumnDataType* select_columns_data_type = worker_group_get_columns_data_types(select_indices,
+        (int)request->n_select, request->files_names[0], err);
+    if(err->error_code != NO_ERROR) {
+        free(threads);
+        free(row_group_ranges);
+        free(grouping_indices);
+        free(select_indices);
+        free(grouping_columns_data_type);
+        free(select_columns_data_type);
+        return;
+    }
 
     ThreadData** thread_data = (ThreadData**)malloc(sizeof(ThreadData*) * threads_count);
+    if(thread_data == NULL) {
+        LOG_ERR("Failed to allocate memory for thread data");
+        SET_ERR(err, errno, "Failed to allocate memory for thread data", strerror(errno));
+        free(threads);
+        free(row_group_ranges);
+        free(grouping_indices);
+        free(select_indices);
+        free(grouping_columns_data_type);
+        free(select_columns_data_type);
+        return;
+    }
+
     for(int i = 0; i < threads_count; i++) {
 
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
-            grouping_indices, select_indices,grouping_columns_data_type, select_columns_data_type);
+            grouping_indices, select_indices,grouping_columns_data_type, select_columns_data_type, err);
+        if (err->error_code != NO_ERROR) {
+            for (int j = 0; j < i; j++) {
+                worker_group_free_thread_data(thread_data[j]);
+            }
+            free(threads);
+            free(row_group_ranges);
+            free(grouping_indices);
+            free(select_indices);
+            free(grouping_columns_data_type);
+            free(select_columns_data_type);
+            free(thread_data);
+            return;
+        }
 
-        pthread_create(&threads[i], NULL, compute_on_thread, thread_data[i]);
+        const int ret = pthread_create(&threads[i], NULL, compute_on_thread, thread_data[i]);
+        if (ret != 0) {
+            LOG_ERR("Failed to create worker group thread");
+            SET_ERR(err, ret, "Failed to create worker group thread", strerror(ret));
+            for (int j = 0; j < i; j++) {
+                worker_group_free_thread_data(thread_data[j]);
+            }
+            free(threads);
+            free(row_group_ranges);
+            free(grouping_indices);
+            free(select_indices);
+            free(grouping_columns_data_type);
+            free(select_columns_data_type);
+            free(thread_data);
+            return;
+        }
     }
 
     for(int i = 0; i < threads_count; i++) {
         void* result = NULL;
-        pthread_join(threads[i], &result);
+        const int ret = pthread_join(threads[i], &result);
+        if (ret != 0) {
+            LOG_ERR("Failed to join worker group thread");
+            SET_ERR(err, ret, "Failed to join worker group thread", strerror(ret));
+            // TODO handle exit?? or we need to wait for other thread anyway (now)
+        }
         worker_group_free_thread_data(thread_data[i]);
         HashTable* thread_ht = (HashTable*) result;
 
@@ -96,35 +157,46 @@ int worker_group_run_request(const QueryRequest* request, HashTable** request_ha
             *request_hash_table = thread_ht;
         } else {
             hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
+            if (err->error_code != NO_ERROR) {
+                LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine hash tables");
+                SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Failed to combine hash tables");
+                // TODO handle exit?? or we need to wait for other thread anyway (now)
+            }
             hash_table_free(thread_ht);
         }
     }
 
     free(threads);
+    free(row_group_ranges);
+    free(grouping_indices);
     free(select_indices);
     free(grouping_columns_data_type);
     free(select_columns_data_type);
-    free(grouping_indices);
     free(thread_data);
-    free(row_group_ranges);
-
-    return 0;
 }
 
-ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread_index, int num_threads,
-    RowGroupsRange* row_groups_ranges, int* grouping_indices, int* select_indices, ColumnDataType* group_columns_types,
-    ColumnDataType* select_columns_types) {
+ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int thread_index, const int num_threads,
+    RowGroupsRange* row_groups_ranges, int* grouping_indices, const int* select_indices,
+    ColumnDataType* group_columns_types, ColumnDataType* select_columns_types, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return NULL;
+    }
 
     if(request == NULL || thread_index < 0 || thread_index >= num_threads) {
-        REPORT_ERR("worker_group_get_thread_data");
+        LOG_INTERNAL_ERR("Failed to get thread data: Invalid arguments passed");
+        SET_ERR(err, INTERNAL_ERROR, "Failed to get thread data", "Invalid arguments passed");
         return NULL;
     }
 
     ThreadData* thread_data = (ThreadData*) malloc(sizeof(ThreadData));
     if (thread_data == NULL) {
-        REPORT_ERR("malloc\n");
+        LOG_ERR("Failed to allocate memory for thread data");
+        SET_ERR(err, errno, "Failed to allocate memory for thread data", strerror(errno));
         return NULL;
     }
+
     thread_data->file_row_groups_ranges = row_groups_ranges;
     thread_data->group_columns_data_types = group_columns_types;
     thread_data->select_columns_types = select_columns_types;
@@ -132,13 +204,14 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
     thread_data->thread_index = thread_index;
     thread_data->num_threads = num_threads;
 
-    thread_data->n_files = request->n_files_names;
-    thread_data->n_group_columns = request->n_group_columns;
-    thread_data->n_select = request->n_select;
+    thread_data->n_files = (int)request->n_files_names;
+    thread_data->n_group_columns = (int)request->n_group_columns;
+    thread_data->n_select = (int)request->n_select;
 
     thread_data->file_names = (char**)malloc(sizeof(char*) * thread_data->n_files);
     if(thread_data->file_names == NULL) {
-        REPORT_ERR("malloc\n");
+        LOG_ERR("Failed to allocate memory for files names");
+        SET_ERR(err, errno, "Failed to allocate memory for files names", strerror(errno));
         worker_group_free_thread_data(thread_data);
         return NULL;
     }
@@ -146,7 +219,8 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
     for(int i=0; i<thread_data->n_files; i++) {
         thread_data->file_names[i] = strdup(request->files_names[i]);
         if(thread_data->file_names[i] == NULL) {
-            REPORT_ERR("strdup\n");
+            LOG_ERR("Failed to duplicate file name");
+            SET_ERR(err, errno, "Failed to duplicate file name", strerror(errno));
             worker_group_free_thread_data(thread_data);
             return NULL;
         }
@@ -156,28 +230,39 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
 
     thread_data->selects_indices = (int*)malloc(sizeof(int) * thread_data->n_select);
     if(thread_data->selects_indices == NULL) {
-        REPORT_ERR("malloc\n");
+        LOG_ERR("Failed to allocate memory for selects indices");
+        SET_ERR(err, errno, "Failed to allocate memory for selects indices", strerror(errno));
         worker_group_free_thread_data(thread_data);
         return NULL;
     }
 
     thread_data->selects_aggregate_functions = (AggregateFunction*)malloc(sizeof(AggregateFunction) * thread_data->n_select);
     if(thread_data->selects_aggregate_functions == NULL) {
-        REPORT_ERR("malloc\n");
+        LOG_ERR("Failed to allocate memory for selects aggregate functions");
+        SET_ERR(err, errno, "Failed to allocate memory for selects aggregate functions", strerror(errno));
         worker_group_free_thread_data(thread_data);
         return NULL;
     }
 
     for(int i=0; i<thread_data->n_select; i++) {
-        Select* select = request->select[i];
+        const Select* select = request->select[i];
         thread_data->selects_indices[i]= select_indices[i];
-        thread_data->selects_aggregate_functions[i] = worker_group_map_aggregate_function(select->function);
+        thread_data->selects_aggregate_functions[i] = worker_group_map_aggregate_function(select->function, err);
+        if (err->error_code != NO_ERROR) {
+            worker_group_free_thread_data(thread_data);
+            return NULL;
+        }
     }
 
     return thread_data;
 }
 
-AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate) {
+AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate, ErrorInfo* err) {
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return UNKNOWN;
+    }
+
     switch (aggregate) {
         case AGGREGATE__Minimum:
             return MIN;
@@ -188,7 +273,8 @@ AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate) {
         case AGGREGATE__Median:
             return MEDIAN;
         default:
-            INTERNAL_ERROR("Unknown Aggregate function, can't map to AggregateFunction type\n");
+            LOG_INTERNAL_ERR("Unsupported aggregate function");
+            SET_ERR(err, INTERNAL_ERROR, "Unsupported aggregate function", "");
             return UNKNOWN;
     }
 }
@@ -211,18 +297,27 @@ void worker_group_free_thread_data(ThreadData* thread_data) {
     free(thread_data);
 }
 
-RowGroupsRange** worker_group_get_row_group_ranges(int n_files, char** file_names, int num_threads) {
+RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** file_names, const int num_threads,
+        ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return NULL;
+    }
+
     RowGroupsRange** row_group_ranges = (RowGroupsRange**) malloc(sizeof(RowGroupsRange*) * num_threads);
     if(row_group_ranges == NULL) {
-        REPORT_ERR("malloc\n");
+        LOG_ERR("Failed to allocate memory for row_group_ranges");
+        SET_ERR(err, errno, "Failed to allocate memory for row_group_ranges", strerror(errno));
         return NULL;
     }
 
     for(int i=0; i<num_threads; i++) {
         row_group_ranges[i] = (RowGroupsRange*) malloc(sizeof(RowGroupsRange)*n_files);
         if(row_group_ranges[i] == NULL) {
-            REPORT_ERR("malloc\n");
-               worker_group_free_row_group_ranges(row_group_ranges, i);
+            LOG_ERR("Failed to allocate memory for row_group_ranges");
+            SET_ERR(err, errno, "Failed to allocate memory for row_group_ranges", strerror(errno));
+            worker_group_free_row_group_ranges(row_group_ranges, i);
             return NULL;
         }
     }
@@ -233,12 +328,12 @@ RowGroupsRange** worker_group_get_row_group_ranges(int n_files, char** file_name
         GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(file_names[i], &error);
 
         if(reader == NULL) {
-            report_g_error(error);
+            report_g_error(error, err, "Failed to open file");
             worker_group_free_row_group_ranges(row_group_ranges, n_files);
             return NULL;
         }
 
-        gint row_groups_count = gparquet_arrow_file_reader_get_n_row_groups(reader);
+        const gint row_groups_count = gparquet_arrow_file_reader_get_n_row_groups(reader);
 
         int start = 0;
         for(int j=0 ;j <num_threads; j++) {
@@ -253,7 +348,7 @@ RowGroupsRange** worker_group_get_row_group_ranges(int n_files, char** file_name
     return row_group_ranges;
 }
 
-void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, int count) {
+void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, const int count) {
     if(row_group_ranges == NULL)
         return;
 
@@ -266,72 +361,89 @@ void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, int c
     free(row_group_ranges);
 }
 
-int worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices) {
+void worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices,
+        ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return;
+    }
+
     if(request->files_names == NULL || request->files_names[0] == NULL) {
-        INTERNAL_ERROR("worker_group_get_columns_indices: File names is NULL\n");
-        return FALSE;
+        LOG_INTERNAL_ERR("Failed to get columns indices: Files names were NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Failed to get columns indices", "Files names were NULL");
+        return;
     }
 
     GError* error = NULL;
     // i assume all files have the same schema
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(request->files_names[0], &error);
     if(reader == NULL) {
-        report_g_error(error);
-        return FALSE;
+        report_g_error(error, err, "Failed to open file");
+        return;
     }
 
     GArrowSchema* schema = gparquet_arrow_file_reader_get_schema(reader, &error);
     if(schema == NULL) {
-        report_g_error(error);
-        return FALSE;
+        report_g_error(error, err, "Failed to get schema");
+        return;
     }
 
     for(int i=0; i<request->n_group_columns; i++) {
         grouping_indices[i] = garrow_schema_get_field_index(schema, request->group_columns[i]);
         if(grouping_indices[i] == -1) {
-            INTERNAL_ERROR("worker_group_get_columns_indices: Cannot find provided column name\n");
+            LOG_INTERNAL_ERR("Failed to get grouping indices: Cannot find provided column name");
             fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
-            return FALSE;
+            SET_ERR(err, INTERNAL_ERROR, "Failed to get grouping indices", "Cannot find provided column name");
+            return;
         }
     }
 
     for(int i=0; i<request->n_select; i++) {
         select_indices[i] = garrow_schema_get_field_index(schema, request->select[i]->column);
         if(select_indices[i] == -1) {
-            INTERNAL_ERROR("worker_group_get_columns_indices: Cannot find provided column name\n");
-            fprintf(stderr, "Cannot find provided column: %s\n", request->select[i]->column);
-            return FALSE;
+            LOG_INTERNAL_ERR("Failed to get select indices: Cannot find provided column name");
+            fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
+            SET_ERR(err, INTERNAL_ERROR, "Failed to get select indices", "Cannot find provided column name");
+            return;
         }
     }
-
-    return TRUE;
 }
 
-ColumnDataType* worker_group_get_columns_data_types(int* indices, int indices_count, const char* filename) {
+ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indices_count, const char* filename,
+        ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return NULL;
+    }
+
     ColumnDataType* data_types = malloc(sizeof(ColumnDataType) * indices_count);
-    if(!data_types) {
+    if(data_types == NULL) {
+        LOG_ERR("Failed to allocate memory for data_types");
+        SET_ERR(err, errno, "Failed to allocate memory for columns data types", strerror(errno));
         return NULL ;
     }
 
     GError* error = NULL;
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(filename, &error);
     if(reader == NULL) {
-        report_g_error(error);
+        report_g_error(error, err, "Failed to open file");
         free(data_types);
         return NULL;
     }
 
     GArrowSchema* schema = gparquet_arrow_file_reader_get_schema(reader, &error);
     if(schema == NULL) {
+        report_g_error(error, err, "Failed to get schema");
         free(data_types);
-        report_g_error(error);
         return NULL;
     }
 
     for(int i=0; i<indices_count; i++) {
         GArrowField* field = garrow_schema_get_field(schema, indices[i]);
         if(field == NULL) {
-            report_g_error(error);
+            report_g_error(error, err, "Failed to get field");
             free(data_types);
             g_object_unref(field);
             g_object_unref(schema);
@@ -345,18 +457,30 @@ ColumnDataType* worker_group_get_columns_data_types(int* indices, int indices_co
         printf("Column %d has datatype %s\n", i, data_type_string);
         g_free(data_type_string);
 
-        data_types[i] = worker_group_map_arrow_data_type(data_type);
+        data_types[i] = worker_group_map_arrow_data_type(data_type, err);
+        if (err->error_code != NO_ERROR) {
+            free(data_types);
+            g_object_unref(field);
+            g_object_unref(schema);
+            g_object_unref(reader);
+            return NULL;
+        }
+
         g_object_unref(field);
     }
 
     g_object_unref(schema);
     g_object_unref(reader);
 
-
     return data_types;
 }
 
-ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type) {
+ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, ErrorInfo* err) {
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return -1;
+    }
+
     if(GARROW_IS_INT32_DATA_TYPE(data_type) ) {
         return COLUMN_DATA_TYPE_INT32;
     }
@@ -368,6 +492,9 @@ ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type) {
     if(GARROW_IS_STRING_DATA_TYPE(data_type)) {
         return COLUMN_DATA_TYPE_STRING;
     }
+
+    LOG_INTERNAL_ERR("Unsupported data type");
+    SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
     return COLUMN_DATA_TYPE_UNKNOWN;
 }
 

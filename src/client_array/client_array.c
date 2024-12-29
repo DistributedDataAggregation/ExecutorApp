@@ -15,6 +15,12 @@
 #include "socket_utilities.h"
 
 void client_array_init(ClientArray* array, const size_t initial_capacity, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return;
+    }
+
     array->clients = malloc(initial_capacity * sizeof(int));
     if (array->clients == NULL) {
         LOG_ERR("Failed to allocate memory for a client array");
@@ -27,6 +33,12 @@ void client_array_init(ClientArray* array, const size_t initial_capacity, ErrorI
 }
 
 void client_array_add_client(ClientArray* array, const int client_fd, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return;
+    }
+
     if (array->count == array->capacity) {
         array->capacity *= 2;
         array->clients = realloc(array->clients, array->capacity * sizeof(int));
@@ -34,12 +46,18 @@ void client_array_add_client(ClientArray* array, const int client_fd, ErrorInfo*
             LOG_ERR("Failed to reallocate memory for a client array");
             SET_ERR(err, errno, "Failed to reallocate memory for a client array", strerror(errno));
             return;
-        }
+        }// TODO handle exit?? or we need to wait for other thread anyway (now)
     }
     array->clients[array->count++] = client_fd;
 }
 
 void client_array_accept_clients(ClientArray* array, const int socket_fd, const fd_set* read_fds, ErrorInfo* err) {
+
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return;
+    }
+
     if (FD_ISSET(socket_fd, read_fds)) {
         int client_fd;
         while ((client_fd = accept_client(socket_fd, TRUE, err)) != -1) {

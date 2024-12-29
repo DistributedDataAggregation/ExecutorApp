@@ -95,7 +95,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(data->file_names[index_of_the_file], &error);
 
     if(reader == NULL) {
-        report_g_error(error);
+        report_g_error(error, err, "compute_file");
         // TODO: handle failing thread computation
         return;
     }
@@ -110,7 +110,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
 
     gint* columns_indices = malloc(sizeof(gint) * number_of_columns);
     if(columns_indices == NULL) {
-        report_g_error(error);
+        report_g_error(error, err, "compute_file");
         return;
     }
 
@@ -124,7 +124,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
 
     int *new_columns_indices = malloc(sizeof(int) * number_of_columns);
     if(!new_columns_indices) {
-        report_g_error(error);
+        report_g_error(error, err, "compute_file");
         return;
     }
     worker_calculate_new_column_indices(new_columns_indices, columns_indices, number_of_columns);
@@ -137,7 +137,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
         GArrowTable* table = gparquet_arrow_file_reader_read_row_group(reader, i, columns_indices, number_of_columns, &error);
 
         if(table == NULL) {
-            report_g_error(error);
+            report_g_error(error, err, "compute_file");
             return;
         }
 
@@ -183,7 +183,7 @@ void compute_file(int index_of_the_file,const ThreadData* data, HashTable* hash_
 
             gint number_of_rows = garrow_array_count(grouping_arrays[0], NULL, &error);
             if(error != NULL) {
-                report_g_error(error);
+                report_g_error(error, err, "compute_file");
                 g_object_unref(select_arrays);
                 free(grouping_arrays);
                 return;

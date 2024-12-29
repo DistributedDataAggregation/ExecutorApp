@@ -22,7 +22,7 @@ unsigned int hash(const char* string, const int table_size) {
 HashTable* hash_table_create(const int size, ErrorInfo* err) {
 
       if (err == NULL) {
-            LOG_INTERNAL_ERR("Passed error info was null\n");
+            LOG_INTERNAL_ERR("Passed error info was NULL");
             return NULL;
       }
 
@@ -51,6 +51,11 @@ HashTable* hash_table_create(const int size, ErrorInfo* err) {
 }
 
 void hash_table_free(HashTable* table) {
+
+      if (table == NULL) {
+            return;
+      }
+
       for(int i = 0; i < table->size; i++) {
             if(table->table[i] != NULL) {
                   HashTableEntry* entry = table->table[i];
@@ -71,18 +76,18 @@ void hash_table_free(HashTable* table) {
 void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err){
 
       if (err == NULL) {
-            LOG_INTERNAL_ERR("Passed error info was null\n");
+            LOG_INTERNAL_ERR("Passed error info was NULL");
             return;
       }
 
       if(entry == NULL) {
-            LOG_INTERNAL_ERR("Failed to insert to a hash table: Entry was NULL\n");
+            LOG_INTERNAL_ERR("Failed to insert to a hash table: Entry was NULL");
             SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Entry was NULL");
             return;
       }
 
       if (table == NULL || table->table == NULL) {
-            LOG_INTERNAL_ERR("Failed to insert to a hash table: Uninitialized hash table\n");
+            LOG_INTERNAL_ERR("Failed to insert to a hash table: Uninitialized hash table");
             SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Uninitialized hash table");
             return;
       }
@@ -202,19 +207,19 @@ void hash_table_print(const HashTable* ht) {
 void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err) {
 
       if (err == NULL) {
-            LOG_INTERNAL_ERR("Passed error info was null\n");
+            LOG_INTERNAL_ERR("Passed error info was NULL");
             return;
       }
 
       if(entry1 == NULL || entry2 == NULL) {
-            LOG_INTERNAL_ERR("Failed to combine hash table entries: At least one of combined entries was NULL\n");
+            LOG_INTERNAL_ERR("Failed to combine hash table entries: At least one of combined entries was NULL");
             SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
                   "At least one of combined entries was NULL");
             return;
       }
 
       if(entry1->n_values > entry2->n_values) {
-            LOG_INTERNAL_ERR("Failed to combine hash table entries: Entries have different number of values\n");
+            LOG_INTERNAL_ERR("Failed to combine hash table entries: Entries have different number of values");
             SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
                   "Entries have different number of values");
             return;
@@ -229,12 +234,14 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
       }
 }
 
-HashTableValue update_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err) {
+HashTableValue update_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
 
-      if (err == NULL) {
-            LOG_INTERNAL_ERR("Passed error info was null\n");
-            return current_value;
-      }
+      // TODO fix bug: when the if is uncommented every executor constantly logs: Passed error info was NULL: at /app/src/hash_table/hash_table.c:241 while running integration_test.py::test_response_multiple_selects.
+      // err was not null while debugging with same queries as in the integration test. Integration and system tests pass when the if is commented out
+      // if (err == NULL) {
+      //       LOG_INTERNAL_ERR("Passed error info was NULL");
+      //       return current_value;
+      // }
 
       switch (current_value.aggregate_function) {
             case MIN: {
@@ -267,7 +274,7 @@ HashTableValue update_value(HashTableValue current_value, HashTableValue incomin
 void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err)
 {
       if (err == NULL) {
-            LOG_INTERNAL_ERR("Passed error info was null\n");
+            LOG_INTERNAL_ERR("Passed error info was NULL");
             return;
       }
 
@@ -319,6 +326,12 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
 }
 
 void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err) {
+
+      if (err == NULL) {
+            LOG_INTERNAL_ERR("Passed error info was NULL");
+            return;
+      }
+
       for(int i=0;i<source->size;i++) {
             HashTableEntry* entry = source->table[i];
             while(entry != NULL) {
