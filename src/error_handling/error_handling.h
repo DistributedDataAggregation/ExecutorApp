@@ -17,6 +17,7 @@ typedef struct ErrorInfo {
 #define NO_ERROR 0
 #define INTERNAL_ERROR -1
 #define G_ERROR -2
+#define SOCKET_CLOSED -3
 
 #define SET_ERR(err, code, msg, inner_msg) do { \
     if (err) { \

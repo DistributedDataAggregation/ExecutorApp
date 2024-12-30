@@ -32,8 +32,8 @@ int main_thread_run() {
     printf("Running main thread\n");
     ErrorInfo error_info = {0};
 
-    const int controllers_port = get_port_from_env("EXECUTOR_CONTROLLER_PORT", &error_info);
-    const int executors_port = get_port_from_env("EXECUTOR_EXECUTOR_PORT", &error_info);
+    const int controllers_port = 8080; //get_port_from_env("EXECUTOR_CONTROLLER_PORT", &error_info);
+    const int executors_port = 8081; //get_port_from_env("EXECUTOR_EXECUTOR_PORT", &error_info);
     if (error_info.error_code != NO_ERROR)
         return EXIT_FAILURE;
 
@@ -97,9 +97,12 @@ int main_thread_run() {
                 main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
                     executors_socket_fd, &main_executors_sockets, &error_info);
                 if (error_info.error_code != NO_ERROR) {
-                    // printf("Removing client: %d\n", controllers_client_array.clients[i]);
-                    // client_array_remove_client(&controllers_client_array, i);
-                    // i--;
+                    if (error_info.error_code == SOCKET_CLOSED || error_info.error_code == EAGAIN
+                        || error_info.error_code == ECONNRESET || error_info.error_code == EPIPE) {
+                        printf("Removing client: %d\n", controllers_client_array.clients[i]);
+                        client_array_remove_client(&controllers_client_array, i);
+                        i--;
+                    }
                     // TODO handle failed request from controller (connections errors and error while sending failure response)
                     CLEAR_ERR(&error_info);
                 }
@@ -198,7 +201,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         prepare_and_send_response(client_fd, ht, err);
         if (err->error_code != NO_ERROR) {
             LOG_INTERNAL_ERR("Failed to send response to controller");
-            // TODO handle failed send to controller
+            // TODO handle failed send to controller, retry if EAGAIN lub EWOULDBLOCK? (closing in main thread)
         }
 
     }
@@ -216,7 +219,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             prepare_and_send_response(main_executor_socket, ht, err);
             if (err->error_code != NO_ERROR) {
                 LOG_INTERNAL_ERR("Failed to send response to main executor\n");
-                // TODO handle failed send to main
+                // TODO handle failed send to main, retry if EAGAIN lub EWOULDBLOCK, close if EPIPE, ECONNRESET?
             }
             else {
                 printf("Sent results to main\n");

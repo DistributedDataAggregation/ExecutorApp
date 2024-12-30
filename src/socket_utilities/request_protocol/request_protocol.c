@@ -227,7 +227,13 @@ QueryResponse* parse_query_response(const int client_fd, ErrorInfo *err)
 }
 
 void get_message_size(const int client_fd, uint32_t* message_size, ErrorInfo *err) {
-    if (read(client_fd, message_size, sizeof(uint32_t)) <= 0) {
+    const ssize_t bytes = read(client_fd, message_size, sizeof(uint32_t));
+    if (bytes == 0) {
+        LOG_INTERNAL_ERR("Failed reading message size: Attempted to read from a closed socket");
+        SET_ERR(err, SOCKET_CLOSED, "Failed reading message size", "Attempted to read from a closed socket");
+        return;
+    }
+    if (bytes < 0) {
         LOG_ERR("Failed reading message size");
         SET_ERR(err, errno, "Failed reading message size", strerror(errno));
         return;
@@ -244,9 +250,14 @@ void get_packed_proto_buffer(const int client_fd, const uint32_t message_size, u
 
     while(total_bytes_read < (message_size)) {
         bytes = read(client_fd, buffer+total_bytes_read, (message_size)-total_bytes_read);
-        if (bytes<= 0) {
-            LOG_ERR("Failed to read message buffer");
-            SET_ERR(err, errno, "Failed to read message buffer", strerror(errno));
+        if (bytes == 0) {
+            LOG_INTERNAL_ERR("Failed reading message size: Attempted to read from a closed socket");
+            SET_ERR(err, SOCKET_CLOSED, "Failed reading message size", "Attempted to read from a closed socket");
+            return;
+        }
+        if (bytes < 0) {
+            LOG_ERR("Failed reading message size");
+            SET_ERR(err, errno, "Failed reading message size", strerror(errno));
             return;
         }
         total_bytes_read += bytes;
