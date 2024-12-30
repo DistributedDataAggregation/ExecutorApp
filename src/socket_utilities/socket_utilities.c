@@ -19,9 +19,10 @@
 #define CONNECTIONS_MAX 3
 
 int create_and_listen_on_tcp_socket(const char* address_string, const int so_reuse,
-        const int non_blocking, const int port, ErrorInfo* err) {
-
-    if (err == NULL) {
+                                    const int non_blocking, const int port, ErrorInfo* err)
+{
+    if (err == NULL)
+    {
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
@@ -30,7 +31,8 @@ int create_and_listen_on_tcp_socket(const char* address_string, const int so_reu
     if (err->error_code != NO_ERROR)
         return -1;
 
-    if(listen(socket_fd, CONNECTIONS_MAX) == -1) {
+    if (listen(socket_fd, CONNECTIONS_MAX) == -1)
+    {
         close(socket_fd);
         LOG_ERR("Failed to listen on a socket");
         SET_ERR(err, errno, "Failed to listen on a socket", strerror(errno));
@@ -41,37 +43,44 @@ int create_and_listen_on_tcp_socket(const char* address_string, const int so_reu
 }
 
 int create_tcp_socket(const char* address_string, const int so_reuse, const int non_blocking,
-        const int port, ErrorInfo* err) {
-
-    if (err == NULL) {
+                      const int port, ErrorInfo* err)
+{
+    if (err == NULL)
+    {
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 
     const int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
+    if (socket_fd < 0)
+    {
         LOG_ERR("Failed to create socket");
         SET_ERR(err, errno, "Failed to create socket", strerror(errno));
         return -1;
     }
 
-    if (setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, (int[]){1}, sizeof(int)) == -1) { // TODO is IPPROTO_TCP ok?
+    if (setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, (int[]){1}, sizeof(int)) == -1)
+    {
+        // TODO is IPPROTO_TCP ok?
         close(socket_fd);
         LOG_ERR("Failed to set TCP_NODELAY on a socket");
         SET_ERR(err, errno, "Failed to set TCP_NODELAY on a socket", strerror(errno));
         return -1;
     }
 
-    if (non_blocking == TRUE) {
+    if (non_blocking == TRUE)
+    {
         const int flags = fcntl(socket_fd, F_GETFL, 0);
-        if (flags == -1) {
+        if (flags == -1)
+        {
             close(socket_fd);
             LOG_ERR("Failed to get socket flags");
             SET_ERR(err, errno, "Failed to get socket flags", strerror(errno));
             return -1;
         }
 
-        if (fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        if (fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK) == -1)
+        {
             close(socket_fd);
             LOG_ERR("Failed to set O_NONBLOCK socket flag");
             SET_ERR(err, errno, "Failed to set O_NONBLOCK socket flag", strerror(errno));
@@ -79,9 +88,11 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
         }
     }
 
-    if(so_reuse == TRUE) {
+    if (so_reuse == TRUE)
+    {
         const int opt = 1;
-        if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+        {
             close(socket_fd);
             LOG_ERR("Failed to set SO_REUSEADDR on a socket");
             SET_ERR(err, errno, "Failed to set SO_REUSEADDR on a socket", strerror(errno));
@@ -94,14 +105,16 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
         .sin_port = htons(port)
     };
 
-    if (inet_aton(address_string, &address.sin_addr) == 0) {
+    if (inet_aton(address_string, &address.sin_addr) == 0)
+    {
         close(socket_fd);
         LOG_ERR("Failed to convert ip address");
         SET_ERR(err, errno, "Failed to convert ip address", strerror(errno));
         return -1;
     }
 
-    if (bind(socket_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
+    if (bind(socket_fd, (struct sockaddr*)&address, sizeof(address)) == -1)
+    {
         close(socket_fd);
         LOG_ERR("Failed to bind socket");
         SET_ERR(err, errno, "Failed to bind socket", strerror(errno));
@@ -111,18 +124,23 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
     return socket_fd;
 }
 
-int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err) {
-
-    if (err == NULL) {
+int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err)
+{
+    if (err == NULL)
+    {
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 
     const int client_fd = accept(socket_fd, NULL, NULL);
-    if(client_fd == -1) {
-        if(is_non_blocking == TRUE && (errno == EWOULDBLOCK || errno == EAGAIN)) {
+    if (client_fd == -1)
+    {
+        if (is_non_blocking == TRUE && (errno == EWOULDBLOCK || errno == EAGAIN))
+        {
             LOG("No pending client connections\n");
-        } else {
+        }
+        else
+        {
             close(socket_fd);
             LOG_ERR("Failed to accept a client connection");
             SET_ERR(err, errno, "Failed to accept a client connection", strerror(errno));
@@ -133,22 +151,25 @@ int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err
     return client_fd;
 }
 
-int get_port_from_env(const char* env_var, ErrorInfo* err) {
-
-    if (err == NULL) {
+int get_port_from_env(const char* env_var, ErrorInfo* err)
+{
+    if (err == NULL)
+    {
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
     }
 
     const char* port_str = getenv(env_var);
-    if(port_str == NULL) {
+    if (port_str == NULL)
+    {
         LOG_ERR("Could not get port env variable");
         SET_ERR(err, -1, "Could not get port env variable", "");
         return -1;
     }
 
     const long int port = strtol(port_str, NULL, 0);
-    if (errno != 0) {
+    if (errno != 0)
+    {
         LOG_ERR("Could not get port number from port string");
         SET_ERR(err, -1, "Could not get port number from port string", "");
         return -1;

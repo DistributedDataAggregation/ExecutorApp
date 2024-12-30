@@ -8,7 +8,8 @@
 #include <stdlib.h>
 #include "error_handling.h"
 
-typedef struct {
+typedef struct
+{
     int* clients;
     size_t count;
     size_t capacity;
