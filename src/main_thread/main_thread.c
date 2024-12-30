@@ -2,66 +2,70 @@
 // Created by karol on 26.10.24.
 //
 
+#include <google/protobuf-c/protobuf-c.h>
+#include <parquet-glib/arrow-file-reader.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <arpa/inet.h>
-
-#include "main_thread.h"
-
-#include <errno.h>
-#include <string.h>
-
-#include "error_utilites.h"
-#include "socket_utilities.h"
+#include <unistd.h>
 #include "boolean.h"
-#include "request_protocol/request_protocol.h"
+#include "client_array.h"
+#include "error_handling.h"
+#include "executors_server.h"
+#include "hash_table.h"
+#include "main_thread.h"
 #include "query_request.pb-c.h"
 #include "query_response.pb-c.h"
-#include <google/protobuf-c/protobuf-c.h>
-
-#include <parquet-glib/arrow-file-reader.h>
-
-#include "hash_table.h"
+#include "request_protocol/request_protocol.h"
+#include "socket_utilities.h"
 #include "worker_group.h"
-#include "hash_table_to_query_response_converter.h"
 
-#include "client_array.h"
-#include "executors_server.h"
+#define INITIAL_SIZE 10
 
-int main_thread_handle_client(int client_fd, ClientArray* executors_client_array, int executors_socket_fd,
-    MainExecutorsSockets* main_executors_sockets);
+void main_thread_handle_client(int client_fd, ClientArray* executors_client_array, int executors_socket_fd,
+    MainExecutorsSockets* main_executors_sockets, ErrorInfo* err);
 
 int main_thread_run() {
 
-    printf("Running main thread\n");
-    const char* controllers_port = getenv("EXECUTOR_CONTROLLER_PORT");
-    if(controllers_port == NULL) {
-        fprintf(stderr, "EXECUTOR_CONTROLLER_PORT not set\n");
-        exit(EXIT_FAILURE);
-    }
+    errno = 0;
 
-    const char* executors_port = getenv("EXECUTOR_EXECUTOR_PORT");
-    if(executors_port == NULL) {
-        fprintf(stderr, "EXECUTOR_EXECUTOR_PORT not set\n");
-        exit(EXIT_FAILURE);
-    }
+    printf("Running main thread\n");
+    ErrorInfo error_info = {0};
+
+    const int controllers_port = get_port_from_env("EXECUTOR_CONTROLLER_PORT", &error_info);
+    const int executors_port = get_port_from_env("EXECUTOR_EXECUTOR_PORT", &error_info);
+    if (error_info.error_code != NO_ERROR)
+        return EXIT_FAILURE;
 
     const int controllers_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
-        TRUE, TRUE, atoi(controllers_port));
+        TRUE, TRUE, controllers_port, &error_info);
     const int executors_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
-        TRUE, TRUE, atoi(executors_port));
+        TRUE, TRUE, executors_port, &error_info);
+    if (error_info.error_code != NO_ERROR) {
+        close(controllers_socket_fd);
+        close(executors_socket_fd);
+        return EXIT_FAILURE;
+    }
+
+    printf("Listening on ports %d and %d\n", controllers_port, executors_port);
 
     ClientArray controllers_client_array;
-    client_array_init(&controllers_client_array, 10);
+    client_array_init(&controllers_client_array, INITIAL_SIZE, &error_info);
 
     ClientArray executors_client_array;
-    client_array_init(&executors_client_array, 10);
+    client_array_init(&executors_client_array, INITIAL_SIZE, &error_info);
 
     MainExecutorsSockets main_executors_sockets;
-    executors_server_init_main_executors_sockets(&main_executors_sockets, 10);
+    executors_server_init_main_executors_sockets(&main_executors_sockets, INITIAL_SIZE, &error_info);
+
+    if (error_info.error_code != NO_ERROR) {
+        client_array_free(&controllers_client_array);
+        client_array_free(&executors_client_array);
+        executors_server_free(&main_executors_sockets);
+        close(controllers_socket_fd);
+        close(executors_socket_fd);
+        return EXIT_FAILURE;
+    }
 
     while (1) {
 
@@ -72,26 +76,32 @@ int main_thread_run() {
 
         client_array_set_clients(&controllers_client_array, &max_fd, &read_fds);
 
-        struct timeval timeout;
-        timeout.tv_sec = 1;
-        timeout.tv_usec = 0;
+        struct timeval timeout = {
+            .tv_sec = 1,
+            .tv_usec = 0
+        };
 
-        int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
-
+        const int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
         if (select_result < 0) {
-            perror("select");
+            LOG_ERR("Failed on select");
             break;
         }
 
-        client_array_accept_clients(&controllers_client_array, controllers_socket_fd, &read_fds);
+        client_array_accept_clients(&controllers_client_array, controllers_socket_fd, &read_fds, &error_info);
+        if (error_info.error_code != NO_ERROR) {
+            CLEAR_ERR(&error_info); // TODO handle failed connection from controller
+        }
 
         for (size_t i = 0; i < controllers_client_array.count; i++) {
             if (FD_ISSET(controllers_client_array.clients[i], &read_fds)) {
-                if (main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
-                    executors_socket_fd, &main_executors_sockets) != EXIT_SUCCESS) {
-                    printf("Removing client: %d\n", controllers_client_array.clients[i]);
-                    client_array_remove_client(&controllers_client_array, i);
-                    i--;
+                main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
+                    executors_socket_fd, &main_executors_sockets, &error_info);
+                if (error_info.error_code != NO_ERROR) {
+                    // printf("Removing client: %d\n", controllers_client_array.clients[i]);
+                    // client_array_remove_client(&controllers_client_array, i);
+                    // i--;
+                    // TODO handle failed request from controller (connections errors and error while sending failure response)
+                    CLEAR_ERR(&error_info);
                 }
                 fflush(stdout);
             }
@@ -100,30 +110,42 @@ int main_thread_run() {
 
     client_array_free(&controllers_client_array);
     client_array_free(&executors_client_array);
+    executors_server_free(&main_executors_sockets);
     close(controllers_socket_fd);
+    close(executors_socket_fd);
     return EXIT_SUCCESS;
 }
 
-int main_thread_handle_client(int client_fd, ClientArray* executors_client_array, const int executors_socket_fd,
-    MainExecutorsSockets* main_executors_sockets) {
+void main_thread_handle_client(const int client_fd, ClientArray* executors_client_array, const int executors_socket_fd,
+    MainExecutorsSockets* main_executors_sockets, ErrorInfo* err) {
 
-    QueryRequest* request = parse_incoming_request(client_fd);
-    HashTable* ht = NULL;
-    int worker_group_result = worker_group_run_request(request, &ht);
-
-    if(worker_group_result == -1)
-    {
-        perror("Failed to run worker group");
-        exit(EXIT_FAILURE);
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return; // TODO handle ??
     }
+
+    QueryRequest* request = parse_incoming_request(client_fd, err);
+    if (err->error_code != NO_ERROR) {
+        return; // TODO handle ?? error message should be send to controller but we dont know with executor is main
+    }
+
+    HashTable* ht = NULL;
 
     if (request->executor->is_current_node_main) {
         printf("This node is main\n");
 
+        worker_group_run_request(request, &ht, err);
+
+        if(err->error_code != NO_ERROR)
+        {
+            // TODO send_failure response right away or wait for other executors to send their response?
+            // if we wait, we need to initialize the hash table because it may be null
+        }
+
         int collected = 0;
         const int others_count = request->executor->executors_count-1;
 
-        while (collected < others_count) {
+        while (collected < others_count) {  // TODO timeout??
 
             fd_set read_fds;
             FD_ZERO(&read_fds);
@@ -132,42 +154,77 @@ int main_thread_handle_client(int client_fd, ClientArray* executors_client_array
 
             client_array_set_clients(executors_client_array, &max_fd, &read_fds);
 
-            struct timeval timeout;
-            timeout.tv_sec = 1;
-            timeout.tv_usec = 0;
+            struct timeval timeout = {
+                .tv_sec = 1,
+                .tv_usec = 0
+            };
 
             const int select_result = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
 
             if (select_result < 0) {
-                perror("select");
-                break;
+                LOG_ERR("Failed on select waiting for other executors");
+                SET_ERR(err, errno, "Failed on select waiting for other executors", strerror(errno));
+                break; // TODO or exit_failure??
             }
 
-            client_array_accept_clients(executors_client_array, executors_socket_fd, &read_fds);
+            client_array_accept_clients(executors_client_array, executors_socket_fd, &read_fds, err);
+            if (err->error_code != NO_ERROR) {
+                CLEAR_ERR(err); // TODO handle failed connection from executor
+            }
 
             for (size_t i = 0; i < executors_client_array->count && collected < others_count; i++) {
                 if (FD_ISSET(executors_client_array->clients[i], &read_fds)) {
-                    QueryResponse* response = parse_query_response(executors_client_array->clients[i]);
-                    hash_table_combine_table_with_response(ht, response);
+                    const QueryResponse* response = parse_query_response(executors_client_array->clients[i], err);
+                    if (err->error_code != NO_ERROR) {
+                        // TODO send_failure response right away or wait for other executors to send their response?
+                    }
+                    if (response->error != NULL) {
+                        LOG_INTERNAL_ERR("Received failure response from a slave executor");
+                        SET_ERR(err, INTERNAL_ERROR, response->error->message, response->error->inner_message); // TODO test it
+                        // TODO send_failure response right away or wait for other executors to send their response?
+                    }
+                    else {
+                        hash_table_combine_table_with_response(ht, response, err);
+                        if (err->error_code != NO_ERROR) {
+                            // TODO send_failure response right away or wait for other executors to send their response?
+                        }
+                    }
                     collected++;
                 }
             }
         }
 
         printf("Collected from other nodes\n");
-        send_reponse(client_fd, ht);
+        prepare_and_send_response(client_fd, ht, err);
+        if (err->error_code != NO_ERROR) {
+            LOG_INTERNAL_ERR("Failed to send response to controller");
+            // TODO handle failed send to controller
+        }
 
     }
 
     else {
         printf("This node is slave\n");
         const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
-            request->executor->main_ip_address, request->executor->main_port);
-        send_reponse(main_executor_socket, ht);
-        printf("Sent results to main\n");
+            request->executor->main_ip_address, request->executor->main_port, err);
+        if (err->error_code != NO_ERROR) {
+            LOG_INTERNAL_ERR("Failed to connect to main executor\n");
+            // TODO handle failed connection to main
+        }
+        else {
+            worker_group_run_request(request, &ht, err);
+            prepare_and_send_response(main_executor_socket, ht, err);
+            if (err->error_code != NO_ERROR) {
+                LOG_INTERNAL_ERR("Failed to send response to main executor\n");
+                // TODO handle failed send to main
+            }
+            else {
+                printf("Sent results to main\n");
+            }
+        }
     }
 
     hash_table_free(ht);
     query_request__free_unpacked(request, NULL);
-    return EXIT_SUCCESS;
+
 }

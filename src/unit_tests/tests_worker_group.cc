@@ -6,6 +6,7 @@
 #include <cstring>
 
 TEST(MapArrowDataTypeTest, Int32Type) {
+    ErrorInfo error_info = {0};
 
     GArrowInt32DataType* int32_data_type_specific = garrow_int32_data_type_new();
     ASSERT_NE(int32_data_type_specific, nullptr);
@@ -14,7 +15,7 @@ TEST(MapArrowDataTypeTest, Int32Type) {
     GArrowDataType* int32_data_type = GARROW_DATA_TYPE(int32_data_type_specific);
     ASSERT_NE(int32_data_type, nullptr);
 
-    ColumnDataType result = worker_group_map_arrow_data_type(int32_data_type);
+    ColumnDataType result = worker_group_map_arrow_data_type(int32_data_type, &error_info);
     EXPECT_EQ(result, COLUMN_DATA_TYPE_INT32);
 
     g_object_unref(int32_data_type);
@@ -41,18 +42,22 @@ TEST(MapArrowDataTypeTest, Int32Type) {
 // }
 
 TEST(MapArrowDataTypeTest, UnknownType) {
+    ErrorInfo error_info = {0};
+
     GArrowDataType* unknown_data_type = nullptr;
-    ColumnDataType result = worker_group_map_arrow_data_type(unknown_data_type);
+    ColumnDataType result = worker_group_map_arrow_data_type(unknown_data_type, &error_info);
     EXPECT_EQ(result, COLUMN_DATA_TYPE_UNKNOWN);
 }
 
 
 
 TEST(MapArrowDataTypeTest, StringType) {
+    ErrorInfo error_info = {0};
+
     GArrowDataType* string_data_type = GARROW_DATA_TYPE(garrow_string_data_type_new());
     ASSERT_NE(string_data_type, nullptr);
 
-    ColumnDataType result = worker_group_map_arrow_data_type(string_data_type);
+    ColumnDataType result = worker_group_map_arrow_data_type(string_data_type, &error_info);
     EXPECT_EQ(result, COLUMN_DATA_TYPE_STRING);
 
     g_object_unref(string_data_type);
@@ -61,6 +66,8 @@ TEST(MapArrowDataTypeTest, StringType) {
 
 
 TEST(WorkerGroupTests, GetColumnsIndices) {
+    ErrorInfo error_info = {0};
+
     QueryRequest request = QUERY_REQUEST__INIT;
     request.n_group_columns = 1;
     request.group_columns = (char**)malloc(sizeof(char*));
@@ -74,7 +81,8 @@ TEST(WorkerGroupTests, GetColumnsIndices) {
     int grouping_indices[1];
     int select_indices[1];
 
-    EXPECT_FALSE(worker_group_get_columns_indices(&request, grouping_indices, select_indices));
+    worker_group_get_columns_indices(&request, grouping_indices, select_indices, &error_info);
+    EXPECT_NE(error_info.error_code, NO_ERROR);
 
     free(request.group_columns[0]);
     free(request.group_columns);
@@ -84,8 +92,9 @@ TEST(WorkerGroupTests, GetColumnsIndices) {
 }
 
 TEST(WorkerGroupTests, GetRowGroupRanges) {
+    ErrorInfo error_info = {0};
     char* file_names[] = {"test.parquet"};
-    RowGroupsRange** ranges = worker_group_get_row_group_ranges(1, file_names, 2);
+    RowGroupsRange** ranges = worker_group_get_row_group_ranges(1, file_names, 2, &error_info);
 
     EXPECT_EQ(ranges, nullptr);
 }
@@ -102,13 +111,16 @@ TEST(WorkerGroupTests, FreeRowGroupRanges) {
 }
 
 TEST(WorkerGroupTests, RunRequest_NullRequest) {
+    ErrorInfo error_info = {0};
     HashTable* hash_table = nullptr;
-    int result = worker_group_run_request(nullptr, &hash_table);
-    EXPECT_EQ(result, -1);
+    worker_group_run_request(nullptr, &hash_table, &error_info);
+    EXPECT_NE(error_info.error_code, NO_ERROR);
 }
 
 TEST(WorkerGroupTests, GetThreadData_NullRequest) {
-    ThreadData* thread_data = worker_group_get_thread_data(nullptr, 0, 1, nullptr, nullptr, nullptr, nullptr, nullptr);
+    ErrorInfo error_info = {0};
+    ThreadData* thread_data = worker_group_get_thread_data(nullptr, 0, 1, nullptr,
+        nullptr, nullptr, nullptr, nullptr, &error_info);
     EXPECT_EQ(thread_data, nullptr);
 }
 

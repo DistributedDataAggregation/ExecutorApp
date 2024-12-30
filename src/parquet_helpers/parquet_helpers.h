@@ -6,7 +6,8 @@
 #define PARQUET_HELPERS_H
 
 #include <parquet-glib/arrow-file-reader.h>
+#include "error_handling.h"
 
-void report_g_error(GError* error);
+void report_g_error(GError* error, ErrorInfo* err, const char* error_message);
 
 #endif //PARQUET_HELPERS_H

@@ -2,8 +2,8 @@
 // Created by karol on 10.11.24.
 //
 
-#ifndef AGGREGATEFUNCTION_H
-#define AGGREGATEFUNCTION_H
+#ifndef AGGREGATE_FUNCTION_H
+#define AGGREGATE_FUNCTION_H
 
 typedef enum aggregate_function {
     UNKNOWN = -1,
@@ -13,4 +13,4 @@ typedef enum aggregate_function {
     MEDIAN = 3,
 } AggregateFunction;
 
-#endif //AGGREGATEFUNCTION_H
+#endif //AGGREGATE_FUNCTION_H

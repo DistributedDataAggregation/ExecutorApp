@@ -7,7 +7,9 @@ extern "C" {
 
 
 TEST(HashTableTest, CreateHashTable) {
-    HashTable* ht = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* ht = hash_table_create(10, &error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->size, 10);
 
@@ -15,7 +17,9 @@ TEST(HashTableTest, CreateHashTable) {
 }
 
 TEST(HashTableTest, AddToHashTable) {
-    HashTable* ht = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* ht = hash_table_create(10, &error_info);
 
     const char* key = "war1|war2|war3|war4|war5";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -31,7 +35,7 @@ TEST(HashTableTest, AddToHashTable) {
         entry->values[i].value = 100;
     }
 
-    hash_table_insert(ht, entry);
+    hash_table_insert(ht, entry, &error_info);
     HashTableEntry* returned = hash_table_search(ht, key);
 
     ASSERT_NE(returned, nullptr);
@@ -58,7 +62,9 @@ TEST(HashTableTest, AddToHashTable) {
 }
 
 TEST(HashTableTest, SearchInHashTable) {
-    HashTable* ht = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* ht = hash_table_create(10, &error_info);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -70,7 +76,7 @@ TEST(HashTableTest, SearchInHashTable) {
     entry->values[0].aggregate_function = MAX;
     entry->values[0].value = 200;
 
-    hash_table_insert(ht, entry);
+    hash_table_insert(ht, entry, &error_info);
 
     HashTableEntry* found = hash_table_search(ht, key);
     ASSERT_NE(found, nullptr);
@@ -85,7 +91,9 @@ TEST(HashTableTest, SearchInHashTable) {
 }
 
 TEST(HashTableTest, DeleteFromHashTable) {
-    HashTable* ht = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* ht = hash_table_create(10, &error_info);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -97,7 +105,7 @@ TEST(HashTableTest, DeleteFromHashTable) {
     entry->values[0].aggregate_function = AVG;
     entry->values[0].value = 300;
 
-    hash_table_insert(ht, entry);
+    hash_table_insert(ht, entry, &error_info);
 
     hash_table_delete(ht, key);
     HashTableEntry* found = hash_table_search(ht, key);
@@ -107,6 +115,8 @@ TEST(HashTableTest, DeleteFromHashTable) {
 }
 
 TEST(HashTableTest, CombineEntries) {
+    ErrorInfo error_info = {0};
+
     HashTableEntry entry1;
     entry1.key = strdup("key1");
     entry1.n_values = 1;
@@ -121,7 +131,7 @@ TEST(HashTableTest, CombineEntries) {
     entry2.values[0].aggregate_function = MIN;
     entry2.values[0].value = 300;
 
-    hash_table_combine_entries(&entry1, &entry2);
+    hash_table_combine_entries(&entry1, &entry2, &error_info);
     EXPECT_EQ(entry1.values[0].value, 300);
 
     free(entry1.values);
@@ -129,8 +139,10 @@ TEST(HashTableTest, CombineEntries) {
 }
 
 TEST(HashTableTest, CombineHashTables) {
-    HashTable* destination = hash_table_create(10);
-    HashTable* source = hash_table_create(10);
+    ErrorInfo error_info = {0};
+
+    HashTable* destination = hash_table_create(10, &error_info);
+    HashTable* source = hash_table_create(10, &error_info);
 
     const char* key1 = "key1";
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -148,8 +160,8 @@ TEST(HashTableTest, CombineHashTables) {
     entry2->values[0].aggregate_function = MIN;
     entry2->values[0].value = 400;
 
-    hash_table_insert(source, entry1);
-    hash_table_insert(source, entry2);
+    hash_table_insert(source, entry1, &error_info);
+    hash_table_insert(source, entry2, &error_info);
 
     const char* key1_duplicate = "key1";
     HashTableEntry* entry1_duplicate = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -159,7 +171,7 @@ TEST(HashTableTest, CombineHashTables) {
     entry1_duplicate->values[0].aggregate_function = MIN;
     entry1_duplicate->values[0].value = 500;
 
-    hash_table_insert(destination, entry1_duplicate);
+    hash_table_insert(destination, entry1_duplicate, &error_info);
 
     // hash_table_combine_hash_tables(destination, source);
     //
