@@ -41,8 +41,12 @@ int main_thread_run() {
         TRUE, TRUE, controllers_port, &error_info);
     const int executors_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
         TRUE, TRUE, executors_port, &error_info);
-    if (error_info.error_code != NO_ERROR)
+    if (error_info.error_code != NO_ERROR) {
+        close(controllers_socket_fd);
+        close(executors_socket_fd);
         return EXIT_FAILURE;
+    }
+
     printf("Listening on ports %d and %d\n", controllers_port, executors_port);
 
     ClientArray controllers_client_array;
@@ -54,8 +58,14 @@ int main_thread_run() {
     MainExecutorsSockets main_executors_sockets;
     executors_server_init_main_executors_sockets(&main_executors_sockets, INITIAL_SIZE, &error_info);
 
-    if (error_info.error_code != NO_ERROR)
+    if (error_info.error_code != NO_ERROR) {
+        client_array_free(&controllers_client_array);
+        client_array_free(&executors_client_array);
+        executors_server_free(&main_executors_sockets);
+        close(controllers_socket_fd);
+        close(executors_socket_fd);
         return EXIT_FAILURE;
+    }
 
     while (1) {
 
@@ -102,6 +112,7 @@ int main_thread_run() {
     client_array_free(&executors_client_array);
     executors_server_free(&main_executors_sockets);
     close(controllers_socket_fd);
+    close(executors_socket_fd);
     return EXIT_SUCCESS;
 }
 
