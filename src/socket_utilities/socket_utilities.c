@@ -14,6 +14,8 @@
 #include "error_handling.h"
 #include "socket_utilities.h"
 
+#include "logging.h"
+
 #define CONNECTIONS_MAX 3
 
 int create_and_listen_on_tcp_socket(const char* address_string, const int so_reuse,
@@ -119,7 +121,7 @@ int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err
     const int client_fd = accept(socket_fd, NULL, NULL);
     if(client_fd == -1) {
         if(is_non_blocking == TRUE && (errno == EWOULDBLOCK || errno == EAGAIN)) {
-            printf("No pending client connections\n");
+            LOG("No pending client connections\n");
         } else {
             close(socket_fd);
             LOG_ERR("Failed to accept a client connection");

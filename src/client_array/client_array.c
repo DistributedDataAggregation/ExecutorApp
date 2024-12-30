@@ -12,6 +12,7 @@
 #include "boolean.h"
 #include "client_array.h"
 #include "error_handling.h"
+#include "logging.h"
 #include "socket_utilities.h"
 
 void client_array_init(ClientArray* array, const size_t initial_capacity, ErrorInfo* err) {
@@ -63,7 +64,7 @@ void client_array_accept_clients(ClientArray* array, const int socket_fd, const 
         while ((client_fd = accept_client(socket_fd, TRUE, err)) != -1) {
             if (err->error_code != NO_ERROR)
                 return;
-            printf("Client connected: %d\n", client_fd);
+            LOG("Client connected: %d\n", client_fd);
             client_array_add_client(array, client_fd, err);
             if (err->error_code != NO_ERROR)
                 return;

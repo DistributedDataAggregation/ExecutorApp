@@ -10,6 +10,8 @@
 #include "../parquet_helpers/parquet_helpers.h"
 #include "thread_data.h"
 #include "worker_group.h"
+
+#include "logging.h"
 #include "workers/worker.h"
 
 #define NUM_THREADS 4
@@ -324,7 +326,7 @@ RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** fil
 
     for(int i=0; i<n_files; i++) {
         GError* error = NULL;
-        printf("File name: %s\n", file_names[i]);
+        LOG("File name: %s\n", file_names[i]);
         GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(file_names[i], &error);
 
         if(reader == NULL) {
@@ -454,7 +456,7 @@ ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indi
         GArrowDataType* data_type = garrow_field_get_data_type(field);
 
         gchar* data_type_string = garrow_data_type_to_string(data_type);
-        printf("Column %d has datatype %s\n", i, data_type_string);
+        LOG("Column %d has datatype %s\n", i, data_type_string);
         g_free(data_type_string);
 
         data_types[i] = worker_group_map_arrow_data_type(data_type, err);

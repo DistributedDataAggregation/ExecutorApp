@@ -19,6 +19,7 @@
 #include "request_protocol/request_protocol.h"
 #include "socket_utilities.h"
 #include "worker_group.h"
+#include "logging.h"
 
 #define INITIAL_SIZE 10
 
@@ -29,7 +30,7 @@ int main_thread_run() {
 
     errno = 0;
 
-    printf("Running main thread\n");
+    LOG("Starting main thread\n");
     ErrorInfo error_info = {0};
 
     const int controllers_port = get_port_from_env("EXECUTOR_CONTROLLER_PORT", &error_info);
@@ -47,7 +48,7 @@ int main_thread_run() {
         return EXIT_FAILURE;
     }
 
-    printf("Listening on ports %d and %d\n", controllers_port, executors_port);
+    LOG("Listening on ports %d and %d\n", controllers_port, executors_port);
 
     ClientArray controllers_client_array;
     client_array_init(&controllers_client_array, INITIAL_SIZE, &error_info);
@@ -97,7 +98,7 @@ int main_thread_run() {
                 main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
                     executors_socket_fd, &main_executors_sockets, &error_info);
                 if (error_info.error_code != NO_ERROR) {
-                    // printf("Removing client: %d\n", controllers_client_array.clients[i]);
+                    // LOG("Removing client: %d\n", controllers_client_array.clients[i]);
                     // client_array_remove_client(&controllers_client_array, i);
                     // i--;
                     // TODO handle failed request from controller (connections errors and error while sending failure response)
@@ -132,8 +133,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     HashTable* ht = NULL;
 
     if (request->executor->is_current_node_main) {
-        printf("This node is main\n");
-
+        LOG("This node is main\n");
         worker_group_run_request(request, &ht, err);
 
         if(err->error_code != NO_ERROR)
@@ -194,7 +194,8 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             }
         }
 
-        printf("Collected from other nodes\n");
+        LOG("Collected from other nodes\n");
+
         prepare_and_send_response(client_fd, ht, err);
         if (err->error_code != NO_ERROR) {
             LOG_INTERNAL_ERR("Failed to send response to controller");
@@ -204,7 +205,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     else {
-        printf("This node is slave\n");
+        LOG("This node is slave\n");
         const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
             request->executor->main_ip_address, request->executor->main_port, err);
         if (err->error_code != NO_ERROR) {
@@ -219,7 +220,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                 // TODO handle failed send to main
             }
             else {
-                printf("Sent results to main\n");
+                LOG("Sent results to main\n");
             }
         }
     }

@@ -13,6 +13,8 @@
 #include "query_response.pb-c.h"
 #include "request_protocol.h"
 
+#include "logging.h"
+
 void get_message_size(int client_fd, uint32_t* message_size, ErrorInfo *err);
 void get_packed_proto_buffer(int client_fd, uint32_t message_size, uint8_t* buffer, ErrorInfo *err);
 
@@ -234,7 +236,7 @@ void get_message_size(const int client_fd, uint32_t* message_size, ErrorInfo *er
     }
     (*message_size) = ntohl((*message_size));
 
-    printf("Message size: %d\n", (*message_size));
+    LOG("Message size: %d\n", (*message_size));
 }
 
 void get_packed_proto_buffer(const int client_fd, const uint32_t message_size, uint8_t* buffer, ErrorInfo *err)

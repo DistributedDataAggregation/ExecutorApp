@@ -9,6 +9,8 @@
 #include "worker.h"
 #include <sys/types.h>
 
+#include "logging.h"
+
 void* compute_on_thread(void* arg) {
     ThreadData* data = (ThreadData*)arg;
     ErrorInfo err= {0}; // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
@@ -17,10 +19,10 @@ void* compute_on_thread(void* arg) {
     HashTable* ht = hash_table_create(10, &err);
     for(int i=0;i<data->n_files;i++) {
         compute_file(i, data, ht, &err);
-        printf("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
+        LOG("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
     }
 
-    printf("[%d] Finished\n", data->thread_index);
+    LOG("[%d] Finished\n", data->thread_index);
 
     return ht;
 }
@@ -29,28 +31,28 @@ void print_thread_data(ThreadData* data) {
     if (!data) return;
 
     // Preface every print with thread_index
-    printf("Thread %d:\n", data->thread_index);
+    LOG("Thread %d:\n", data->thread_index);
 
     // Print number of threads
-    printf("Thread %d: Number of threads: %d\n", data->thread_index, data->num_threads);
+    LOG("Thread %d: Number of threads: %d\n", data->thread_index, data->num_threads);
 
     // Print number of files and file names
-    printf("Thread %d: Number of files: %d\n", data->thread_index, data->n_files);
+    LOG("Thread %d: Number of files: %d\n", data->thread_index, data->n_files);
     for (int i = 0; i < data->n_files; i++) {
-        printf("Thread %d: File %d: %s\n", data->thread_index, i, data->file_names[i]);
-        printf("Thread %d: File %d Row Groups - Start: %d, Count: %d\n",
+        LOG("Thread %d: File %d: %s\n", data->thread_index, i, data->file_names[i]);
+        LOG("Thread %d: File %d Row Groups - Start: %d, Count: %d\n",
                 data->thread_index, i, data->file_row_groups_ranges[i].start,
                 data->file_row_groups_ranges[i].count);
     }
 
     // Print group columns
-    printf("Thread %d: Number of group columns: %d\n", data->thread_index, data->n_group_columns);
+    LOG("Thread %d: Number of group columns: %d\n", data->thread_index, data->n_group_columns);
     for (int i = 0; i < data->n_group_columns; i++) {
-        printf("Thread %d: Group Column %d: %d\n", data->thread_index, i, data->group_columns_indices[i]);
+        LOG("Thread %d: Group Column %d: %d\n", data->thread_index, i, data->group_columns_indices[i]);
     }
 
     // Print selected columns and aggregate functions
-    printf("Thread %d: Number of select columns: %d\n", data->thread_index, data->n_select);
+    LOG("Thread %d: Number of select columns: %d\n", data->thread_index, data->n_select);
     for (int i = 0; i < data->n_select; i++) {
         char* agg_func;
         switch (data->selects_aggregate_functions[i]) {
@@ -60,7 +62,7 @@ void print_thread_data(ThreadData* data) {
             case MEDIAN: agg_func = "MEDIAN"; break;
             default: agg_func = "UNKNOWN"; break;
         }
-        printf("Thread %d: Select Column %d: %d, Aggregate Function: %s\n",
+        LOG("Thread %d: Select Column %d: %d, Aggregate Function: %s\n",
                 data->thread_index, i, data->selects_indices[i], agg_func);
     }
 }
@@ -116,7 +118,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
     worker_calculate_new_column_indices(new_columns_indices, columns_indices, number_of_columns);
 
     for(int i=0;i<number_of_columns;i++) {
-        printf("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
+        LOG("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
     }
 
     for(int i = start_row_group; i < end; i++) {
@@ -243,7 +245,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     return;
                 }
 
-                //printf("Grouping string: %s\n", grouping_string);
+                //LOG("Grouping string: %s\n", grouping_string);
 
                 // TODO:
                 //calculate the aggregates
@@ -298,7 +300,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     free(hash_table_values);
                     free(grouping_string);
                 }
-               // printf("[%d] processed row index %d\n", data->thread_index, row_index);
+               // LOG("[%d] processed row index %d\n", data->thread_index, row_index);
             }
 
 
@@ -324,10 +326,10 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         free(grouping_chunked_arrays);
         free(select_chunked_arrays);
 
-        //printf("[%d] Finished row group number %d\n", data->thread_index, i);
+        //LOG("[%d] Finished row group number %d\n", data->thread_index, i);
     }
 
-    //printf("[%d] Finished calculations for file\n", data->thread_index);
+    //LOG("[%d] Finished calculations for file\n", data->thread_index);
     g_object_unref(reader);
     free(columns_indices);
     free(new_columns_indices);
