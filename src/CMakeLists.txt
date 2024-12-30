@@ -26,6 +26,7 @@ add_library(ExecutorLib STATIC
         executors_server/executors_server.c
         converters/hash_table_to_query_response_converter.c
         error_handling/error_handling.h
+        logging/logging.h
 )
 
 target_include_directories(ExecutorLib PUBLIC
@@ -42,6 +43,7 @@ target_include_directories(ExecutorLib PUBLIC
         client_array
         executors_server
         error_handling
+        logging
 )
 
 target_link_libraries(ExecutorLib ${PARQUET_LIBRARIES} protobuf-c)
