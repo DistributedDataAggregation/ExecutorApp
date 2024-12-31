@@ -57,8 +57,10 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         return;
     }
 
-    int* grouping_indices = (int*)malloc(sizeof(int) * request->n_group_columns);
-    if (grouping_indices == NULL)
+    const int total_columns_count = (int)request->n_group_columns+ (int)request->n_select;
+
+    int* column_indices = (int*)malloc(sizeof(int) * total_columns_count);
+    if (column_indices == NULL)
     {
         LOG_ERR("Failed to allocate memory for grouping indices");
         SET_ERR(err, errno, "Failed to allocate memory for grouping indices", strerror(errno));
@@ -67,37 +69,40 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         return;
     }
 
-    int* select_indices = (int*)malloc(sizeof(int) * request->n_select);
-    if (select_indices == NULL)
-    {
-        LOG_ERR("Failed to allocate memory for select indices");
-        SET_ERR(err, errno, "Failed to allocate memory for select indices", strerror(errno));
-        free(threads);
-        free(row_group_ranges);
-        free(grouping_indices);
-        return;
-    }
-
-    worker_group_get_columns_indices(request, grouping_indices, select_indices, err);
+    worker_group_get_columns_indices(request, column_indices, err);
     if (err->error_code != NO_ERROR)
     {
         free(threads);
         free(row_group_ranges);
-        free(grouping_indices);
-        free(select_indices);
+        free(column_indices);
         return;
     }
 
-    ColumnDataType* grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices,
-        (int)request->n_group_columns, request->files_names[0], err);
-    ColumnDataType* select_columns_data_type = worker_group_get_columns_data_types(select_indices,
-        (int)request->n_select, request->files_names[0], err);
+    int* columns_non_repeating_mappings = (int*)malloc(sizeof(int) * total_columns_count);
+    if (columns_non_repeating_mappings == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for grouping indices");
+        SET_ERR(err, errno, "Failed to allocate memory for grouping indices", strerror(errno));
+        free(threads);
+        free(row_group_ranges);
+        free(column_indices);
+        return;
+    }
+    worker_group_calculate_new_column_indices(columns_non_repeating_mappings, column_indices, total_columns_count);
+
+    ColumnDataType* grouping_columns_data_type = worker_group_get_columns_data_types(column_indices,
+        request->n_group_columns + request->n_select,
+        request->n_group_columns, 0, request->files_names[0], err);
+
+    ColumnDataType* select_columns_data_type = worker_group_get_columns_data_types(column_indices,
+        request->n_group_columns + request->n_select,
+        request->n_select, request->n_group_columns,  request->files_names[0], err);
+
     if (err->error_code != NO_ERROR)
     {
         free(threads);
         free(row_group_ranges);
-        free(grouping_indices);
-        free(select_indices);
+        free(column_indices);
         free(grouping_columns_data_type);
         free(select_columns_data_type);
         return;
@@ -110,8 +115,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         SET_ERR(err, errno, "Failed to allocate memory for thread data", strerror(errno));
         free(threads);
         free(row_group_ranges);
-        free(grouping_indices);
-        free(select_indices);
+        free(column_indices);
         free(grouping_columns_data_type);
         free(select_columns_data_type);
         return;
@@ -120,7 +124,8 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     for (int i = 0; i < threads_count; i++)
     {
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
-                                                      grouping_indices, select_indices, grouping_columns_data_type,
+                                                      column_indices, columns_non_repeating_mappings,
+                                                      grouping_columns_data_type,
                                                       select_columns_data_type, err);
         if (err->error_code != NO_ERROR)
         {
@@ -130,8 +135,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
             }
             free(threads);
             free(row_group_ranges);
-            free(grouping_indices);
-            free(select_indices);
             free(grouping_columns_data_type);
             free(select_columns_data_type);
             free(thread_data);
@@ -149,8 +152,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
             }
             free(threads);
             free(row_group_ranges);
-            free(grouping_indices);
-            free(select_indices);
             free(grouping_columns_data_type);
             free(select_columns_data_type);
             free(thread_data);
@@ -190,18 +191,15 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
 
     free(threads);
     free(row_group_ranges);
-    free(grouping_indices);
-    free(select_indices);
     free(grouping_columns_data_type);
     free(select_columns_data_type);
     free(thread_data);
 }
 
 ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int thread_index, const int num_threads,
-                                         RowGroupsRange* row_groups_ranges, int* grouping_indices,
-                                         const int* select_indices,
-                                         ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         ErrorInfo* err)
+                                             RowGroupsRange* row_groups_ranges, int* columns_indices, int* columns_non_repeating_mappings,
+                                             ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
+                                             ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -256,16 +254,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
         }
     }
 
-    thread_data->group_columns_indices = grouping_indices;
-
-    thread_data->selects_indices = (int*)malloc(sizeof(int) * thread_data->n_select);
-    if (thread_data->selects_indices == NULL)
-    {
-        LOG_ERR("Failed to allocate memory for selects indices");
-        SET_ERR(err, errno, "Failed to allocate memory for selects indices", strerror(errno));
-        worker_group_free_thread_data(thread_data);
-        return NULL;
-    }
+    thread_data->columns_indices = columns_indices;
 
     thread_data->selects_aggregate_functions = (AggregateFunction*)malloc(
         sizeof(AggregateFunction) * thread_data->n_select);
@@ -280,7 +269,6 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     for (int i = 0; i < thread_data->n_select; i++)
     {
         const Select* select = request->select[i];
-        thread_data->selects_indices[i] = select_indices[i];
         thread_data->selects_aggregate_functions[i] = worker_group_map_aggregate_function(select->function, err);
         if (err->error_code != NO_ERROR)
         {
@@ -288,6 +276,8 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
             return NULL;
         }
     }
+
+    thread_data->columns_non_repeating_mapping = columns_non_repeating_mappings;
 
     return thread_data;
 }
@@ -336,7 +326,11 @@ void worker_group_free_thread_data(ThreadData* thread_data)
 
     free(thread_data->selects_aggregate_functions);
     free(thread_data->file_row_groups_ranges);
+    free(thread_data->columns_indices);
+    free(thread_data->columns_non_repeating_mapping);
     free(thread_data);
+
+    thread_data = NULL;
 }
 
 RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** file_names, const int num_threads,
@@ -413,7 +407,7 @@ void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, const
     free(row_group_ranges);
 }
 
-void worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices,
+void worker_group_get_columns_indices(const QueryRequest* request, int* column_indices,
                                       ErrorInfo* err)
 {
     if (err == NULL)
@@ -447,8 +441,8 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
 
     for (int i = 0; i < request->n_group_columns; i++)
     {
-        grouping_indices[i] = garrow_schema_get_field_index(schema, request->group_columns[i]);
-        if (grouping_indices[i] == -1)
+        column_indices[i] = garrow_schema_get_field_index(schema, request->group_columns[i]);
+        if (column_indices[i] == -1)
         {
             LOG_INTERNAL_ERR("Failed to get grouping indices: Cannot find provided column name");
             fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
@@ -459,19 +453,19 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
 
     for (int i = 0; i < request->n_select; i++)
     {
-        select_indices[i] = garrow_schema_get_field_index(schema, request->select[i]->column);
-        if (select_indices[i] == -1)
+        column_indices[i+request->n_group_columns] = garrow_schema_get_field_index(schema, request->select[i]->column);
+        if (column_indices[i+request->n_group_columns] == -1)
         {
             LOG_INTERNAL_ERR("Failed to get select indices: Cannot find provided column name");
-            fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
+            fprintf(stderr, "Cannot find provided column: %s\n", request->select[i]->column);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get select indices", "Cannot find provided column name");
             return;
         }
     }
 }
 
-ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indices_count, const char* filename,
-                                                    ErrorInfo* err)
+ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indices_size, int indices_count,
+    int offset_from_start, const char* filename, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -568,4 +562,37 @@ ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, Error
     LOG_INTERNAL_ERR("Unsupported data type");
     SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
     return COLUMN_DATA_TYPE_UNKNOWN;
+}
+
+void worker_group_calculate_new_column_indices(int* new_column_indices, const gint* old_column_indices,
+                                         const int number_of_columns)
+{
+    gint* unique_values = malloc(sizeof(gint)*number_of_columns);
+    int unique_count = 0;
+
+    for (int i = 0; i < number_of_columns; i++)
+    {
+        int found = -1;
+        for (int j = 0; j < unique_count; j++)
+        {
+            if (unique_values[j] == old_column_indices[i])
+            {
+                found = j;
+                break;
+            }
+        }
+
+        if (found == -1)
+        {
+            unique_values[unique_count] = old_column_indices[i];
+            new_column_indices[i] = unique_count;
+            unique_count++;
+        }
+        else
+        {
+            new_column_indices[i] = found;
+        }
+    }
+
+    free(unique_values);
 }
