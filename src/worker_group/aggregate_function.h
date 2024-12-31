@@ -5,7 +5,8 @@
 #ifndef AGGREGATE_FUNCTION_H
 #define AGGREGATE_FUNCTION_H
 
-typedef enum aggregate_function {
+typedef enum aggregate_function
+{
     UNKNOWN = -1,
     MIN = 0,
     MAX = 1,

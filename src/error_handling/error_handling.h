@@ -8,7 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct ErrorInfo {
+typedef struct ErrorInfo
+{
     int error_code;
     char error_message[256];
     char inner_error_message[256];

@@ -6,7 +6,8 @@
 #include "aggregate_function.h"
 
 
-typedef enum ColumnDataType {
+typedef enum ColumnDataType
+{
     COLUMN_DATA_TYPE_INT32,
     COLUMN_DATA_TYPE_INT64,
     COLUMN_DATA_TYPE_STRING,
@@ -20,12 +21,14 @@ typedef enum ColumnDataType {
 //     AggregateFunction aggregate;
 // } SelectData;
 
-typedef struct RowGroupsRange{
+typedef struct RowGroupsRange
+{
     int start;
     int count;
 } RowGroupsRange;
 
-typedef struct thread_data {
+typedef struct thread_data
+{
     int num_threads;
     int thread_index;
 
