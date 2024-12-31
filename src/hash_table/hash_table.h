@@ -5,28 +5,33 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-#include "aggregate_function.h"
+
 #include "error_handling.h"
 #include "query_response.pb-c.h"
+#include "aggregate_function.h"
 
-typedef struct HashTableValue {
+typedef struct HashTableValue
+{
     long value;
     long count;
     AggregateFunction aggregate_function;
 } HashTableValue;
 
-typedef struct HashTableEntry {
+typedef struct HashTableEntry
+{
     char* key;
     int n_values;
     HashTableValue* values;
     struct HashTableEntry* next;
 } HashTableEntry;
 
-typedef struct HashTable {
+typedef struct HashTable
+{
     int size;
     int entries_count;
     HashTableEntry** table;
 } HashTable;
+
 
 unsigned int hash(const char* string, int table_size);
 HashTable* hash_table_create(int size, ErrorInfo* err);
@@ -38,6 +43,6 @@ void hash_table_print(const HashTable* ht);
 void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err);
 HashTableValue hash_table_update_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
 void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
-void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err);
+void hash_table_optimized_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err);
 
 #endif //HASH_TABLE_H

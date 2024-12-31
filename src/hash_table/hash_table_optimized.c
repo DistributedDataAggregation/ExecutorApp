@@ -5,38 +5,40 @@
 #include "hash_table_optimized.h"
 
 //
-// Created by karol on 31.10.24.
+// Created by kapiszon on 32.12.24.
 //
-
+#include <errno.h>
 #include <stdlib.h>
-#include "farmhash-c.h"
-#include "error.h"
-
-
 #include <stdio.h>
 #include <string.h>
 
-unsigned int hash_new(const char* string, int table_size)
+#include "farmhash-c.h"
+#include "error.h"
+
+void hash_table_resize_new(HashTable* ht);
+
+unsigned int hash_farm(const char* string, int table_size)
 {
       size_t length = strlen(string);
       uint64_t h64 = farmhash64(string, length);
       return h64 & (table_size - 1);
 }
 
-HashTableNew* hash_table_create_new(int size)
+HashTable* hash_table_optimized_create(int size)
 {
-      HashTableNew* hash_table = malloc(sizeof(HashTableNew));
-      hash_table->entries_count = 0;
+      HashTable* hash_table = malloc(sizeof(HashTable));
       if (hash_table == NULL)
       {
-            ERR_AND_EXIT("malloc");
+            return NULL;
       }
 
+      hash_table->entries_count = 0;
       hash_table->size = size;
-      hash_table->table = (HashTableEntryNew**)(malloc(sizeof(HashTableEntryNew*) * size));
+      hash_table->table = (HashTableEntry**)(malloc(sizeof(HashTableEntry*) * size));
+
       if (hash_table->table == NULL)
       {
-            ERR_AND_EXIT("malloc");
+            return NULL;
       }
 
       for (int i = 0; i < size; i++)
@@ -47,11 +49,11 @@ HashTableNew* hash_table_create_new(int size)
       return hash_table;
 }
 
-void hash_table_free_new(HashTableNew* table)
+void hash_table_optimized_free(HashTable* table)
 {
       for (int i = 0; i < table->size; i++)
       {
-            HashTableEntryNew* entry = table->table[i];
+            HashTableEntry* entry = table->table[i];
             if (table->table[i] != NULL && !table->table[i]->is_deleted)
             {
                   free(entry->key);
@@ -68,16 +70,16 @@ void hash_table_free_new(HashTableNew* table)
       free(table);
 }
 
-void hash_table_insert_new(HashTableNew* table, HashTableEntryNew* entry)
+void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry)
 {
       if (entry == NULL)
       {
-            ERR_AND_EXIT("Entry is NULL");
+            return;
       }
 
       if (table == NULL || table->table == NULL)
       {
-            ERR_AND_EXIT("Unitialized hashtable");
+            return;
       }
 
       if (table->entries_count * 2 > (table->size))
@@ -85,7 +87,7 @@ void hash_table_insert_new(HashTableNew* table, HashTableEntryNew* entry)
             hash_table_resize_new(table);
       }
 
-      unsigned int hash_value = hash_new(entry->key, table->size);
+      unsigned int hash_value = hash_farm(entry->key, table->size);
 
       while (table->table[hash_value] != NULL && !table->table[hash_value]->is_deleted)
       {
@@ -98,16 +100,16 @@ void hash_table_insert_new(HashTableNew* table, HashTableEntryNew* entry)
 }
 
 
-void hash_table_resize_new(HashTableNew* ht)
+void hash_table_resize_new(HashTable* ht)
 {
       int new_size = ht->size * 2;
-      HashTableEntryNew** new_table = calloc(new_size, sizeof(HashTableEntryNew*));
+      HashTableEntry** new_table = calloc(new_size, sizeof(HashTableEntry*));
       if (new_table == NULL)
       {
-            ERR_AND_EXIT("Memory allocation failed");
+            return;
       }
 
-      HashTableEntryNew** old_table = ht->table;
+      HashTableEntry** old_table = ht->table;
       int old_size = ht->size;
       ht->table = new_table;
       ht->size = new_size;
@@ -117,23 +119,23 @@ void hash_table_resize_new(HashTableNew* ht)
       {
             if (ht->table[i] != NULL)
             {
-                  hash_table_insert_new(ht, old_table[i]);
+                  hash_table_optimized_insert(ht, old_table[i]);
             }
       }
 
       free(old_table);
 }
 
-HashTableEntryNew* hash_table_search_new(HashTableNew* table, const char* key)
+HashTableEntry* hash_table_optimized_search(HashTable* table, const char* key)
 {
-      unsigned int hash_value = hash_new(key, table->size);
+      unsigned int hash_value = hash_farm(key, table->size);
       if (table->table[hash_value] == NULL)
       {
             return NULL;
       }
 
       unsigned int i = 1;
-      HashTableEntryNew* entry = table->table[(hash_value + i) & (table->size - 1)];
+      HashTableEntry* entry = table->table[(hash_value + i) & (table->size - 1)];
       while (entry != NULL)
       {
             if (strcmp(entry->key, key) == 0)
@@ -149,18 +151,18 @@ HashTableEntryNew* hash_table_search_new(HashTableNew* table, const char* key)
       return NULL;
 }
 
-void hash_table_delete_new(HashTableNew* table, const char* key)
+void hash_table_optimized_delete(HashTable* table, const char* key)
 {
       if (table == NULL || table->table == NULL || key == NULL)
       {
-            ERR_AND_EXIT("Invalid table or key");
+            return;
       }
 
-      unsigned int hash_value = hash_new(key, table->size);
+      unsigned int hash_value = hash_farm(key, table->size);
 
       while (table->table[hash_value] != NULL)
       {
-            HashTableEntryNew* current = table->table[hash_value];
+            HashTableEntry* current = table->table[hash_value];
 
             if (!current->is_deleted && strcmp(current->key, key) == 0)
             {
@@ -176,7 +178,7 @@ void hash_table_delete_new(HashTableNew* table, const char* key)
       }
 }
 
-void hash_table_print_new(HashTableNew* ht)
+void hash_table_optimized_print(HashTable* ht)
 {
       if (ht == NULL || ht->table == NULL)
       {
@@ -186,7 +188,7 @@ void hash_table_print_new(HashTableNew* ht)
 
       for (int i = 0; i < ht->size; ++i)
       {
-            HashTableEntryNew* entry = ht->table[i];
+            HashTableEntry* entry = ht->table[i];
 
             if (entry == NULL)
             {
@@ -197,32 +199,32 @@ void hash_table_print_new(HashTableNew* ht)
 
             for (int j = 0; j < entry->n_values; ++j)
             {
-                  HashTableValueNew* value = &entry->values[j];
+                  HashTableValue* value = &entry->values[j];
 
                   switch (value->aggregate_function)
                   {
-                  case MIN_NEW:
+                  case MIN:
                         {
                               printf("  Value[%d]: %ld (Min)\n", j, value->value);
                               break;
                         }
-                  case MAX_NEW:
+                  case MAX:
                         {
                               printf("  Value[%d]: %ld (Max)\n", j, value->value);
                               break;
                         }
-                  case AVG_NEW:
+                  case AVG:
                         {
                               printf("  Value[%d]: Accumulator = %ld, Count = %ld (Average)\n", j, value->value,
                                      value->count);
                               break;
                         }
-                  case MEDIAN_NEW:
+                  case MEDIAN:
                         {
                               printf("  Value[%d]: %ld (Max)\n", j, value->value);
                               break;
                         }
-                  case UNKNOWN_NEW:
+                  case UNKNOWN:
                         {
                               printf("  Value[%d]: (Unknown)\n", j);
                               break;
@@ -233,60 +235,178 @@ void hash_table_print_new(HashTableNew* ht)
       }
 }
 
-void hash_table_combine_entries_new(HashTableEntryNew* entry1, const HashTableEntryNew* entry2)
+
+void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err)
 {
+      if (err == NULL)
+      {
+            LOG_INTERNAL_ERR("Passed error info was NULL");
+            return;
+      }
+
       if (entry1 == NULL || entry2 == NULL)
       {
-            INTERNAL_ERROR("Entry1 or Entry2 is NULL");
+            LOG_INTERNAL_ERR("Failed to combine hash table entries: At least one of combined entries was NULL");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
+                    "At least one of combined entries was NULL");
             return;
       }
 
       if (entry1->n_values > entry2->n_values)
       {
-            INTERNAL_ERROR("Entry1 and Entry2 have different number of values");
+            LOG_INTERNAL_ERR("Failed to combine hash table entries: Entries have different number of values");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
+                    "Entries have different number of values");
             return;
       }
-      int size = entry1->n_values;
+      const int size = entry1->n_values;
 
       for (int i = 0; i < size; i++)
       {
-            entry1->values[i] = update_value_new(entry1->values[i], entry2->values[i]);
+            entry1->values[i] = hash_table_optimized_update_value(entry1->values[i], entry2->values[i], err);
+            if (err->error_code != NO_ERROR)
+            {
+                  return;
+            }
       }
 }
 
-HashTableValueNew update_value_new(HashTableValueNew current_value, HashTableValueNew incoming_value)
+HashTableValue hash_table_optimized_update_value(HashTableValue current_value, HashTableValue incoming_value)
 {
       switch (current_value.aggregate_function)
       {
-      case MIN_NEW:
+      case MIN:
             {
                   current_value.value = incoming_value.value < current_value.value
                                               ? incoming_value.value
                                               : current_value.value;
                   break;
             }
-      case MAX_NEW:
+      case MAX:
             {
                   current_value.value = incoming_value.value > current_value.value
                                               ? incoming_value.value
                                               : current_value.value;
                   break;
             }
-      case AVG_NEW:
+      case AVG:
             {
                   current_value.value += incoming_value.value;
                   current_value.count += incoming_value.count;
                   break;
             }
-      case MEDIAN_NEW:
+      case MEDIAN:
             {
                   // TODO: implement median calculation
                   current_value.value = -1;
                   break;
             }
-      case UNKNOWN_NEW:
+      case UNKNOWN:
             break;
       }
 
       return current_value;
+}
+
+void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err)
+{
+      if (err == NULL)
+      {
+            LOG_INTERNAL_ERR("Passed error info was NULL");
+            return;
+      }
+
+      for (int i = 0; i < query_response->n_values; i++)
+      {
+            const Value* current = query_response->values[i];
+            HashTableValue* values = malloc(sizeof(HashTableValue) * current->n_results);
+            if (values == NULL)
+            {
+                  LOG_ERR("Failed to allocate memory for hash table values");
+                  SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
+                  return;
+            }
+            for (int j = 0; j < current->n_results; j++)
+            {
+                  values[j].value = current->results[j]->value;
+                  values[j].count = current->results[j]->count;
+            }
+
+            HashTableEntry* entry = malloc(sizeof(HashTableEntry));
+            if (entry == NULL)
+            {
+                  LOG_ERR("Failed to allocate memory for hash table entry");
+                  SET_ERR(err, errno, "Failed to allocate memory for hash table entry", strerror(errno));
+                  free(values);
+                  return;
+            }
+
+            entry->key = strdup(current->grouping_value);
+            entry->n_values = (int)current->n_results;
+            entry->values = values;
+
+            HashTableEntry* found = hash_table_optimized_search(ht, entry->key);
+            if (found == NULL)
+            {
+                  hash_table_optimized_insert(ht, entry, err);
+                  if (err->error_code != NO_ERROR)
+                  {
+                        free(values);
+                        free(entry);
+                        return;
+                  }
+            }
+            else
+            {
+                  hash_table_combine_entries(found, entry, err);
+                  if (err->error_code != NO_ERROR)
+                  {
+                        free(values);
+                        free(entry);
+                        return;
+                  }
+            }
+
+            free(values);
+            free(entry);
+      }
+}
+
+void hash_table_optimized_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err)
+{
+      if (err == NULL)
+      {
+            LOG_INTERNAL_ERR("Passed error info was NULL");
+            return;
+      }
+
+      for (int i = 0; i < source->size; i++)
+      {
+            HashTableEntry* entry = source->table[i];
+            while (entry != NULL)
+            {
+                  HashTableEntry* next = entry->next;
+
+                  HashTableEntry* found = hash_table_optimized_search(destination, entry->key);
+                  if (found == NULL)
+                  {
+                        entry->next = NULL;
+                        hash_table_optimized_insert(destination, next, err);
+                        if (err->error_code != NO_ERROR)
+                        {
+                              return;
+                        }
+                  }
+                  else
+                  {
+                        hash_table_optimized_combine_entries(found, entry, err);
+                        if (err->error_code != NO_ERROR)
+                        {
+                              return;
+                        }
+                  }
+
+                  entry = next;
+            }
+      }
 }

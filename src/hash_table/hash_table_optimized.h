@@ -5,55 +5,38 @@
 #ifndef HASH_TABLE_OPTIMIZED_H
 #define HASH_TABLE_OPTIMIZED_H
 //
-// Created by karol on 31.10.24.
+// Created by kacper on 25.12.24.
 //
 
 #ifndef HASH_TABLE_NEW_H
 #define HASH_TABLE_NEW_H
 
-#include <stdbool.h>
+#include <hash_table_struct.h>
+#include <query_response.pb-c.h>
+#include "error_handling.h"
 
-// typedef enum aggregate_function_new
-// {
-//     UNKNOWN_NEW = -1,
-//     MIN_NEW = 0,
-//     MAX_NEW = 1,
-//     AVG_NEW = 2,
-//     MEDIAN_NEW = 3,
-// } AggregateFunctionNew;
-//
-// typedef struct HashTableValueNew
-// {
-//     long value;
-//     long count;
-//     AggregateFunctionNew aggregate_function;
-// } HashTableValueNew;
-//
-// typedef struct HashTableEntryNew
-// {
-//     char* key;
-//     int n_values;
-//     HashTableValueNew* values;
-//     bool is_deleted;
-// } HashTableEntryNew;
-//
-// typedef struct HashTableNew
-// {
-//     int size;
-//     int entries_count;
-//     HashTableEntryNew** table;
-// } HashTableNew;
+unsigned int hash_farm(const char* string, const int table_size);
 
-unsigned int hash_new(const char* string, const int table_size);
-HashTableNew* hash_table_create_new(int size);
-void hash_table_free_new(HashTableNew* table);
-void hash_table_insert_new(HashTableNew* table, HashTableEntryNew* entry);
-HashTableEntryNew* hash_table_search_new(HashTableNew* table, const char* key);
-void hash_table_delete_new(HashTableNew* table, const char* key);
-void hash_table_print_new(HashTableNew* ht);
-void hash_table_combine_entries_new(HashTableEntryNew* entry1, const HashTableEntryNew* entry2);
-HashTableValueNew update_value_new(HashTableValueNew current_value, HashTableValueNew incoming_value);
-void hash_table_resize_new(HashTableNew* ht);
+HashTable* hash_table_optimized_create(int size);
+
+void hash_table_optimized_free(HashTable* table);
+
+void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err);
+
+HashTableEntry* hash_table_optimized_search(HashTable* table, const char* key);
+
+void hash_table_optimized_delete(HashTable* table, const char* key);
+
+void hash_table_optimized_print(HashTable* ht);
+
+void hash_table_optimized_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err);
+
+HashTableValue hash_table_optimized_update_value(HashTableValue current_value, HashTableValue incoming_value,
+                                                 ErrorInfo* err);
+
+void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
+
+void hash_table_optimized_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err);
 
 #endif //HASH_TABLE_NEW_H
 
