@@ -65,9 +65,10 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 
-struct uint128_c_t {
-  uint64_t a;
-  uint64_t b;
+struct uint128_c_t
+{
+    uint64_t a;
+    uint64_t b;
 };
 
 typedef struct uint128_c_t uint128_c_t;
@@ -76,7 +77,11 @@ typedef struct uint128_c_t uint128_c_t;
 static inline uint64_t uint128_c_t_low64(const uint128_c_t x) { return x.a; }
 static inline uint64_t uint128_c_t_high64(const uint128_c_t x) { return x.b; }
 
-static inline uint128_c_t make_uint128_c_t(uint64_t lo, uint64_t hi) { uint128_c_t x = {lo, hi}; return x; }
+static inline uint128_c_t make_uint128_c_t(uint64_t lo, uint64_t hi)
+{
+    uint128_c_t x = {lo, hi};
+    return x;
+}
 
 // BASIC STRING HASHING
 
@@ -113,7 +118,7 @@ uint64_t farmhash64_with_seed(const char* s, size_t len, uint64_t seed);
 // May change from time to time, may differ on different platforms, may differ
 // depending on NDEBUG.
 uint64_t farmhash64_with_seeds(const char* s, size_t len,
-                       uint64_t seed0, uint64_t seed1);
+                               uint64_t seed0, uint64_t seed1);
 
 // Hash function for a byte array.
 // May change from time to time, may differ on different platforms, may differ
@@ -131,15 +136,16 @@ uint128_c_t farmhash128_with_seed(const char* s, size_t len, uint128_c_t seed);
 // This is intended to be a reasonably good hash function.
 // May change from time to time, may differ on different platforms, may differ
 // depending on NDEBUG.
-static inline uint64_t farmhash128_to_64(uint128_c_t x) {
-  // Murmur-inspired hashing.
-  const uint64_t k_mul = 0x9ddfea08eb382d69ULL;
-  uint64_t a = (uint128_c_t_low64(x) ^ uint128_c_t_high64(x)) * k_mul;
-  a ^= (a >> 47);
-  uint64_t b = (uint128_c_t_high64(x) ^ a) * k_mul;
-  b ^= (b >> 47);
-  b *= k_mul;
-  return b;
+static inline uint64_t farmhash128_to_64(uint128_c_t x)
+{
+    // Murmur-inspired hashing.
+    const uint64_t k_mul = 0x9ddfea08eb382d69ULL;
+    uint64_t a = (uint128_c_t_low64(x) ^ uint128_c_t_high64(x)) * k_mul;
+    a ^= (a >> 47);
+    uint64_t b = (uint128_c_t_high64(x) ^ a) * k_mul;
+    b ^= (b >> 47);
+    b *= k_mul;
+    return b;
 }
 
 // FINGERPRINTING (i.e., good, portable, forever-fixed hash functions)
@@ -155,29 +161,31 @@ uint128_c_t farmhash_fingerprint128(const char* s, size_t len);
 
 // This is intended to be a good fingerprinting primitive.
 // See below for more overloads.
-static inline uint64_t farmhash_fingerprint_uint128_c_t(uint128_c_t x) {
-  // Murmur-inspired hashing.
-  const uint64_t k_mul = 0x9ddfea08eb382d69ULL;
-  uint64_t a = (uint128_c_t_low64(x) ^ uint128_c_t_high64(x)) * k_mul;
-  a ^= (a >> 47);
-  uint64_t b = (uint128_c_t_high64(x) ^ a) * k_mul;
-  b ^= (b >> 44);
-  b *= k_mul;
-  b ^= (b >> 41);
-  b *= k_mul;
-  return b;
+static inline uint64_t farmhash_fingerprint_uint128_c_t(uint128_c_t x)
+{
+    // Murmur-inspired hashing.
+    const uint64_t k_mul = 0x9ddfea08eb382d69ULL;
+    uint64_t a = (uint128_c_t_low64(x) ^ uint128_c_t_high64(x)) * k_mul;
+    a ^= (a >> 47);
+    uint64_t b = (uint128_c_t_high64(x) ^ a) * k_mul;
+    b ^= (b >> 44);
+    b *= k_mul;
+    b ^= (b >> 41);
+    b *= k_mul;
+    return b;
 }
 
 // This is intended to be a good fingerprinting primitive.
-static inline uint64_t farmhash_fingerprint_uint64_t(uint64_t x) {
-  // Murmur-inspired hashing.
-  const uint64_t k_mul = 0x9ddfea08eb382d69ULL;
-  uint64_t b = x * k_mul;
-  b ^= (b >> 44);
-  b *= k_mul;
-  b ^= (b >> 41);
-  b *= k_mul;
-  return b;
+static inline uint64_t farmhash_fingerprint_uint64_t(uint64_t x)
+{
+    // Murmur-inspired hashing.
+    const uint64_t k_mul = 0x9ddfea08eb382d69ULL;
+    uint64_t b = x * k_mul;
+    b ^= (b >> 44);
+    b *= k_mul;
+    b ^= (b >> 41);
+    b *= k_mul;
+    return b;
 }
 
 #if defined (__cplusplus)

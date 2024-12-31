@@ -29,6 +29,10 @@ add_library(ExecutorLib STATIC
         logging/logging.h
         hash_table/hash_table_optimized.c
         hash_table/hash_table_optimized.h
+        hash_table/farmhash-c.h
+        hash_table/farmhash-c.c
+        hash_table/hash_table_abstraction.h
+        hash_table/hash_table_struct.h
 )
 
 target_include_directories(ExecutorLib PUBLIC

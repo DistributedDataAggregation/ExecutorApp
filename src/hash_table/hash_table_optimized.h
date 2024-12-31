@@ -4,12 +4,7 @@
 
 #ifndef HASH_TABLE_OPTIMIZED_H
 #define HASH_TABLE_OPTIMIZED_H
-//
-// Created by kacper on 25.12.24.
-//
 
-#ifndef HASH_TABLE_NEW_H
-#define HASH_TABLE_NEW_H
 
 #include <hash_table_struct.h>
 #include <query_response.pb-c.h>
@@ -34,11 +29,10 @@ void hash_table_optimized_combine_entries(HashTableEntry* entry1, const HashTabl
 HashTableValue hash_table_optimized_update_value(HashTableValue current_value, HashTableValue incoming_value,
                                                  ErrorInfo* err);
 
-void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
+void hash_table_combine_table_with_response_optimized(HashTable* ht, const QueryResponse* query_response,
+                                                      ErrorInfo* err);
 
 void hash_table_optimized_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err);
-
-#endif //HASH_TABLE_NEW_H
 
 
 #endif //HASH_TABLE_OPTIMIZED_H

@@ -385,7 +385,7 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
       }
 }
 
-void hash_table_optimized_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err)
+void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err)
 {
       if (err == NULL)
       {

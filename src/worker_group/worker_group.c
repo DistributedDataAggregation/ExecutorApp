@@ -177,7 +177,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         }
         else
         {
-            hash_table_optimized_combine_hash_tables(*request_hash_table, thread_ht, err);
+            hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
             if (err->error_code != NO_ERROR)
             {
                 LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine hash tables");

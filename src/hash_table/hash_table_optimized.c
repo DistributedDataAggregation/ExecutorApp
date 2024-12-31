@@ -70,7 +70,7 @@ void hash_table_optimized_free(HashTable* table)
       free(table);
 }
 
-void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry)
+void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err)
 {
       if (entry == NULL)
       {
@@ -119,7 +119,7 @@ void hash_table_resize_new(HashTable* ht)
       {
             if (ht->table[i] != NULL)
             {
-                  hash_table_optimized_insert(ht, old_table[i]);
+                  //  hash_table_optimized_insert(ht, old_table[i],);
             }
       }
 
@@ -236,7 +236,7 @@ void hash_table_optimized_print(HashTable* ht)
 }
 
 
-void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err)
+void hash_table_optimized_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err)
 {
       if (err == NULL)
       {
@@ -271,7 +271,8 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
       }
 }
 
-HashTableValue hash_table_optimized_update_value(HashTableValue current_value, HashTableValue incoming_value)
+HashTableValue hash_table_optimized_update_value(HashTableValue current_value, HashTableValue incoming_value,
+                                                 ErrorInfo* err)
 {
       switch (current_value.aggregate_function)
       {
@@ -308,7 +309,8 @@ HashTableValue hash_table_optimized_update_value(HashTableValue current_value, H
       return current_value;
 }
 
-void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err)
+void hash_table_combine_table_with_response_optimized(HashTable* ht, const QueryResponse* query_response,
+                                                      ErrorInfo* err)
 {
       if (err == NULL)
       {
@@ -358,7 +360,7 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
             }
             else
             {
-                  hash_table_combine_entries(found, entry, err);
+                  hash_table_optimized_combine_entries(found, entry, err);
                   if (err->error_code != NO_ERROR)
                   {
                         free(values);
