@@ -27,6 +27,8 @@ add_library(ExecutorLib STATIC
         converters/hash_table_to_query_response_converter.c
         error_handling/error_handling.h
         logging/logging.h
+        hash_table/hash_table_optimized.c
+        hash_table/hash_table_optimized.h
 )
 
 target_include_directories(ExecutorLib PUBLIC
@@ -48,11 +50,13 @@ target_include_directories(ExecutorLib PUBLIC
 
 target_link_libraries(ExecutorLib ${PARQUET_LIBRARIES} protobuf-c)
 
-add_executable(ExecutorApp main.c)
+add_executable(ExecutorApp main.c
+        hash_table/hash_table_optimized.c
+        hash_table/hash_table_optimized.h)
 
 target_link_libraries(ExecutorApp ExecutorLib)
 
-if(ENABLE_UNIT_TESTING)
+if (ENABLE_UNIT_TESTING)
     include(CTest)
 
     include(FetchContent)
@@ -67,4 +71,4 @@ if(ENABLE_UNIT_TESTING)
 
     include(GoogleTest)
     add_subdirectory(unit_tests)
-endif()
+endif ()
