@@ -1,12 +1,14 @@
 extern "C" {
 #include "hash_table.h"
 }
+
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
 
 
-TEST(HashTableTest, CreateHashTable) {
+TEST(HashTableTest, CreateHashTable)
+{
     ErrorInfo error_info = {0};
 
     HashTable* ht = hash_table_create(10, &error_info);
@@ -16,7 +18,8 @@ TEST(HashTableTest, CreateHashTable) {
     hash_table_free(ht);
 }
 
-TEST(HashTableTest, AddToHashTable) {
+TEST(HashTableTest, AddToHashTable)
+{
     ErrorInfo error_info = {0};
 
     HashTable* ht = hash_table_create(10, &error_info);
@@ -27,10 +30,11 @@ TEST(HashTableTest, AddToHashTable) {
 
     entry->key = strdup(key);
     entry->n_values = 1;
-    entry->values = (HashTableValue*)malloc(sizeof(HashTableValue)*entry->n_values);
+    entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
     ASSERT_NE(entry->values, nullptr);
 
-    for (int i = 0; i < entry->n_values; i++) {
+    for (int i = 0; i < entry->n_values; i++)
+    {
         entry->values[i].aggregate_function = MIN;
         entry->values[i].value = 100;
     }
@@ -42,7 +46,8 @@ TEST(HashTableTest, AddToHashTable) {
     EXPECT_EQ(returned->n_values, entry->n_values);
     EXPECT_STREQ(returned->key, key);
 
-    for (int i = 0; i < entry->n_values; i++) {
+    for (int i = 0; i < entry->n_values; i++)
+    {
         EXPECT_EQ(returned->values[i].aggregate_function, entry->values[i].aggregate_function);
         EXPECT_EQ(returned->values[i].value, entry->values[i].value);
     }
@@ -61,7 +66,8 @@ TEST(HashTableTest, AddToHashTable) {
     hash_table_free(ht);
 }
 
-TEST(HashTableTest, SearchInHashTable) {
+TEST(HashTableTest, SearchInHashTable)
+{
     ErrorInfo error_info = {0};
 
     HashTable* ht = hash_table_create(10, &error_info);
@@ -90,7 +96,8 @@ TEST(HashTableTest, SearchInHashTable) {
     hash_table_free(ht);
 }
 
-TEST(HashTableTest, DeleteFromHashTable) {
+TEST(HashTableTest, DeleteFromHashTable)
+{
     ErrorInfo error_info = {0};
 
     HashTable* ht = hash_table_create(10, &error_info);
@@ -114,7 +121,8 @@ TEST(HashTableTest, DeleteFromHashTable) {
     hash_table_free(ht);
 }
 
-TEST(HashTableTest, CombineEntries) {
+TEST(HashTableTest, CombineEntries)
+{
     ErrorInfo error_info = {0};
 
     HashTableEntry entry1;
@@ -138,7 +146,8 @@ TEST(HashTableTest, CombineEntries) {
     free(entry2.values);
 }
 
-TEST(HashTableTest, CombineHashTables) {
+TEST(HashTableTest, CombineHashTables)
+{
     ErrorInfo error_info = {0};
 
     HashTable* destination = hash_table_create(10, &error_info);

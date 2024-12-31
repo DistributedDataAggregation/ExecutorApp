@@ -72,13 +72,29 @@ void hash_table_optimized_free(HashTable* table)
 
 void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err)
 {
+      // if (err == NULL)
+      // {
+      //       LOG_INTERNAL_ERR("Passed error info was NULL");
+      //       return;
+      // }
+
       if (entry == NULL)
       {
+            LOG_INTERNAL_ERR("Failed to insert to a hash table: Entry was NULL");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Entry was NULL");
+            return;
+      }
+      if (entry->key == NULL)
+      {
+            LOG_INTERNAL_ERR("Failed to insert to a hash table: Entry key was NULL");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Entry key was NULL");
             return;
       }
 
       if (table == NULL || table->table == NULL)
       {
+            LOG_INTERNAL_ERR("Failed to insert to a hash table: Uninitialized hash table");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Uninitialized hash table");
             return;
       }
 
@@ -117,9 +133,9 @@ void hash_table_resize_new(HashTable* ht)
 
       for (int i = 0; i < old_size; i++)
       {
-            if (ht->table[i] != NULL)
+            if (old_table[i] != NULL)
             {
-                  //  hash_table_optimized_insert(ht, old_table[i],);
+                  hash_table_optimized_insert(ht, old_table[i], NULL);
             }
       }
 
@@ -134,7 +150,7 @@ HashTableEntry* hash_table_optimized_search(HashTable* table, const char* key)
             return NULL;
       }
 
-      unsigned int i = 1;
+      unsigned int i = 0;
       HashTableEntry* entry = table->table[(hash_value + i) & (table->size - 1)];
       while (entry != NULL)
       {
@@ -144,7 +160,6 @@ HashTableEntry* hash_table_optimized_search(HashTable* table, const char* key)
             }
 
             i++;
-            // i = i << 1
             entry = table->table[(hash_value + i) & (table->size - 1)];
       }
 
@@ -385,30 +400,57 @@ void hash_table_optimized_combine_hash_tables(HashTable* destination, const Hash
       for (int i = 0; i < source->size; i++)
       {
             HashTableEntry* entry = source->table[i];
-            while (entry != NULL)
+
+            if (entry == NULL)
             {
-                  HashTableEntry* next = entry->next;
+                  continue;
+            }
 
-                  HashTableEntry* found = hash_table_optimized_search(destination, entry->key);
-                  if (found == NULL)
-                  {
-                        entry->next = NULL;
-                        hash_table_optimized_insert(destination, next, err);
-                        if (err->error_code != NO_ERROR)
-                        {
-                              return;
-                        }
-                  }
-                  else
-                  {
-                        hash_table_optimized_combine_entries(found, entry, err);
-                        if (err->error_code != NO_ERROR)
-                        {
-                              return;
-                        }
-                  }
+            HashTableEntry* found = hash_table_optimized_search(destination, entry->key);
 
-                  entry = next;
+            if (found == NULL)
+            {
+                  HashTableEntry* new_entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+                  if (new_entry == NULL)
+                  {
+                        LOG_ERR("Failed to allocate memory for new hash table entry");
+                        SET_ERR(err, errno, "Failed to allocate memory for new hash table entry", strerror(errno));
+                        return;
+                  }
+                  new_entry->key = strdup(entry->key);
+                  new_entry->n_values = entry->n_values;
+                  new_entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
+                  if (new_entry->values == NULL)
+                  {
+                        LOG_ERR("Failed to allocate memory for new hash table entry values");
+                        SET_ERR(err, errno, "Failed to allocate memory for new hash table entry values",
+                                strerror(errno));
+                        free(new_entry->key);
+                        free(new_entry);
+                        return;
+                  }
+                  memcpy(new_entry->values, entry->values, sizeof(HashTableValue) * entry->n_values);
+                  new_entry->is_deleted = entry->is_deleted;
+
+                  hash_table_optimized_insert(destination, new_entry, err);
+                  if (err->error_code != NO_ERROR)
+                  {
+                        free(new_entry->key);
+                        free(new_entry->values);
+                        free(new_entry);
+                        return;
+                  }
+            }
+            else
+            {
+                  hash_table_optimized_combine_entries(found, entry, err);
+                  if (err->error_code != NO_ERROR)
+                  {
+                        return;
+                  }
             }
       }
 }
+
+
+
