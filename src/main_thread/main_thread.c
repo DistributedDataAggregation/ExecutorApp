@@ -102,12 +102,14 @@ int main_thread_run()
             if (FD_ISSET(controllers_client_array.clients[i], &read_fds))
             {
                 main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
-                                          executors_socket_fd, &main_executors_sockets, &error_info);
-                if (error_info.error_code != NO_ERROR)
-                {
-                    // LOG("Removing client: %d\n", controllers_client_array.clients[i]);
-                    // client_array_remove_client(&controllers_client_array, i);
-                    // i--;
+                    executors_socket_fd, &main_executors_sockets, &error_info);
+                if (error_info.error_code != NO_ERROR) {
+                    if (error_info.error_code == SOCKET_CLOSED || error_info.error_code == EAGAIN
+                        || error_info.error_code == ECONNRESET || error_info.error_code == EPIPE) {
+                        LOG("Removing client: %d\n", controllers_client_array.clients[i]);
+                        client_array_remove_client(&controllers_client_array, i);
+                        i--;
+                    }
                     // TODO handle failed request from controller (connections errors and error while sending failure response)
                     CLEAR_ERR(&error_info);
                 }
@@ -221,7 +223,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to send response to controller");
-            // TODO handle failed send to controller
+            // TODO handle failed send to controller, retry if EAGAIN lub EWOULDBLOCK? (closing in main thread)
         }
     }
 
@@ -242,7 +244,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             if (err->error_code != NO_ERROR)
             {
                 LOG_INTERNAL_ERR("Failed to send response to main executor\n");
-                // TODO handle failed send to main
+                // TODO handle failed send to main, retry if EAGAIN lub EWOULDBLOCK, close if EPIPE, ECONNRESET?
             }
             else
             {

@@ -463,7 +463,7 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
         if (select_indices[i] == -1)
         {
             LOG_INTERNAL_ERR("Failed to get select indices: Cannot find provided column name");
-            fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
+            fprintf(stderr, "Cannot find provided column: %s\n", request->select[i]->column);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get select indices", "Cannot find provided column name");
             return;
         }
