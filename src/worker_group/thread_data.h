@@ -37,13 +37,14 @@ typedef struct thread_data
     RowGroupsRange* file_row_groups_ranges;
 
     int n_group_columns;
-    int* group_columns_indices;
     ColumnDataType* group_columns_data_types;
 
     int n_select;
-    int* selects_indices;
     AggregateFunction* selects_aggregate_functions;
     ColumnDataType* select_columns_types;
+
+    int* columns_indices;
+    int* columns_non_repeating_mapping;
 } ThreadData;
 
 #endif //THREAD_DATA_H

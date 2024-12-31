@@ -78,10 +78,9 @@ TEST(WorkerGroupTests, GetColumnsIndices) {
     request.select[0] = (Select*)malloc(sizeof(Select));
     request.select[0]->column = strdup("column2");
 
-    int grouping_indices[1];
-    int select_indices[1];
+    int columns_indices[2];
 
-    worker_group_get_columns_indices(&request, grouping_indices, select_indices, &error_info);
+    worker_group_get_columns_indices(&request, columns_indices, &error_info);
     EXPECT_NE(error_info.error_code, NO_ERROR);
 
     free(request.group_columns[0]);
@@ -126,5 +125,33 @@ TEST(WorkerGroupTests, GetThreadData_NullRequest) {
 
 TEST(WorkerGroupTests, FreeThreadData_NullInput) {
     worker_group_free_thread_data(nullptr);
+    SUCCEED();
+}
+
+TEST(WorkerTests, CalculateNewColumnIndices_UniqueColumns) {
+    gint old_column_indices[] = {1, 2, 3};
+    int new_column_indices[3];
+    worker_group_calculate_new_column_indices(new_column_indices, old_column_indices, 3);
+
+    EXPECT_EQ(new_column_indices[0], 0);
+    EXPECT_EQ(new_column_indices[1], 1);
+    EXPECT_EQ(new_column_indices[2], 2);
+}
+
+TEST(WorkerTests, CalculateNewColumnIndices_RepeatedColumns) {
+    gint old_column_indices[] = {1, 2, 1};
+    int new_column_indices[3];
+    worker_group_calculate_new_column_indices(new_column_indices, old_column_indices, 3);
+
+    EXPECT_EQ(new_column_indices[0], 0);
+    EXPECT_EQ(new_column_indices[1], 1);
+    EXPECT_EQ(new_column_indices[2], 0);
+}
+
+TEST(WorkerTests, CalculateNewColumnIndices_EmptyInput) {
+    gint old_column_indices[] = {};
+    int new_column_indices[0];
+    worker_group_calculate_new_column_indices(new_column_indices, old_column_indices, 0);
+
     SUCCEED();
 }

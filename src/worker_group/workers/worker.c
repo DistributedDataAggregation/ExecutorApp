@@ -54,7 +54,7 @@ void print_thread_data(ThreadData* data)
     LOG("Thread %d: Number of group columns: %d\n", data->thread_index, data->n_group_columns);
     for (int i = 0; i < data->n_group_columns; i++)
     {
-        LOG("Thread %d: Group Column %d: %d\n", data->thread_index, i, data->group_columns_indices[i]);
+        LOG("Thread %d: Group Column %d: %d\n", data->thread_index, i, data->columns_indices[i]);
     }
 
     // Print selected columns and aggregate functions
@@ -76,7 +76,7 @@ void print_thread_data(ThreadData* data)
             break;
         }
         LOG("Thread %d: Select Column %d: %d, Aggregate Function: %s\n",
-            data->thread_index, i, data->selects_indices[i], agg_func);
+            data->thread_index, i, data->columns_indices[i+data->n_group_columns], agg_func);
     }
 }
 
@@ -111,46 +111,21 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 
     const int number_of_columns = (data->n_group_columns + data->n_select);
 
-    gint* columns_indices = malloc(sizeof(gint) * number_of_columns);
-    if (columns_indices == NULL)
-    {
-        report_g_error(error, err, "Failed to allocate memory for columns indices");
-        return;
-    }
-
-    for (int i = 0; i < data->n_group_columns; i++)
-    {
-        columns_indices[i] = data->group_columns_indices[i];
-    }
-
-    for (int i = data->n_group_columns; i < number_of_columns; i++)
-    {
-        columns_indices[i] = data->selects_indices[i - data->n_group_columns];
-    }
-
-    int* new_columns_indices = malloc(sizeof(int) * number_of_columns);
-    if (!new_columns_indices)
-    {
-        report_g_error(error, err, "Failed to allocate memory for new columns indices");
-        return;
-    }
-    worker_calculate_new_column_indices(new_columns_indices, columns_indices, number_of_columns);
+    int* new_columns_indices = data->columns_non_repeating_mapping;
 
     for (int i = 0; i < number_of_columns; i++)
     {
-        LOG("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
+        LOG("[%d] %dth column has index %d\n", data->thread_index, i, data->columns_indices[i]);
     }
 
     for (int i = start_row_group; i < end; i++)
     {
-        GArrowTable* table = gparquet_arrow_file_reader_read_row_group(reader, i, columns_indices, number_of_columns,
+        GArrowTable* table = gparquet_arrow_file_reader_read_row_group(reader, i, data->columns_indices, number_of_columns,
                                                                        &error);
         if (table == NULL)
         {
             report_g_error(error, err, "Failed to read row group");
             g_object_unref(reader);
-            free(columns_indices);
-            free(new_columns_indices);
             return;
         }
 
@@ -160,8 +135,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             LOG_THREAD_ERR("Failed to allocate memory for grouping chunked arrays", data->thread_index);
             SET_ERR(err, errno, "Failed to allocate memory for grouping chunked arrays", strerror(errno));
             g_object_unref(reader);
-            free(columns_indices);
-            free(new_columns_indices);
             g_object_unref(table);
             return;
         }
@@ -172,8 +145,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             LOG_THREAD_ERR("Failed to allocate memory for select chunked arrays", data->thread_index);
             SET_ERR(err, errno, "Failed to allocate memory for select chunked arrays", strerror(errno));
             g_object_unref(reader);
-            free(columns_indices);
-            free(new_columns_indices);
             g_object_unref(table);
             free(grouping_chunked_arrays);
             return;
@@ -187,8 +158,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 LOG_INTERNAL_THREAD_ERR("Failed to find grouping chunked arrays", data->thread_index);
                 SET_ERR(err, INTERNAL_ERROR, "Failed to find grouping chunked arrays", "");
                 g_object_unref(reader);
-                free(columns_indices);
-                free(new_columns_indices);
                 g_object_unref(table);
                 for (int grouping_index = 0; grouping_index < j; grouping_index++)
                 {
@@ -209,8 +178,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 LOG_INTERNAL_THREAD_ERR("Failed to find select chunked arrays", data->thread_index);
                 SET_ERR(err, INTERNAL_ERROR, "Failed to find select chunked arrays", "");
                 g_object_unref(reader);
-                free(columns_indices);
-                free(new_columns_indices);
                 g_object_unref(table);
                 for (int grouping_index = 0; grouping_index < data->n_group_columns; grouping_index++)
                 {
@@ -235,8 +202,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 LOG_THREAD_ERR("Failed to allocate memory for grouping arrays", data->thread_index);
                 SET_ERR(err, errno, "Failed to allocate memory for grouping arrays", strerror(errno));
                 g_object_unref(reader);
-                free(columns_indices);
-                free(new_columns_indices);
                 g_object_unref(table);
                 for (int grouping_index = 0; grouping_index < data->n_group_columns; grouping_index++)
                 {
@@ -387,7 +352,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 
     //LOG("[%d] Finished calculations for file\n", data->thread_index);
     g_object_unref(reader);
-    free(columns_indices);
     free(new_columns_indices);
 }
 
@@ -532,37 +496,4 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     }
 
     return hash_table_value;
-}
-
-// TODO () move this function before thread?
-void worker_calculate_new_column_indices(int* new_column_indices, const gint* old_column_indices,
-                                         const int number_of_columns)
-{
-    // change it
-    gint unique_values[number_of_columns];
-    int unique_count = 0;
-
-    for (int i = 0; i < number_of_columns; i++)
-    {
-        int found = -1;
-        for (int j = 0; j < unique_count; j++)
-        {
-            if (unique_values[j] == old_column_indices[i])
-            {
-                found = j;
-                break;
-            }
-        }
-
-        if (found == -1)
-        {
-            unique_values[unique_count] = old_column_indices[i];
-            new_column_indices[i] = unique_count;
-            unique_count++;
-        }
-        else
-        {
-            new_column_indices[i] = found;
-        }
-    }
 }

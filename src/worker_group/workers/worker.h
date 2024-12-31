@@ -28,8 +28,6 @@ char* construct_grouping_string(int n_group_columns, GArrowArray** grouping_arra
 HashTableValue get_hash_table_value(GArrowArray* select_array, int row_index, ColumnDataType select_columns_data_types,
                                     AggregateFunction aggregate_function, ErrorInfo* err);
 
-void worker_calculate_new_column_indices(int* new_column_indices, const gint* old_column_indices,
-                                         int number_of_columns);
 #ifdef __cplusplus
 }
 #endif
