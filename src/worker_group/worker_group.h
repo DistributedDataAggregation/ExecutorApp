@@ -30,7 +30,7 @@ AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate, Error
 
 RowGroupsRange** worker_group_get_row_group_ranges(int n_files, char** file_names, int num_threads, ErrorInfo* err);
 
-    void worker_group_get_columns_indices(const QueryRequest* request, int* column_indices, ErrorInfo* err);
+void worker_group_get_columns_indices(const QueryRequest* request, int* column_indices, ErrorInfo* err);
 
 void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, int count);
 
