@@ -31,7 +31,8 @@ add_library(ExecutorLib STATIC
         hash_table/hash_table_optimized.h
         hash_table/farmhash-c.h
         hash_table/farmhash-c.c
-        hash_table/hash_table_abstraction.h
+        hash_table/hash_table_interface.h
+        hash_table/hash_table_interface.c
         hash_table/hash_table_struct.h
 )
 
@@ -54,9 +55,7 @@ target_include_directories(ExecutorLib PUBLIC
 
 target_link_libraries(ExecutorLib ${PARQUET_LIBRARIES} protobuf-c)
 
-add_executable(ExecutorApp main.c
-        hash_table/hash_table_optimized.c
-        hash_table/hash_table_optimized.h)
+add_executable(ExecutorApp main.c)
 
 target_link_libraries(ExecutorApp ExecutorLib)
 

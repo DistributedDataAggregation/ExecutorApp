@@ -1,10 +1,13 @@
-#ifndef HASH_TABLE_ABSTRACTION_H
-#define HASH_TABLE_ABSTRACTION_H
+#ifndef HASH_TABLE_INTERFACE_H
+#define HASH_TABLE_INTERFACE_H
 #include "hash_table_struct.h"
+#include "hash_table_optimized.h"
+
 #include "error_handling.h"
 #include "query_response.pb-c.h"
 
-typedef struct HashTableInterface {
+typedef struct HashTableInterface
+{
     unsigned int (*hash)(const char* string, int table_size);
     HashTable* (*create)(int size, ErrorInfo* err);
     void (*free)(HashTable* table);
@@ -18,4 +21,9 @@ typedef struct HashTableInterface {
     void (*optimized_combine)(HashTable* destination, const HashTable* source, ErrorInfo* err);
 } HashTableInterface;
 
-#endif //HASH_TABLE_ABSTRACTION_H
+
+HashTableInterface* create_default_hash_table_interface();
+HashTableInterface* create_optimized_hash_table_interface();
+void free_hash_table_interface(HashTableInterface* interface);
+
+#endif //HASH_TABLE_INTERFACE_H

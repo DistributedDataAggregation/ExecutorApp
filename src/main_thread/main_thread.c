@@ -14,12 +14,15 @@
 #include "executors_server.h"
 #include "hash_table.h"
 #include "main_thread.h"
+
+#include "hash_table_interface.h"
 #include "query_request.pb-c.h"
 #include "query_response.pb-c.h"
 #include "request_protocol/request_protocol.h"
 #include "socket_utilities.h"
 #include "worker_group.h"
 #include "logging.h"
+
 
 #define INITIAL_SIZE 10
 
@@ -140,11 +143,13 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
+    HashTableInterface* ht_interface = create_default_hash_table_interface();
+
 
     if (request->executor->is_current_node_main)
     {
         LOG("This node is main\n");
-        worker_group_run_request(request, &ht, err);
+        worker_group_run_request(request, &ht, ht_interface, err);
 
         if (err->error_code != NO_ERROR)
         {
@@ -237,7 +242,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
         else
         {
-            worker_group_run_request(request, &ht, err);
+            worker_group_run_request(request, &ht, ht_interface, err);
             prepare_and_send_response(main_executor_socket, ht, err);
             if (err->error_code != NO_ERROR)
             {

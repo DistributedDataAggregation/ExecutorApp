@@ -4,12 +4,15 @@
 
 #include <parquet-glib/arrow-file-reader.h>
 #include <stdio.h>
-#include "../../parquet_helpers/parquet_helpers.h"
-#include "hash_table.h"
-#include "worker.h"
 #include <sys/types.h>
 
 #include "logging.h"
+#include "../../parquet_helpers/parquet_helpers.h"
+#include "hash_table.h"
+#include "worker.h"
+#include "hash_table_interface.h"
+
+#define HASH_TABLE_SIZE 1024
 
 void* compute_on_thread(void* arg)
 {
@@ -18,7 +21,8 @@ void* compute_on_thread(void* arg)
     // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
     print_thread_data(data);
 
-    HashTable* ht = hash_table_create(10, &err);
+    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, &err);
+
     for (int i = 0; i < data->n_files; i++)
     {
         compute_file(i, data, ht, &err);

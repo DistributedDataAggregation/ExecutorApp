@@ -1,3 +1,5 @@
+#include <error.h>
+
 extern "C" {
 #include "hash_table_optimized.h"
 #include "hash_table_struct.h"
@@ -9,7 +11,8 @@ extern "C" {
 
 TEST(OptimizedHashTableTest, CreateHashTable)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->size, 16);
     EXPECT_EQ(ht->entries_count, 0);
@@ -20,7 +23,7 @@ TEST(OptimizedHashTableTest, AddToHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_optimized_create(16);
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
 
     const char* key = "war1|war2|war3|war4|war5";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -66,7 +69,7 @@ TEST(OptimizedHashTableTest, AddToHashTable)
 
 TEST(OptimizedHashTableTest, SearchInHashTable)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    HashTable* ht = hash_table_optimized_create(16, nullptr);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -94,7 +97,7 @@ TEST(OptimizedHashTableTest, SearchInHashTable)
 
 TEST(OptimizedHashTableTest, DeleteFromHashTable)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    HashTable* ht = hash_table_optimized_create(16, nullptr);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -143,8 +146,8 @@ TEST(OptimizedHashTableTest, CombineHashTables)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* destination = hash_table_optimized_create(16);
-    HashTable* source = hash_table_optimized_create(16);
+    HashTable* destination = hash_table_optimized_create(16, &error_info);
+    HashTable* source = hash_table_optimized_create(16, &error_info);
 
     const char* key1 = "key1";
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -200,7 +203,8 @@ TEST(OptimizedHashTableTest, CombineHashTables)
 
 TEST(OptimizedHashTableTest, HandleCollision)
 {
-    HashTable* ht = hash_table_optimized_create(2);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(2, &error_info);
 
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry1->key = strdup("key1");
@@ -233,7 +237,7 @@ TEST(OptimizedHashTableTest, HandleCollision)
 TEST(OptimizedHashTableTest, ResizeHashTable)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(8);
+    HashTable* ht = hash_table_optimized_create(8, &error_info);
 
     for (int i = 0; i < 10; i++)
     {
@@ -265,7 +269,7 @@ TEST(OptimizedHashTableTest, ResizeHashTable)
 TEST(OptimizedHashTableTest, HandleNullInsert)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16);
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     hash_table_optimized_insert(ht, nullptr, &error_info);
@@ -277,7 +281,7 @@ TEST(OptimizedHashTableTest, HandleNullInsert)
 TEST(OptimizedHashTableTest, HandleInsertDuplicateKey)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16);
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
 
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry1->key = strdup("key1");
@@ -305,7 +309,8 @@ TEST(OptimizedHashTableTest, HandleInsertDuplicateKey)
 
 TEST(OptimizedHashTableTest, HandleResize)
 {
-    HashTable* ht = hash_table_optimized_create(4);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(4, &error_info);
     ASSERT_NE(ht, nullptr);
 
     for (int i = 0; i < 10; i++)
@@ -338,7 +343,8 @@ TEST(OptimizedHashTableTest, HandleResize)
 
 TEST(OptimizedHashTableTest, HandleDeleteNonExistentKey)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     hash_table_optimized_delete(ht, "nonexistent_key");
@@ -381,7 +387,7 @@ TEST(OptimizedHashTableTest, StressTestLargeInserts)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_optimized_create(16);
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     const int num_entries = 100000;
@@ -413,7 +419,8 @@ TEST(OptimizedHashTableTest, StressTestLargeInserts)
 
 TEST(OptimizedHashTableTest, HandleInsertNullKey)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -427,7 +434,6 @@ TEST(OptimizedHashTableTest, HandleInsertNullKey)
     entry->values[0].value = 100;
     entry->values[0].aggregate_function = AVG;
 
-    ErrorInfo error_info = {0};
     hash_table_optimized_insert(ht, entry, &error_info);
     EXPECT_EQ(error_info.error_code, INTERNAL_ERROR);
 
@@ -438,7 +444,8 @@ TEST(OptimizedHashTableTest, HandleInsertNullKey)
 
 TEST(OptimizedHashTableTest, SearchDeletedKey)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     const char* key = "key1";
@@ -463,7 +470,8 @@ TEST(OptimizedHashTableTest, SearchDeletedKey)
 
 TEST(OptimizedHashTableTest, HandleEmptyTableSearch)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     const char* key = "nonexistent_key";
@@ -475,7 +483,8 @@ TEST(OptimizedHashTableTest, HandleEmptyTableSearch)
 
 TEST(OptimizedHashTableTest, HandleExtremeValues)
 {
-    HashTable* ht = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, &error_info);
     ASSERT_NE(ht, nullptr);
 
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -498,13 +507,13 @@ TEST(OptimizedHashTableTest, HandleExtremeValues)
 
 TEST(OptimizedHashTableTest, CombineEmptyTables)
 {
-    HashTable* ht1 = hash_table_optimized_create(16);
-    HashTable* ht2 = hash_table_optimized_create(16);
+    ErrorInfo error_info = {0};
+    HashTable* ht1 = hash_table_optimized_create(16, &error_info);
+    HashTable* ht2 = hash_table_optimized_create(16, &error_info);
 
     ASSERT_NE(ht1, nullptr);
     ASSERT_NE(ht2, nullptr);
 
-    ErrorInfo error_info = {0};
     hash_table_optimized_combine_hash_tables(ht1, ht2, &error_info);
 
     EXPECT_EQ(ht1->entries_count, 0);
@@ -515,7 +524,8 @@ TEST(OptimizedHashTableTest, CombineEmptyTables)
 
 TEST(OptimizedHashTableTest, HandleResizeAfterDeletions)
 {
-    HashTable* ht = hash_table_optimized_create(8);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(8, &error_info);
     ASSERT_NE(ht, nullptr);
 
     for (int i = 0; i < 10; i++)
@@ -544,4 +554,3 @@ TEST(OptimizedHashTableTest, HandleResizeAfterDeletions)
 
     hash_table_optimized_free(ht);
 }
-

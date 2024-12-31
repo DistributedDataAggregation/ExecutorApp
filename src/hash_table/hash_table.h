@@ -8,30 +8,7 @@
 
 #include "error_handling.h"
 #include "query_response.pb-c.h"
-#include "aggregate_function.h"
-
-typedef struct HashTableValue
-{
-    long value;
-    long count;
-    AggregateFunction aggregate_function;
-} HashTableValue;
-
-typedef struct HashTableEntry
-{
-    char* key;
-    int n_values;
-    HashTableValue* values;
-    struct HashTableEntry* next;
-} HashTableEntry;
-
-typedef struct HashTable
-{
-    int size;
-    int entries_count;
-    HashTableEntry** table;
-} HashTable;
-
+#include "hash_table_struct.h"
 
 unsigned int hash(const char* string, int table_size);
 HashTable* hash_table_create(int size, ErrorInfo* err);

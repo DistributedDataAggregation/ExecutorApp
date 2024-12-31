@@ -10,14 +10,15 @@
 #include "../parquet_helpers/parquet_helpers.h"
 #include "thread_data.h"
 #include "worker_group.h"
-
+#include "hash_table_interface.h"
 #include "logging.h"
 #include "workers/worker.h"
 
 #define NUM_THREADS 4
 
 // TODO() probably split this function
-void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table, ErrorInfo* err)
+void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
+                              HashTableInterface* hash_table_interface, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -121,7 +122,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     {
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
                                                       grouping_indices, select_indices, grouping_columns_data_type,
-                                                      select_columns_data_type, err);
+                                                      select_columns_data_type, hash_table_interface, err);
         if (err->error_code != NO_ERROR)
         {
             for (int j = 0; j < i; j++)
@@ -201,7 +202,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
                                          RowGroupsRange* row_groups_ranges, int* grouping_indices,
                                          const int* select_indices,
                                          ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         ErrorInfo* err)
+                                         HashTableInterface* ht_interface, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -228,12 +229,15 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     thread_data->group_columns_data_types = group_columns_types;
     thread_data->select_columns_types = select_columns_types;
 
+
     thread_data->thread_index = thread_index;
     thread_data->num_threads = num_threads;
 
     thread_data->n_files = (int)request->n_files_names;
     thread_data->n_group_columns = (int)request->n_group_columns;
     thread_data->n_select = (int)request->n_select;
+
+    thread_data->ht_interface = ht_interface;
 
     thread_data->file_names = (char**)malloc(sizeof(char*) * thread_data->n_files);
     if (thread_data->file_names == NULL)

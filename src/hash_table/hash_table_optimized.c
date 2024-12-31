@@ -24,7 +24,7 @@ unsigned int hash_farm(const char* string, int table_size)
       return h64 & (table_size - 1);
 }
 
-HashTable* hash_table_optimized_create(int size)
+HashTable* hash_table_optimized_create(int size, ErrorInfo* err)
 {
       HashTable* hash_table = malloc(sizeof(HashTable));
       if (hash_table == NULL)
@@ -142,7 +142,7 @@ void hash_table_resize_new(HashTable* ht)
       free(old_table);
 }
 
-HashTableEntry* hash_table_optimized_search(HashTable* table, const char* key)
+HashTableEntry* hash_table_optimized_search(const HashTable* table, const char* key)
 {
       unsigned int hash_value = hash_farm(key, table->size);
       if (table->table[hash_value] == NULL)
@@ -193,7 +193,7 @@ void hash_table_optimized_delete(HashTable* table, const char* key)
       }
 }
 
-void hash_table_optimized_print(HashTable* ht)
+void hash_table_optimized_print(const HashTable* ht)
 {
       if (ht == NULL || ht->table == NULL)
       {
