@@ -142,6 +142,7 @@ void send_response(const int client_fd, const QueryResponse* response, ErrorInfo
     free(buffer);
 }
 
+
 void prepare_and_send_response(const int client_fd, const HashTable* ht, ErrorInfo* err)
 {
     if (err == NULL || err->error_code != NO_ERROR)
@@ -151,6 +152,10 @@ void prepare_and_send_response(const int client_fd, const HashTable* ht, ErrorIn
     }
 
     QueryResponse* response = convert_hash_table_to_query_response(ht, err);
+
+    print_query_response(response);
+
+
     if (err->error_code != NO_ERROR)
     {
         prepare_and_send_failure_response(client_fd, err);

@@ -7,7 +7,7 @@ HashTableInterface* create_default_hash_table_interface()
     HashTableInterface* default_interface = malloc(sizeof(HashTableInterface));
     if (default_interface == NULL)
     {
-        return;
+        return NULL;
     }
 
     default_interface->hash = hash;
@@ -20,7 +20,7 @@ HashTableInterface* create_default_hash_table_interface()
     default_interface->combine_entries = hash_table_combine_entries;
     default_interface->update_value = hash_table_update_value;
     default_interface->combine_with_response = hash_table_combine_table_with_response;
-    default_interface->optimized_combine = hash_table_combine_hash_tables;
+    default_interface->combine = hash_table_combine_hash_tables;
 
     return default_interface;
 }
@@ -30,7 +30,7 @@ HashTableInterface* create_optimized_hash_table_interface()
     HashTableInterface* optimized_interface = malloc(sizeof(HashTableInterface));
     if (optimized_interface == NULL)
     {
-        return;
+        return NULL;
     }
 
     optimized_interface->hash = hash_farm;
@@ -43,7 +43,7 @@ HashTableInterface* create_optimized_hash_table_interface()
     optimized_interface->combine_entries = hash_table_optimized_combine_entries;
     optimized_interface->update_value = hash_table_optimized_update_value;
     optimized_interface->combine_with_response = hash_table_combine_table_with_response_optimized;
-    optimized_interface->optimized_combine = hash_table_optimized_combine_hash_tables;
+    optimized_interface->combine = hash_table_optimized_combine_hash_tables;
 
     return optimized_interface;
 }

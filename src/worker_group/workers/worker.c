@@ -145,6 +145,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         LOG("[%d] %dth column has index %d\n", data->thread_index, i, columns_indices[i]);
     }
 
+    // Iterowanie po row groupach
     for (int i = start_row_group; i < end; i++)
     {
         GArrowTable* table = gparquet_arrow_file_reader_read_row_group(reader, i, columns_indices, number_of_columns,
@@ -204,6 +205,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             }
         }
 
+        // pobranie danych selected chunked array
         for (int j = 0; j < data->n_select; j++)
         {
             select_chunked_arrays[j] = garrow_table_get_column_data(
@@ -231,6 +233,8 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         }
 
         const gint n_chunks = (gint)garrow_chunked_array_get_n_chunks(grouping_chunked_arrays[0]);
+
+        // Iterowanie po rowach
         for (int chunk_index = 0; chunk_index < n_chunks; chunk_index++)
         {
             GArrowArray** grouping_arrays = malloc(sizeof(GArrowArray*) * data->n_group_columns);
@@ -318,7 +322,8 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     }
                 }
 
-                const HashTableEntry* found = hash_table_search(hash_table, grouping_string);
+                const HashTableEntry* found = data->ht_interface->search(hash_table, grouping_string);
+                // const HashTableEntry* found = whash_table_search(hash_table, grouping_string);
                 if (found == NULL)
                 {
                     // add grouping into hash table
@@ -335,7 +340,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     new_entry->values = hash_table_values;
                     new_entry->n_values = data->n_select;
                     new_entry->next = NULL;
-                    hash_table_insert(hash_table, new_entry, err);
+                    new_entry->is_deleted = FALSE;
+                    data->ht_interface->insert(hash_table, new_entry, err);
+                    //hash_table_insert(hash_table, new_entry, err);
                     if (err->error_code != NO_ERROR)
                     {
                         // TODO free allocated data
@@ -346,8 +353,12 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 {
                     for (int value_index = 0; value_index < data->n_select; value_index++)
                     {
-                        found->values[value_index] = hash_table_update_value(
+                        // found->values[value_index] = hash_table_update_value(
+                        //     found->values[value_index], hash_table_values[value_index], err);
+
+                        found->values[value_index] = data->ht_interface->update_value(
                             found->values[value_index], hash_table_values[value_index], err);
+
                         if (err->error_code != NO_ERROR)
                         {
                             // TODO free allocated data

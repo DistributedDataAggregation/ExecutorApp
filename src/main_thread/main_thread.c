@@ -8,11 +8,9 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "boolean.h"
 #include "client_array.h"
 #include "error_handling.h"
 #include "executors_server.h"
-#include "hash_table.h"
 #include "main_thread.h"
 
 #include "hash_table_interface.h"
@@ -144,6 +142,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
     HashTable* ht = NULL;
     HashTableInterface* ht_interface = create_default_hash_table_interface();
+    //HashTableInterface* ht_interface = create_optimized_hash_table_interface();
 
 
     if (request->executor->is_current_node_main)
@@ -209,7 +208,8 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                     }
                     else
                     {
-                        hash_table_combine_table_with_response(ht, response, err);
+                        //hash_table_combine_table_with_response(ht, response, err);
+                        ht_interface->combine_with_response(ht, response, err);
                         if (err->error_code != NO_ERROR)
                         {
                             // TODO send_failure response right away or wait for other executors to send their response?
@@ -256,6 +256,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
     }
 
-    hash_table_free(ht);
+    //hash_table_free(ht);
+    ht_interface->free(ht);
     query_request__free_unpacked(request, NULL);
 }
