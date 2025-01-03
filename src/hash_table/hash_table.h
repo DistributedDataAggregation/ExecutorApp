@@ -39,5 +39,6 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
 HashTableValue hash_table_update_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
 void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
 void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, ErrorInfo* err);
+void hash_table_free_entry(HashTableEntry* value) ;
 
 #endif //HASH_TABLE_H

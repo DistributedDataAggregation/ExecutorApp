@@ -17,6 +17,13 @@ unsigned int hash(const char* string, const int table_size) {
       return hash_value % table_size;
 }
 
+void hash_table_free_entry(HashTableEntry* value) {
+      free(value->key);
+      free(value->values);
+      free(value);
+      value = NULL;
+}
+
 HashTable* hash_table_create(const int size, ErrorInfo* err) {
 
       if (err == NULL) {
@@ -352,7 +359,7 @@ void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, E
                   entry = next;
 
                   if (to_be_freed != NULL) {
-                        free(to_be_freed);
+                        hash_table_free_entry(to_be_freed);
                   }
             }
       }
