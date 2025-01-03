@@ -436,17 +436,24 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
             return NULL;
         }
 
-        const int current_length = (int)strlen(column_value_string);
-        grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length + 1);
-        if (grouping_string == NULL)
+        int current_length = (int)strlen(column_value_string);
+        if (grouping_col_index > 0)
+            current_length+=1;
+        char* grouping_string_realloced = (char*)realloc(grouping_string, grouping_string_size + current_length+1);
+        if (grouping_string_realloced == NULL)
         {
             LOG_ERR("Failed to allocate memory for grouping string");
             SET_ERR(err, errno, "Failed to allocate memory for grouping string", strerror(errno));
+            free(grouping_string);
             free(column_value_string);
             return NULL;
         }
+        grouping_string = grouping_string_realloced;
 
         memset(grouping_string + grouping_string_size - 1, 0, current_length);
+        if (grouping_col_index > 0)
+            grouping_string[grouping_string_size - 1] = '|';
+
         grouping_string_size += current_length;
         grouping_string = strcat(grouping_string, column_value_string);
         free(column_value_string);
@@ -454,6 +461,7 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
         {
             LOG_ERR("Failed to concatenation grouping string");
             SET_ERR(err, INTERNAL_ERROR, "Failed to concatenation grouping string", "");
+            free(grouping_string);
             return NULL;
         }
         grouping_string[grouping_string_size - 1] = '\0';
