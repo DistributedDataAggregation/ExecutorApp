@@ -50,7 +50,7 @@ int main_thread_run()
         return EXIT_FAILURE;
     }
 
-    printf("Listening on ports %d and %d\n", controllers_port, executors_port);
+    LOG("Listening on ports %d and %d\n", controllers_port, executors_port);
 
     ClientArray controllers_client_array;
     client_array_init(&controllers_client_array, INITIAL_SIZE, &error_info);
@@ -147,7 +147,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
     if (request->executor->is_current_node_main)
     {
-        printf("This node is main\n");
+        LOG("This node is main\n");
         worker_group_run_request(request, &ht, err);
 
         if (err->error_code != NO_ERROR)
@@ -159,7 +159,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         int collected = 0, iters = 0;
         const int others_count = request->executor->executors_count - 1;
 
-        printf("Finished computing\n");
+        LOG("Finished computing\n");
         while (collected < others_count && iters < MAX_ITERS)
         {
             iters++;
@@ -244,7 +244,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
         else
         {
-            printf("Collected from other nodes\n");
+            LOG("Collected from other nodes\n");
         }
 
         prepare_and_send_response(client_fd, request->guid, ht, err);
@@ -255,13 +255,13 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
         else
         {
-            printf("Sent results to controller\n");
+            LOG("Sent results to controller\n");
         }
     }
 
     else
     {
-        printf("This node is slave\n");
+        LOG("This node is slave\n");
         const int main_executor_socket = executors_server_find_or_add_main_socket(main_executors_sockets,
             request->executor->main_ip_address, request->executor->main_port, err);
         if (err->error_code != NO_ERROR)
@@ -279,7 +279,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                 LOG_INTERNAL_ERR("Failed to send response to main executor\n");
                 if (err->error_code == ECONNRESET || err->error_code == EPIPE)
                 {
-                    printf("Removing main socket %d from main_excutors\n", main_executor_socket);
+                    LOG("Removing main socket %d from main_excutors\n", main_executor_socket);
                     executors_server_remove_main_socket(main_executors_sockets, main_executor_socket);
                     CLEAR_ERR(err);
                 }
@@ -287,7 +287,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             }
             else
             {
-                printf("Sent results to main\n");
+                LOG("Sent results to main\n");
             }
         }
     }
