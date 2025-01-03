@@ -187,11 +187,23 @@ void   error__free_unpacked
   assert(message->base.descriptor == &error__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor query_response__field_descriptors[2] =
+static const ProtobufCFieldDescriptor query_response__field_descriptors[3] =
 {
   {
-    "error",
+    "guid",
     1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(QueryResponse, guid),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "error",
+    2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
@@ -203,7 +215,7 @@ static const ProtobufCFieldDescriptor query_response__field_descriptors[2] =
   },
   {
     "values",
-    2,
+    3,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(QueryResponse, n_values),
@@ -215,13 +227,14 @@ static const ProtobufCFieldDescriptor query_response__field_descriptors[2] =
   },
 };
 static const unsigned query_response__field_indices_by_name[] = {
-  0,   /* field[0] = error */
-  1,   /* field[1] = values */
+  1,   /* field[1] = error */
+  0,   /* field[0] = guid */
+  2,   /* field[2] = values */
 };
 static const ProtobufCIntRange query_response__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor query_response__descriptor =
 {
@@ -231,7 +244,7 @@ const ProtobufCMessageDescriptor query_response__descriptor =
   "QueryResponse",
   "",
   sizeof(QueryResponse),
-  2,
+  3,
   query_response__field_descriptors,
   query_response__field_indices_by_name,
   1,  query_response__number_ranges,
