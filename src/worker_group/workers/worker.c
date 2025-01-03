@@ -381,6 +381,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             {
                 g_object_unref(select_arrays[select]);
             }
+
+            free(grouping_arrays);
+            free(select_arrays);
         }
 
         for (int grouping_index = 0; grouping_index < data->n_group_columns; grouping_index++)
@@ -433,6 +436,13 @@ char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data
 char* construct_grouping_string(const int n_group_columns, GArrowArray** grouping_arrays, const int row_index,
                                 const ColumnDataType* group_columns_data_types, ErrorInfo* err)
 {
+    if (err == NULL)
+    {
+        LOG_ERR("ErrorInfo pointer is NULL");
+        SET_ERR(err, INTERNAL_ERROR, "ErrorInfo pointer is NULL", "");
+        return NULL;
+    }
+
     char* grouping_string = malloc(1);
     if (grouping_string == NULL)
     {
@@ -450,6 +460,7 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
             grouping_arrays[grouping_col_index],
             group_columns_data_types[grouping_col_index],
             row_index, err);
+
         if (err->error_code != NO_ERROR)
         {
             free(grouping_string);
@@ -458,26 +469,24 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
         }
 
         const int current_length = (int)strlen(column_value_string);
-        grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length + 1);
-        if (grouping_string == NULL)
+
+        char* new_grouping_string = (char*)realloc(grouping_string, grouping_string_size + current_length + 1);
+        if (new_grouping_string == NULL)
         {
             LOG_ERR("Failed to allocate memory for grouping string");
             SET_ERR(err, errno, "Failed to allocate memory for grouping string", strerror(errno));
             free(column_value_string);
+            free(grouping_string);
             return NULL;
         }
 
-        memset(grouping_string + grouping_string_size - 1, 0, current_length);
+        grouping_string = new_grouping_string;
+
+        strcat(grouping_string, column_value_string);
+
         grouping_string_size += current_length;
-        grouping_string = strcat(grouping_string, column_value_string);
+
         free(column_value_string);
-        if (grouping_string == NULL)
-        {
-            LOG_ERR("Failed to concatenation grouping string");
-            SET_ERR(err, INTERNAL_ERROR, "Failed to concatenation grouping string", "");
-            return NULL;
-        }
-        grouping_string[grouping_string_size - 1] = '\0';
     }
 
     return grouping_string;

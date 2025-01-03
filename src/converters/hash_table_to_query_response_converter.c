@@ -11,6 +11,7 @@
 PartialResult* convert_value(HashTableValue value, ErrorInfo* err);
 Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err);
 void free_values(Value** values, int count);
+void free_value(Value* value);
 
 // TODO check for memory leaks
 
@@ -44,7 +45,8 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
     if (index_of_non_empty == table->size)
     {
         LOG_INTERNAL_ERR("No entries to convert to query response");
-        return query_response;
+        free(query_response);
+        return NULL;
     }
 
     query_response->n_values = values_counter;
@@ -53,7 +55,7 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
     {
         LOG_ERR("Failed to allocate for query response values while converting");
         SET_ERR(err, errno, "Failed to allocate for query response values while converting", strerror(errno));
-        query_response->n_values = 0;
+        //query_response->n_values = 0;
         free(query_response);
         return NULL;
     }
@@ -71,7 +73,7 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
                 {
                     LOG_INTERNAL_ERR("Failed to convert query response values");
                     SET_ERR(err, INTERNAL_ERROR, "Failed to convert query response values", "");
-                    query_response->n_values = 0;
+                    //query_response->n_values = 0;
                     free_values(query_response->values, converted_values);
                     free(query_response);
                     return NULL;
@@ -90,7 +92,9 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
     if (converted_values != values_counter)
     {
         LOG_INTERNAL_ERR("Wrong number of values converted to query response");
-        // TODO send failure or converted ones (now)?
+        free_values(query_response->values, converted_values);
+        free(query_response);
+        return NULL;
     }
 
     return query_response;
@@ -115,12 +119,20 @@ Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err)
 
     value->n_results = entry->n_values;
     value->grouping_value = strdup(entry->key);
+    if (value->grouping_value == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for grouping_value");
+        SET_ERR(err, errno, "Failed to allocate memory for grouping_value", strerror(errno));
+        free_value(value); // Use the cleanup function here
+        return NULL;
+    }
+
     value->results = malloc(sizeof(PartialResult*) * value->n_results);
     if (value->results == NULL)
     {
         LOG_ERR("Failed to allocate for query response value results");
         SET_ERR(err, errno, "Failed to allocate for query response value results", strerror(errno));
-        free(value);
+        free_value(value); // Free all previously allocated resources
         return NULL;
     }
 
@@ -129,11 +141,7 @@ Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err)
         value->results[i] = convert_value(entry->values[i], err);
         if (err->error_code != NO_ERROR)
         {
-            for (int j = 0; j < i; j++)
-            {
-                free(value->results[j]);
-            }
-            free(value->results);
+            free_value(value);
             return NULL;
         }
     }
@@ -153,7 +161,7 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
     if (result == NULL)
     {
         LOG_ERR("Failed to allocate for query response value partial result");
-        SET_ERR(err, errno, "Failed to allocate for query response value partial resul", strerror(errno));
+        SET_ERR(err, errno, "Failed to allocate for query response value partial result", strerror(errno));
         return NULL;
     }
 
@@ -183,13 +191,108 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
 
 void free_values(Value** values, const int count)
 {
+    if (values == NULL)
+    {
+        return;
+    }
+
     for (int i = 0; i < count; i++)
     {
-        for (int j = 0; j < values[i]->n_results; j++)
+        if (values[i] != NULL)
         {
-            free(values[i]->results[j]);
+            free_value(values[i]);
         }
-        free(values[i]->results);
     }
     free(values);
+}
+
+
+void free_value(Value* value)
+{
+    if (value == NULL)
+    {
+        return;
+    }
+    if (value->grouping_value != NULL)
+    {
+        free(value->grouping_value);
+    }
+    if (value->results != NULL)
+    {
+        for (int i = 0; i < value->n_results; i++)
+        {
+            if (value->results[i] != NULL)
+            {
+                free(value->results[i]);
+            }
+        }
+        free(value->results);
+    }
+    free(value);
+}
+
+
+QueryResponse* convert_hash_table_to_query_response_optimized(const HashTable* table, ErrorInfo* err)
+{
+    if (err == NULL)
+    {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        return NULL;
+    }
+
+    QueryResponse* query_response = malloc(sizeof(QueryResponse));
+    if (query_response == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for query response");
+        SET_ERR(err, errno, "Failed to allocate memory for query response", strerror(errno));
+        return NULL;
+    }
+    query_response__init(query_response);
+
+    if (table == NULL || table->table == NULL)
+    {
+        LOG_ERR("Invalid or uninitialized hash table");
+        SET_ERR(err, INTERNAL_ERROR, "Invalid or uninitialized hash table", "Hash table or its table is NULL");
+        free(query_response);
+        return NULL;
+    }
+
+    query_response->n_values = table->entries_count;
+    query_response->values = malloc(sizeof(Value*) * query_response->n_values);
+    if (query_response->values == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for query response values");
+        SET_ERR(err, errno, "Failed to allocate memory for query response values", strerror(errno));
+        free(query_response);
+        return NULL;
+    }
+
+    int converted_values = 0;
+
+    for (int i = 0; i < table->size; i++)
+    {
+        HashTableEntry* entry = table->table[i];
+        if (entry != NULL && !entry->is_deleted)
+        {
+            query_response->values[converted_values] = convert_entry(entry, err);
+            if (err->error_code != NO_ERROR)
+            {
+                LOG_ERR("Error converting hash table entry to query response value");
+                free_values(query_response->values, converted_values);
+                free(query_response);
+                return NULL;
+            }
+            converted_values++;
+        }
+    }
+
+    if (converted_values != query_response->n_values)
+    {
+        LOG_INTERNAL_ERR("Number of converted values does not match expected count");
+        free_values(query_response->values, converted_values);
+        free(query_response);
+        return NULL;
+    }
+
+    return query_response;
 }

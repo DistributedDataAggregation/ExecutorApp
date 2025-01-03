@@ -51,6 +51,11 @@ HashTable* hash_table_optimized_create(int size, ErrorInfo* err)
 
 void hash_table_optimized_free(HashTable* table)
 {
+      if (table == NULL)
+      {
+            return;
+      }
+
       for (int i = 0; i < table->size; i++)
       {
             HashTableEntry* entry = table->table[i];

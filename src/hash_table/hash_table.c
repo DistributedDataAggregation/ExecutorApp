@@ -8,6 +8,8 @@
 #include <string.h>
 #include "hash_table.h"
 
+#include "logging.h"
+
 unsigned int hash(const char* string, const int table_size)
 {
       unsigned int hash_value = 0;
@@ -89,7 +91,7 @@ void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err)
             return;
       }
 
-      if (entry == NULL)
+      if (entry == NULL || entry->key == NULL)
       {
             LOG_INTERNAL_ERR("Failed to insert to a hash table: Entry was NULL");
             SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Entry was NULL");
@@ -404,7 +406,7 @@ void hash_table_combine_hash_tables(HashTable* destination, const HashTable* sou
                   if (found == NULL)
                   {
                         entry->next = NULL;
-                        hash_table_insert(destination, next, err);
+                        hash_table_insert(destination, entry, err);
                         if (err->error_code != NO_ERROR)
                         {
                               return;

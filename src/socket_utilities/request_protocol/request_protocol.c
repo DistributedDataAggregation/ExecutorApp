@@ -106,6 +106,8 @@ QueryRequest* parse_incoming_request(const int client_fd, ErrorInfo* err)
 void send_response(const int client_fd, const QueryResponse* response, ErrorInfo* err)
 {
     const ssize_t size = (ssize_t)query_response__get_packed_size(response);
+    LOG("Calculated message size to send: %zd bytes", size);
+
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * size);
     if (buffer == NULL)
     {
@@ -116,13 +118,15 @@ void send_response(const int client_fd, const QueryResponse* response, ErrorInfo
     memset(buffer, 0, size);
 
     const int size_to_send = (int)htonl(size);
-    if (write(client_fd, &size_to_send, sizeof(size_to_send)) <= 0)
+    ssize_t bytes_written = write(client_fd, &size_to_send, sizeof(size_to_send));
+    if (bytes_written <= 0)
     {
         LOG_ERR("Failed to send message size to client");
         SET_ERR(err, errno, "Failed to send message size to client", strerror(errno));
         free(buffer);
         return;
     }
+    LOG("Sent %zd bytes for message size to client", bytes_written);
 
     const int stored = (int)query_response__pack(response, buffer);
     if (stored != size)
@@ -132,11 +136,18 @@ void send_response(const int client_fd, const QueryResponse* response, ErrorInfo
         free(buffer);
         return;
     }
+    LOG("Packed %d bytes into message buffer", stored);
 
-    if (send(client_fd, buffer, size, 0) != size)
+    ssize_t bytes_sent = send(client_fd, buffer, size, 0);
+    if (bytes_sent != size)
     {
+        LOG("Failed to send message to client. Sent %zd %zd bytes", bytes_sent, size);
         LOG_ERR("Failed to send message to client");
         SET_ERR(err, errno, "Failed to send message to client", strerror(errno));
+    }
+    else
+    {
+        LOG("Successfully sent %zd bytes to client", bytes_sent);
     }
 
     free(buffer);
@@ -150,11 +161,8 @@ void prepare_and_send_response(const int client_fd, const HashTable* ht, ErrorIn
         prepare_and_send_failure_response(client_fd, err);
         return;
     }
-
-    QueryResponse* response = convert_hash_table_to_query_response(ht, err);
-
-    print_query_response(response);
-
+     // CHANGE IT CHANGE IT
+    QueryResponse* response = convert_hash_table_to_query_response_optimized(ht, err);
 
     if (err->error_code != NO_ERROR)
     {

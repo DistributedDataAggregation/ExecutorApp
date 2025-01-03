@@ -141,8 +141,9 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
-    HashTableInterface* ht_interface = create_default_hash_table_interface();
-    //HashTableInterface* ht_interface = create_optimized_hash_table_interface();
+    // CHANGE IT CHANGE IT
+    //HashTableInterface* ht_interface = create_default_hash_table_interface();
+    HashTableInterface* ht_interface = create_optimized_hash_table_interface();
 
 
     if (request->executor->is_current_node_main)
@@ -258,5 +259,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
     //hash_table_free(ht);
     ht_interface->free(ht);
+    free(ht_interface);
     query_request__free_unpacked(request, NULL);
 }
