@@ -29,6 +29,7 @@ typedef struct ExecutorInformation ExecutorInformation;
 struct  QueryRequest
 {
   ProtobufCMessage base;
+  char *guid;
   size_t n_files_names;
   char **files_names;
   size_t n_group_columns;
@@ -39,7 +40,7 @@ struct  QueryRequest
 };
 #define QUERY_REQUEST__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&query_request__descriptor) \
-    , 0,NULL, 0,NULL, 0,NULL, NULL }
+    , (char *)protobuf_c_empty_string, 0,NULL, 0,NULL, 0,NULL, NULL }
 
 
 struct  Select

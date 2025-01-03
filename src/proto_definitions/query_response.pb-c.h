@@ -29,13 +29,14 @@ typedef struct Error Error;
 struct  QueryResponse
 {
   ProtobufCMessage base;
+  char *guid;
   Error *error;
   size_t n_values;
   Value **values;
 };
 #define QUERY_RESPONSE__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&query_response__descriptor) \
-    , NULL, 0,NULL }
+    , (char *)protobuf_c_empty_string, NULL, 0,NULL }
 
 
 struct  Value

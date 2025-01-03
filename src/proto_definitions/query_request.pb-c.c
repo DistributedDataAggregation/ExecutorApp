@@ -142,11 +142,23 @@ void   executor_information__free_unpacked
   assert(message->base.descriptor == &executor_information__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
+static const ProtobufCFieldDescriptor query_request__field_descriptors[5] =
 {
   {
-    "files_names",
+    "guid",
     1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(QueryRequest, guid),
+    NULL,
+    &protobuf_c_empty_string,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "files_names",
+    2,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_STRING,
     offsetof(QueryRequest, n_files_names),
@@ -158,7 +170,7 @@ static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
   },
   {
     "group_columns",
-    2,
+    3,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_STRING,
     offsetof(QueryRequest, n_group_columns),
@@ -170,7 +182,7 @@ static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
   },
   {
     "select",
-    3,
+    4,
     PROTOBUF_C_LABEL_REPEATED,
     PROTOBUF_C_TYPE_MESSAGE,
     offsetof(QueryRequest, n_select),
@@ -182,7 +194,7 @@ static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
   },
   {
     "executor",
-    4,
+    5,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
@@ -194,15 +206,16 @@ static const ProtobufCFieldDescriptor query_request__field_descriptors[4] =
   },
 };
 static const unsigned query_request__field_indices_by_name[] = {
-  3,   /* field[3] = executor */
-  0,   /* field[0] = files_names */
-  1,   /* field[1] = group_columns */
-  2,   /* field[2] = select */
+  4,   /* field[4] = executor */
+  1,   /* field[1] = files_names */
+  2,   /* field[2] = group_columns */
+  0,   /* field[0] = guid */
+  3,   /* field[3] = select */
 };
 static const ProtobufCIntRange query_request__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 4 }
+  { 0, 5 }
 };
 const ProtobufCMessageDescriptor query_request__descriptor =
 {
@@ -212,7 +225,7 @@ const ProtobufCMessageDescriptor query_request__descriptor =
   "QueryRequest",
   "",
   sizeof(QueryRequest),
-  4,
+  5,
   query_request__field_descriptors,
   query_request__field_indices_by_name,
   1,  query_request__number_ranges,
