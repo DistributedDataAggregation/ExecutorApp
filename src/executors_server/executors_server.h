@@ -29,4 +29,6 @@ int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, cons
 
 void executors_server_free(MainExecutorsSockets* sockets);
 
+void executors_server_remove_main_socket(MainExecutorsSockets* sockets, int socket);
+
 #endif //EXECUTORS_SERVER_H

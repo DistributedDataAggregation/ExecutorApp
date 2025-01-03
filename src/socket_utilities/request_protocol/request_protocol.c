@@ -10,10 +10,9 @@
 #include <unistd.h>
 #include "error_handling.h"
 #include "hash_table_to_query_response_converter.h"
+#include "logging.h"
 #include "query_response.pb-c.h"
 #include "request_protocol.h"
-
-#include "logging.h"
 
 void get_message_size(int client_fd, uint32_t* message_size, ErrorInfo *err);
 void get_packed_proto_buffer(int client_fd, uint32_t message_size, uint8_t* buffer, ErrorInfo *err);
@@ -124,28 +123,29 @@ void send_response(const int client_fd, const QueryResponse* response, ErrorInfo
     free(buffer);
 }
 
-void prepare_and_send_response(const int client_fd, const HashTable* ht, ErrorInfo *err) {
+void prepare_and_send_response(const int client_fd, const char* guid, const HashTable* ht, ErrorInfo *err) {
     if (err == NULL || err->error_code != NO_ERROR) {
-        prepare_and_send_failure_response(client_fd, err);
+        prepare_and_send_failure_response(client_fd, guid, err);
         return;
     }
 
     QueryResponse* response = convert_hash_table_to_query_response(ht, err);
     if (err->error_code != NO_ERROR) {
-        prepare_and_send_failure_response(client_fd, err);
+        prepare_and_send_failure_response(client_fd, guid, err);
         query_response__free_unpacked(response, NULL);
         return;
     }
+    response->guid = strdup(guid);
 
     send_response(client_fd, response, err);
     if (err->error_code != NO_ERROR) {
-        prepare_and_send_failure_response(client_fd, err);
+        prepare_and_send_failure_response(client_fd, guid, err);
     }
 
     query_response__free_unpacked(response, NULL);
 }
 
-void prepare_and_send_failure_response(const int client_fd, ErrorInfo *err) {
+void prepare_and_send_failure_response(const int client_fd, const char* guid, ErrorInfo *err) {
     QueryResponse* response = malloc(sizeof(QueryResponse));
     if (response == NULL) {
         LOG_ERR("Failed to allocate memory for response");
@@ -154,6 +154,7 @@ void prepare_and_send_failure_response(const int client_fd, ErrorInfo *err) {
     }
 
     query_response__init(response);
+    response->guid = strdup(guid);
     response->error = malloc(sizeof(Error));
     if (response->error == NULL) {
         free(response);
@@ -253,13 +254,13 @@ void get_packed_proto_buffer(const int client_fd, const uint32_t message_size, u
     while(total_bytes_read < (message_size)) {
         bytes = read(client_fd, buffer+total_bytes_read, (message_size)-total_bytes_read);
         if (bytes == 0) {
-            LOG_INTERNAL_ERR("Failed reading message size: Attempted to read from a closed socket");
-            SET_ERR(err, SOCKET_CLOSED, "Failed reading message size", "Attempted to read from a closed socket");
+            LOG_INTERNAL_ERR("Failed reading message: Attempted to read from a closed socket");
+            SET_ERR(err, SOCKET_CLOSED, "Failed reading message", "Attempted to read from a closed socket");
             return;
         }
         if (bytes < 0) {
-            LOG_ERR("Failed reading message size");
-            SET_ERR(err, errno, "Failed reading message size", strerror(errno));
+            LOG_ERR("Failed reading message");
+            SET_ERR(err, errno, "Failed reading message", strerror(errno));
             return;
         }
         total_bytes_read += bytes;
