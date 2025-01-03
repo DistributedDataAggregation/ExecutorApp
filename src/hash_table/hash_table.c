@@ -17,6 +17,13 @@ unsigned int hash(const char* string, const int table_size) {
       return hash_value % table_size;
 }
 
+void hash_table_free_entry(HashTableEntry* value) {
+      free(value->key);
+      free(value->values);
+      free(value);
+      value = NULL;
+}
+
 HashTable* hash_table_create(const int size, ErrorInfo* err) {
 
       if (err == NULL) {
@@ -115,7 +122,6 @@ HashTableEntry* hash_table_search(const HashTable* table, const char* key) {
       HashTableEntry* entry = table->table[hash_value];
       while(entry != NULL) {
             if(strcmp(entry->key, key) == 0) {
-
                   return entry;
             }
             entry = entry->next;
@@ -216,7 +222,7 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
             return;
       }
 
-      if(entry1->n_values > entry2->n_values) {
+      if(entry1->n_values != entry2->n_values) {
             LOG_INTERNAL_ERR("Failed to combine hash table entries: Entries have different number of values");
             SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
                   "Entries have different number of values");
@@ -321,12 +327,14 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
       }
 }
 
-void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err) {
+void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, ErrorInfo* err) {
 
       if (err == NULL) {
             LOG_INTERNAL_ERR("Passed error info was NULL");
             return;
       }
+
+      HashTableEntry* to_be_freed = NULL;
 
       for(int i=0;i<source->size;i++) {
             HashTableEntry* entry = source->table[i];
@@ -336,18 +344,23 @@ void hash_table_combine_hash_tables(HashTable* destination, const HashTable* sou
                   HashTableEntry* found = hash_table_search(destination, entry->key);
                   if(found == NULL) {
                         entry->next = NULL;
-                        hash_table_insert(destination, next, err);
+                        hash_table_insert(destination, entry, err);
                         if (err->error_code != NO_ERROR) {
                               return;
                         }
+                        to_be_freed = NULL;
                   } else {
                         hash_table_combine_entries(found, entry, err);
+                        to_be_freed = entry;
                         if (err->error_code != NO_ERROR) {
                               return;
                         }
                   }
-
                   entry = next;
+
+                  if (to_be_freed != NULL) {
+                        hash_table_free_entry(to_be_freed);
+                  }
             }
       }
 }

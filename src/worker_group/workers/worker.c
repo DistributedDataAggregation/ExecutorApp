@@ -269,13 +269,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 select_arrays[select] = garrow_chunked_array_get_chunk(select_chunked_arrays[select], chunk_index);
             }
 
-            const gint number_of_rows = (gint)garrow_array_count(grouping_arrays[0], NULL, &error);
-            if (error != NULL)
-            {
-                report_g_error(error, err, "Failed to retrieve number of rows");
-                // TODO free allocated data
-                return;
-            }
+            const guint number_of_rows = garrow_chunked_array_get_n_rows(grouping_chunked_arrays[chunk_index]);
 
             for (int row_index = 0; row_index < number_of_rows; row_index++)
             {

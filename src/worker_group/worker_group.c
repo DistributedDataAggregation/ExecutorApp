@@ -184,7 +184,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
                 SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Failed to combine hash tables");
                 // TODO handle exit?? or we need to wait for other threads anyway (now)
             }
-            hash_table_free(thread_ht);
+            free(thread_ht);
         }
     }
 
