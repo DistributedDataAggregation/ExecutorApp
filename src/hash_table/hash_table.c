@@ -222,7 +222,7 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
             return;
       }
 
-      if(entry1->n_values > entry2->n_values) {
+      if(entry1->n_values != entry2->n_values) {
             LOG_INTERNAL_ERR("Failed to combine hash table entries: Entries have different number of values");
             SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
                   "Entries have different number of values");

@@ -270,12 +270,6 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             }
 
             const guint number_of_rows = garrow_chunked_array_get_n_rows(grouping_chunked_arrays[chunk_index]);
-            if (error != NULL)
-            {
-                report_g_error(error, err, "Failed to retrieve number of rows");
-                // TODO free allocated data
-                return;
-            }
 
             for (int row_index = 0; row_index < number_of_rows; row_index++)
             {
