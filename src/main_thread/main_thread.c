@@ -209,16 +209,16 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                     }
                     else
                     {
-                        if (response->error != NULL)
+                        if (strcmp(response->guid, request->guid) == 0)
                         {
-                            LOG_INTERNAL_ERR("Received failure response from a slave executor");
-                            SET_ERR(err, INTERNAL_ERROR, response->error->message, response->error->inner_message);
-                            // TODO test it
-                            // TODO send_failure response right away or wait for other executors to send their response?
-                        }
-                        else
-                        {
-                            if (strcmp(response->guid, request->guid) == 0)
+                            if (response->error != NULL)
+                            {
+                                LOG_INTERNAL_ERR("Received failure response from a slave executor");
+                                SET_ERR(err, INTERNAL_ERROR, response->error->message, response->error->inner_message);
+                                // TODO test it
+                                // TODO send_failure response right away or wait for other executors to send their response?
+                            }
+                            else
                             {
                                 hash_table_combine_table_with_response(ht, response, err);
                                 if (err->error_code != NO_ERROR)
@@ -226,13 +226,9 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                                     // TODO send_failure response right away or wait for other executors to send their response?
                                 }
                             }
-                            else
-                            {
-                                collected--;
-                            }
+                            collected++;
                         }
                     }
-                    collected++;
                 }
             }
         }
