@@ -297,6 +297,7 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
             for(int j=0; j<current->n_results; j++) {
                   values[j].value = current->results[j]->value;
                   values[j].count = current->results[j]->count;
+                  values[j].is_null = current->results[j]->is_null;
             }
 
             HashTableEntry* entry = malloc(sizeof(HashTableEntry));
