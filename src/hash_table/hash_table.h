@@ -12,6 +12,7 @@
 typedef struct HashTableValue {
     long value;
     long count;
+    int is_null;
     AggregateFunction aggregate_function;
 } HashTableValue;
 

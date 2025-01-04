@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "boolean.h"
+#include "stdbool.h"
 #include "client_array.h"
 #include "error_handling.h"
 #include "executors_server.h"
@@ -40,9 +40,9 @@ int main_thread_run()
         return EXIT_FAILURE;
 
     const int controllers_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
-                                                                      TRUE, TRUE, controllers_port, &error_info);
+                                                                      true, true, controllers_port, &error_info);
     const int executors_socket_fd = create_and_listen_on_tcp_socket("0.0.0.0",
-                                                                    TRUE, TRUE, executors_port, &error_info);
+                                                                    true, true, executors_port, &error_info);
     if (error_info.error_code != NO_ERROR)
     {
         close(controllers_socket_fd);
@@ -220,9 +220,12 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                             }
                             else
                             {
+                                LOG("Combining response for query of id: %s", response->guid);
                                 hash_table_combine_table_with_response(ht, response, err);
                                 if (err->error_code != NO_ERROR)
                                 {
+                                    LOG("ERROR Combining response for query of id: %s", response->guid);
+                                    LOG_INTERNAL_ERR("Combining response for query");
                                     // TODO send_failure response right away or wait for other executors to send their response?
                                 }
                             }

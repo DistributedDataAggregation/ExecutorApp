@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "boolean.h"
+#include "stdbool.h"
 #include "error_handling.h"
 #include "executors_server.h"
 #include "logging.h"
@@ -78,7 +78,7 @@ int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, cons
         }
     }
 
-    const int new_socket = create_tcp_socket("0.0.0.0", TRUE, FALSE, 0, err);
+    const int new_socket = create_tcp_socket("0.0.0.0", true, false, 0, err);
     if (err->error_code != NO_ERROR)
     {
         return -1;

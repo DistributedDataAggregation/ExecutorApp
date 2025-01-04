@@ -9,7 +9,7 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "boolean.h"
+#include "stdbool.h"
 #include "client_array.h"
 #include "error_handling.h"
 #include "logging.h"
@@ -68,7 +68,7 @@ void client_array_accept_clients(ClientArray* array, const int socket_fd, const 
     if (FD_ISSET(socket_fd, read_fds))
     {
         int client_fd;
-        while ((client_fd = accept_client(socket_fd, TRUE, err)) != -1)
+        while ((client_fd = accept_client(socket_fd, true, err)) != -1)
         {
             if (err->error_code != NO_ERROR)
                 return;
