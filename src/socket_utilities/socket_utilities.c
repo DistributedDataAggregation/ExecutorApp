@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "boolean.h"
+#include "stdbool.h"
 #include "error_handling.h"
 #include "socket_utilities.h"
 
@@ -68,7 +68,7 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
         return -1;
     }
 
-    if (non_blocking == TRUE)
+    if (true == non_blocking)
     {
         const int flags = fcntl(socket_fd, F_GETFL, 0);
         if (flags == -1)
@@ -88,7 +88,7 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
         }
     }
 
-    if (so_reuse == TRUE)
+    if (true == so_reuse)
     {
         const int opt = 1;
         if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
@@ -135,7 +135,7 @@ int accept_client(const int socket_fd, const int is_non_blocking, ErrorInfo* err
     const int client_fd = accept(socket_fd, NULL, NULL);
     if (client_fd == -1)
     {
-        if (is_non_blocking == TRUE && (errno == EWOULDBLOCK || errno == EAGAIN))
+        if (true == is_non_blocking && (errno == EWOULDBLOCK || errno == EAGAIN))
         {
             LOG("No pending client connections\n");
         }
