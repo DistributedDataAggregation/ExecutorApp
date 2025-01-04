@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash_table_to_query_response_converter.h"
+#include "stdbool.h"
 
 PartialResult* convert_value(HashTableValue value, ErrorInfo* err);
 Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err);
@@ -158,6 +159,13 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
     }
 
     partial_result__init(result);
+
+    if (true == value.is_null) {
+        result->is_null = true;
+        result->count = 0;
+        result->value = 0;
+        return result;
+    }
 
     switch (value.aggregate_function)
     {

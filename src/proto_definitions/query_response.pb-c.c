@@ -302,11 +302,23 @@ const ProtobufCMessageDescriptor value__descriptor =
   (ProtobufCMessageInit) value__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor partial_result__field_descriptors[2] =
+static const ProtobufCFieldDescriptor partial_result__field_descriptors[3] =
 {
   {
-    "value",
+    "is_null",
     1,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_BOOL,
+    0,   /* quantifier_offset */
+    offsetof(PartialResult, is_null),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "value",
+    2,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
@@ -318,7 +330,7 @@ static const ProtobufCFieldDescriptor partial_result__field_descriptors[2] =
   },
   {
     "count",
-    2,
+    3,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
@@ -330,13 +342,14 @@ static const ProtobufCFieldDescriptor partial_result__field_descriptors[2] =
   },
 };
 static const unsigned partial_result__field_indices_by_name[] = {
-  1,   /* field[1] = count */
-  0,   /* field[0] = value */
+  2,   /* field[2] = count */
+  0,   /* field[0] = is_null */
+  1,   /* field[1] = value */
 };
 static const ProtobufCIntRange partial_result__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 2 }
+  { 0, 3 }
 };
 const ProtobufCMessageDescriptor partial_result__descriptor =
 {
@@ -346,7 +359,7 @@ const ProtobufCMessageDescriptor partial_result__descriptor =
   "PartialResult",
   "",
   sizeof(PartialResult),
-  2,
+  3,
   partial_result__field_descriptors,
   partial_result__field_indices_by_name,
   1,  partial_result__number_ranges,

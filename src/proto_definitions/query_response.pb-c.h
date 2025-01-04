@@ -54,12 +54,13 @@ struct  Value
 struct  PartialResult
 {
   ProtobufCMessage base;
+  protobuf_c_boolean is_null;
   int64_t value;
   int64_t count;
 };
 #define PARTIAL_RESULT__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&partial_result__descriptor) \
-    , 0, 0 }
+    , 0, 0, 0 }
 
 
 struct  Error

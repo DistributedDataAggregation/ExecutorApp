@@ -245,6 +245,12 @@ HashTableValue hash_table_update_value(HashTableValue current_value, const HashT
             return current_value;
       }
 
+      if (current_value.is_null) {
+            return incoming_value;
+      } else if (incoming_value.is_null) {
+            return current_value;
+      }
+
       switch (current_value.aggregate_function) {
             case MIN: {
                   current_value.value = incoming_value.value < current_value.value ? incoming_value.value : current_value.value;

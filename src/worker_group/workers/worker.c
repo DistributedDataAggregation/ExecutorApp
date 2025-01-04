@@ -386,8 +386,11 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 }
 
 char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data_type, const int row_index,
-                          ErrorInfo* err)
-{
+                          ErrorInfo* err) {
+    if (garrow_array_is_null(grouping_array, row_index)) {
+        return strdup("null");
+    }
+
     switch (data_type)
     {
     case COLUMN_DATA_TYPE_INT32:
@@ -476,6 +479,9 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
 {
     HashTableValue hash_table_value = {0};
     hash_table_value.aggregate_function = UNKNOWN;
+    hash_table_value.is_null = FALSE;
+    hash_table_value.value = 0;
+    hash_table_value.count = 0;
 
     switch (aggregate_function)
     {
@@ -507,6 +513,12 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     }
 
     long value = 0;
+
+    if (garrow_array_is_null(select_array, row_index)) {
+        hash_table_value.is_null = TRUE;
+        return hash_table_value;
+    }
+
     switch (select_columns_data_types)
     {
     case COLUMN_DATA_TYPE_INT32:
