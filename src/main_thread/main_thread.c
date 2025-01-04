@@ -220,9 +220,11 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                             }
                             else
                             {
+                                LOG("Combining response for query of id: %s", response->guid);
                                 hash_table_combine_table_with_response(ht, response, err);
                                 if (err->error_code != NO_ERROR)
                                 {
+                                    LOG_INTERNAL_ERR("Combining response for query of id: %s", response->guid);
                                     // TODO send_failure response right away or wait for other executors to send their response?
                                 }
                             }
