@@ -77,6 +77,7 @@ void client_array_accept_clients(ClientArray* array, const int socket_fd, const 
             if (err->error_code != NO_ERROR)
                 return;
         }
+        errno = 0;
     }
 }
 
