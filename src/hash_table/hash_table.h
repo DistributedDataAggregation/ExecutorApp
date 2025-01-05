@@ -5,10 +5,42 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-
+#include "aggregate_function.h"
 #include "error_handling.h"
 #include "query_response.pb-c.h"
 #include "hash_table_struct.h"
+
+typedef enum HashTableValueType {
+    HASH_TABLE_UNSUPPORTED,
+    HASH_TABLE_INT,
+    HASH_TABLE_FLOAT,
+    HASH_TABLE_DOUBLE,
+}HashTableValueType;
+
+typedef struct HashTableValue {
+    long count;
+    int is_null;
+    HashTableValueType type;
+    union {
+        long value;
+        float float_value;
+        double double_value;
+    };
+    AggregateFunction aggregate_function;
+} HashTableValue;
+
+typedef struct HashTableEntry {
+    char* key;
+    int n_values;
+    HashTableValue* values;
+    struct HashTableEntry* next;
+} HashTableEntry;
+
+typedef struct HashTable {
+    int size;
+    int entries_count;
+    HashTableEntry** table;
+} HashTable;
 
 unsigned int hash(const char* string, int table_size);
 HashTable* hash_table_create(int size, ErrorInfo* err);
@@ -22,5 +54,6 @@ HashTableValue hash_table_update_value(HashTableValue current_value, HashTableVa
 void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
 void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, ErrorInfo* err);
 void hash_table_free_entry(HashTableEntry* value) ;
+HashTableValue hash_table_value_initialize();
 
 #endif //HASH_TABLE_H

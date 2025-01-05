@@ -22,7 +22,7 @@ void print_partial_result(const PartialResult* partial_result)
 {
     if (!partial_result) return;
     printf("    PartialResult:\n");
-    printf("      Value: %lld\n", (long long)partial_result->value);
+    printf("      Value: %lld\n", (long long)partial_result->int_value);
     printf("      Count: %lld\n", (long long)partial_result->count);
 }
 
@@ -166,6 +166,7 @@ void prepare_and_send_response(const int client_fd, const char* guid, HashTableI
         query_response__free_unpacked(response, NULL);
         return;
     }
+
     response->guid = strdup(guid);
 
     send_response(client_fd, response, err);

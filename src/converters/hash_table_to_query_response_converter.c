@@ -179,28 +179,35 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
     {
         result->is_null = true;
         result->count = 0;
-        result->value = 0;
+        result->value_case = PARTIAL_RESULT__VALUE__NOT_SET;
+        result->type = RESULT_TYPE__UNKNOWN;
         return result;
     }
 
-    switch (value.aggregate_function)
-    {
-    case MIN:
-    case MAX:
-        {
-            result->value = value.value;
+    switch (value.type) {
+        case HASH_TABLE_INT:
+            result->type = RESULT_TYPE__INT;
+            result->int_value = value.value;
+            result->value_case = PARTIAL_RESULT__VALUE_INT_VALUE;
             break;
-        }
-    case AVG:
-        {
-            result->count = value.count;
-            result->value = value.value;
+        case HASH_TABLE_FLOAT:
+            result->type = RESULT_TYPE__FLOAT;
+            result->float_value = value.float_value;
+            result->value_case = PARTIAL_RESULT__VALUE_FLOAT_VALUE;
             break;
-        }
-    default:
-        result->value = 0;
-        break;
+        case HASH_TABLE_DOUBLE:
+            result->type = RESULT_TYPE__DOUBLE;
+            result->double_value = value.double_value;
+            result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
+            break;
+        default:
+        case HASH_TABLE_UNSUPPORTED:
+            LOG_INTERNAL_ERR("Unsupported hash table type");
+            SET_ERR(err, INTERNAL_ERROR, "Unsupported hash table type", strerror(errno));
     }
+
+    result->is_null = false;
+    result->count = value.count;
 
     return result;
 }

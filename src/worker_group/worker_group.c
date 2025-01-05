@@ -11,6 +11,7 @@
 #include "thread_data.h"
 #include "worker_group.h"
 #include "hash_table_interface.h"
+#include "internal_to_proto_aggregate_converters.h"
 #include "logging.h"
 #include "workers/worker.h"
 
@@ -286,7 +287,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     {
         const Select* select = request->select[i];
         thread_data->selects_indices[i] = select_indices[i];
-        thread_data->selects_aggregate_functions[i] = worker_group_map_aggregate_function(select->function, err);
+        thread_data->selects_aggregate_functions[i] = convert_aggregate_function(select->function, err);
         if (err->error_code != NO_ERROR)
         {
             worker_group_free_thread_data(thread_data);
@@ -297,30 +298,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     return thread_data;
 }
 
-AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate, ErrorInfo* err)
-{
-    if (err == NULL)
-    {
-        LOG_INTERNAL_ERR("Passed error info was NULL");
-        return UNKNOWN;
-    }
 
-    switch (aggregate)
-    {
-    case AGGREGATE__Minimum:
-        return MIN;
-    case AGGREGATE__Maximum:
-        return MAX;
-    case AGGREGATE__Average:
-        return AVG;
-    case AGGREGATE__Median:
-        return MEDIAN;
-    default:
-        LOG_INTERNAL_ERR("Unsupported aggregate function");
-        SET_ERR(err, INTERNAL_ERROR, "Unsupported aggregate function", "");
-        return UNKNOWN;
-    }
-}
 
 void worker_group_free_thread_data(ThreadData* thread_data)
 {
@@ -599,7 +577,19 @@ ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, Error
         return COLUMN_DATA_TYPE_STRING;
     }
 
-    LOG_INTERNAL_ERR("Unsupported data type");
-    SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
+    if (GARROW_IS_FLOAT_DATA_TYPE(data_type)) {
+        return COLUMN_DATA_TYPE_FLOAT;
+    }
+
+    if (GARROW_IS_DOUBLE_DATA_TYPE(data_type)) {
+        return COLUMN_DATA_TYPE_DOUBLE;
+    }
+
+    if (GARROW_IS_BOOLEAN_DATA_TYPE(data_type)) {
+        return COLUMN_DATA_TYPE_BOOLEAN;
+    }
+
+    LOG_INTERNAL_ERR("Unknown data type");
+    SET_ERR(err, INTERNAL_ERROR, "Unknown data type", "");
     return COLUMN_DATA_TYPE_UNKNOWN;
 }

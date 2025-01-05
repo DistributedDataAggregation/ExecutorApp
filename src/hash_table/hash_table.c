@@ -7,8 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash_table.h"
-
 #include "logging.h"
+#include <stdbool.h>
+#include "internal_to_proto_aggregate_converters.h"
+
+HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorInfo* err) ;
+HashTableValue combine_hash_table_int_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
+HashTableValue combine_hash_table_float_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
+HashTableValue combine_hash_table_double_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
+
 
 unsigned int hash(const char* string, const int table_size)
 {
@@ -284,6 +291,25 @@ HashTableValue hash_table_update_value(HashTableValue current_value, const HashT
             return current_value;
       }
 
+      switch (current_value.type) {
+            case HASH_TABLE_INT:
+                  current_value = combine_hash_table_int_value(current_value, incoming_value, err);
+                  break;
+            case HASH_TABLE_FLOAT:
+                  current_value = combine_hash_table_float_value(current_value, incoming_value, err);
+                  break;
+            case HASH_TABLE_DOUBLE:
+                  current_value = combine_hash_table_double_value(current_value, incoming_value, err);
+                  break;
+            case HASH_TABLE_UNSUPPORTED:
+                  LOG_INTERNAL_ERR("Failed to combine hash table entries: Unsupported type");
+                  return current_value;
+      }
+
+      return current_value;
+}
+
+HashTableValue combine_hash_table_int_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
       switch (current_value.aggregate_function) {
             case MIN: {
                   current_value.value = incoming_value.value < current_value.value ? incoming_value.value : current_value.value;
@@ -298,17 +324,61 @@ HashTableValue hash_table_update_value(HashTableValue current_value, const HashT
                   current_value.count += incoming_value.count;
                   break;
             }
-            case MEDIAN: {
-                  // TODO: implement median calculation
-                  current_value.value = -1;
+            default:
+            case UNKNOWN:
+                  LOG_INTERNAL_ERR("Unsupported aggregate function");
+                  SET_ERR(err, INTERNAL_ERROR, "Unsupported aggregate function", "");
+            break;
+      }
+      return current_value;
+}
+
+HashTableValue combine_hash_table_float_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
+      switch (current_value.aggregate_function) {
+            case MIN: {
+                  current_value.float_value = incoming_value.float_value < current_value.float_value ? incoming_value.float_value : current_value.float_value;
                   break;
             }
+            case MAX: {
+                  current_value.float_value = incoming_value.float_value > current_value.float_value ? incoming_value.float_value : current_value.float_value;
+                  break;
+            }
+            case AVG: {
+                  current_value.float_value += incoming_value.float_value;
+                  current_value.count += incoming_value.count;
+                  break;
+            }
+            default:
+            case UNKNOWN:
+                  LOG_INTERNAL_ERR("Unsupported aggregate function");
+                  SET_ERR(err, INTERNAL_ERROR, "Unsupported aggregate function", "");
+            break;
+      }
+
+      return current_value;
+}
+
+HashTableValue combine_hash_table_double_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
+      switch (current_value.aggregate_function) {
+            case MIN: {
+                  current_value.double_value = incoming_value.double_value < current_value.double_value ? incoming_value.double_value : current_value.double_value;
+                  break;
+            }
+            case MAX: {
+                  current_value.double_value = incoming_value.double_value > current_value.double_value ? incoming_value.double_value : current_value.double_value;
+                  break;
+            }
+            case AVG: {
+                  current_value.double_value += incoming_value.double_value;
+                  current_value.count += incoming_value.count;
+                  break;
+            }
+            default:
             case UNKNOWN:
                   LOG_INTERNAL_ERR("Unsupported aggregate function");
                   SET_ERR(err, INTERNAL_ERROR, "Unsupported aggregate function", "");
                   break;
       }
-
       return current_value;
 }
 
@@ -327,11 +397,9 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
                   SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
                   return;
             }
-            for (int j = 0; j < current->n_results; j++)
-            {
-                  values[j].value = current->results[j]->value;
-                  values[j].count = current->results[j]->count;
-                  values[j].is_null = current->results[j]->is_null;
+
+            for(int j=0; j<current->n_results; j++) {
+                  values[j] = map_partial_result_to_table_value(current->results[j], err);
             }
 
             HashTableEntry* entry = malloc(sizeof(HashTableEntry));
@@ -374,6 +442,44 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
       }
 }
 
+HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorInfo* err) {
+      HashTableValue ht_value;
+
+      if (pr_value == NULL) {
+            LOG_INTERNAL_ERR("Passed pr_value info was NULL");
+            SET_ERR(err, INTERNAL_ERROR, "Null parameter passed", "Received null pr value in map_partial_result_to_table_value");
+      }
+
+      ht_value.is_null = pr_value->is_null;
+      if(ht_value.is_null) {
+            ht_value.type = RESULT_TYPE__UNKNOWN;
+            ht_value.count = 0;
+            ht_value.value = 0;
+            return ht_value;
+      }
+
+      ht_value.aggregate_function = convert_aggregate_function(pr_value->function, err);
+      ht_value.count = pr_value->count;
+
+      switch (pr_value->type) {
+            case RESULT_TYPE__INT:
+                  ht_value.value = pr_value->int_value;
+                  ht_value.type = HASH_TABLE_INT;
+                  return ht_value;
+            case RESULT_TYPE__FLOAT:
+                  ht_value.float_value = pr_value->float_value;
+                  ht_value.type = HASH_TABLE_FLOAT;
+                  return ht_value;
+            case RESULT_TYPE__DOUBLE:
+                  ht_value.double_value = pr_value->double_value;
+                  ht_value.type = HASH_TABLE_DOUBLE;
+                  return ht_value;
+            default:
+                  LOG_INTERNAL_ERR("Unsupported result type");
+                  return ht_value;
+      }
+}
+
 void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, ErrorInfo* err) {
 
       if (err == NULL) {
@@ -411,4 +517,15 @@ void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, E
                   }
             }
       }
+}
+
+HashTableValue hash_table_value_initialize() {
+      HashTableValue hash_table_value;
+      hash_table_value.aggregate_function = UNKNOWN;
+      hash_table_value.is_null = false;
+      hash_table_value.value = 0;
+      hash_table_value.count = 0;
+      hash_table_value.float_value = 0;
+      hash_table_value.double_value = 0;
+      return hash_table_value;
 }

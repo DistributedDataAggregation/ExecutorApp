@@ -10,6 +10,9 @@
 #include "hash_table.h"
 #include "worker.h"
 #include "hash_table_interface.h"
+#include <stdbool.h>
+#include <sys/types.h>
+#include "logging.h"
 
 #define HASH_TABLE_SIZE 1024
 
@@ -418,6 +421,14 @@ char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data
     case COLUMN_DATA_TYPE_STRING:
         GArrowStringArray* string_array = GARROW_STRING_ARRAY(grouping_array);
         return garrow_string_array_get_string(string_array, row_index);
+    case COLUMN_DATA_TYPE_DOUBLE:
+        GArrowDoubleArray* double_array = GARROW_DOUBLE_ARRAY(grouping_array);
+        const double double_value = garrow_double_array_get_value(double_array, row_index);
+        return g_strdup_printf("%f", double_value);
+    case COLUMN_DATA_TYPE_FLOAT:
+        GArrowFloatArray* float_array = GARROW_FLOAT_ARRAY(grouping_array);
+        const float float_value = garrow_float_array_get_value(float_array, row_index);
+        return g_strdup_printf("%f", float_value);
     case COLUMN_DATA_TYPE_UNKNOWN:
     default:
         LOG_INTERNAL_ERR("Unsupported data type");
@@ -482,13 +493,18 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
         if (grouping_col_index > 0)
             grouping_string[grouping_string_size - 1] = '|';
 
-        strcat(grouping_string, column_value_string);
-
         grouping_string_size += current_length;
-        grouping_string[grouping_string_size - 1] = '\0';
+        grouping_string = strcat(grouping_string, column_value_string);
         free(column_value_string);
+        if (grouping_string == NULL)
+        {
+            LOG_ERR("Failed to concatenation grouping string");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to concatenation grouping string", "");
+            free(grouping_string);
+            return NULL;
+        }
+        grouping_string[grouping_string_size - 1] = '\0';
     }
-
 
     return grouping_string;
 }
@@ -497,11 +513,7 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
                                     const ColumnDataType select_columns_data_types,
                                     const AggregateFunction aggregate_function, ErrorInfo* err)
 {
-    HashTableValue hash_table_value = {0};
-    hash_table_value.aggregate_function = UNKNOWN;
-    hash_table_value.is_null = FALSE;
-    hash_table_value.value = 0;
-    hash_table_value.count = 0;
+    HashTableValue hash_table_value = hash_table_value_initialize();
 
     switch (aggregate_function)
     {
@@ -533,6 +545,8 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     }
 
     long value = 0;
+    float float_value = 0.0f;
+    double double_value = 0.0f;
 
     if (garrow_array_is_null(select_array, row_index))
     {
@@ -550,21 +564,35 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
         GArrowInt64Array* int64_array = GARROW_INT64_ARRAY(select_array);
         value = garrow_int64_array_get_value(int64_array, row_index);
         break;
+    case COLUMN_DATA_TYPE_FLOAT:
+        GArrowFloatArray* float_array = GARROW_FLOAT_ARRAY(select_array);
+        float_value = garrow_float_array_get_value(float_array, row_index);
+        break;
+    case COLUMN_DATA_TYPE_DOUBLE:
+        GArrowDoubleArray* double_array = GARROW_DOUBLE_ARRAY(select_array);
+        double_value = garrow_double_array_get_value(double_array, row_index);
+        break;
+    case COLUMN_DATA_TYPE_BOOLEAN:
     case COLUMN_DATA_TYPE_STRING:
     case COLUMN_DATA_TYPE_UNKNOWN:
         LOG_INTERNAL_ERR("Unsupported data type for aggregation. Only integer types are allowed");
         SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
     }
 
+    if (COLUMN_DATA_TYPE_FLOAT == select_columns_data_types) {
+        hash_table_value.float_value = float_value;
+    } else if (COLUMN_DATA_TYPE_DOUBLE == select_columns_data_types) {
+        hash_table_value.double_value = double_value;
+    } else if ( COLUMN_DATA_TYPE_INT32== select_columns_data_types || COLUMN_DATA_TYPE_INT64 == select_columns_data_types ) {
+        hash_table_value.value = value;
+    }
+
     if (hash_table_value.aggregate_function == AVG)
     {
-        hash_table_value.value = value;
         hash_table_value.count = 1;
     }
-    else
-    {
-        hash_table_value.value = value;
-    }
+
+    hash_table_value.type = worker_map_column_data_type(select_columns_data_types);
 
     return hash_table_value;
 }
@@ -599,5 +627,22 @@ void worker_calculate_new_column_indices(int* new_column_indices, const gint* ol
         {
             new_column_indices[i] = found;
         }
+    }
+}
+
+HashTableValueType worker_map_column_data_type(const ColumnDataType column_data_type) {
+    switch (column_data_type) {
+        case COLUMN_DATA_TYPE_INT32:
+        case COLUMN_DATA_TYPE_INT64:
+            return HASH_TABLE_INT;
+        case COLUMN_DATA_TYPE_FLOAT:
+            return HASH_TABLE_FLOAT;
+        case COLUMN_DATA_TYPE_DOUBLE:
+            return HASH_TABLE_DOUBLE;
+        case COLUMN_DATA_TYPE_BOOLEAN:
+        case COLUMN_DATA_TYPE_STRING:
+        case COLUMN_DATA_TYPE_UNKNOWN:
+        default:
+            return HASH_TABLE_UNSUPPORTED;
     }
 }
