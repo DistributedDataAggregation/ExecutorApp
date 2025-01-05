@@ -5,7 +5,8 @@
 #include <gtest/gtest.h>
 #include <cstring>
 
-TEST(MapArrowDataTypeTest, Int32Type) {
+TEST(MapArrowDataTypeTest, Int32Type)
+{
     ErrorInfo error_info = {0};
 
     GArrowInt32DataType* int32_data_type_specific = garrow_int32_data_type_new();
@@ -41,7 +42,8 @@ TEST(MapArrowDataTypeTest, Int32Type) {
 //     g_object_unref(string_data_type);
 // }
 
-TEST(MapArrowDataTypeTest, UnknownType) {
+TEST(MapArrowDataTypeTest, UnknownType)
+{
     ErrorInfo error_info = {0};
 
     GArrowDataType* unknown_data_type = nullptr;
@@ -50,8 +52,8 @@ TEST(MapArrowDataTypeTest, UnknownType) {
 }
 
 
-
-TEST(MapArrowDataTypeTest, StringType) {
+TEST(MapArrowDataTypeTest, StringType)
+{
     ErrorInfo error_info = {0};
 
     GArrowDataType* string_data_type = GARROW_DATA_TYPE(garrow_string_data_type_new());
@@ -64,8 +66,8 @@ TEST(MapArrowDataTypeTest, StringType) {
 }
 
 
-
-TEST(WorkerGroupTests, GetColumnsIndices) {
+TEST(WorkerGroupTests, GetColumnsIndices)
+{
     ErrorInfo error_info = {0};
 
     QueryRequest request = QUERY_REQUEST__INIT;
@@ -91,7 +93,8 @@ TEST(WorkerGroupTests, GetColumnsIndices) {
     free(request.select);
 }
 
-TEST(WorkerGroupTests, GetRowGroupRanges) {
+TEST(WorkerGroupTests, GetRowGroupRanges)
+{
     ErrorInfo error_info = {0};
     char* file_names[] = {"test.parquet"};
     RowGroupsRange** ranges = worker_group_get_row_group_ranges(1, file_names, 2, &error_info);
@@ -99,7 +102,8 @@ TEST(WorkerGroupTests, GetRowGroupRanges) {
     EXPECT_EQ(ranges, nullptr);
 }
 
-TEST(WorkerGroupTests, FreeRowGroupRanges) {
+TEST(WorkerGroupTests, FreeRowGroupRanges)
+{
     RowGroupsRange** ranges = (RowGroupsRange**)malloc(sizeof(RowGroupsRange*) * 2);
     ranges[0] = (RowGroupsRange*)malloc(sizeof(RowGroupsRange));
     ranges[1] = (RowGroupsRange*)malloc(sizeof(RowGroupsRange));
@@ -110,21 +114,24 @@ TEST(WorkerGroupTests, FreeRowGroupRanges) {
     SUCCEED();
 }
 
-TEST(WorkerGroupTests, RunRequest_NullRequest) {
+TEST(WorkerGroupTests, RunRequest_NullRequest)
+{
     ErrorInfo error_info = {0};
     HashTable* hash_table = nullptr;
-    worker_group_run_request(nullptr, &hash_table, &error_info);
+    worker_group_run_request(nullptr, &hash_table, nullptr, &error_info);
     EXPECT_NE(error_info.error_code, NO_ERROR);
 }
 
-TEST(WorkerGroupTests, GetThreadData_NullRequest) {
+TEST(WorkerGroupTests, GetThreadData_NullRequest)
+{
     ErrorInfo error_info = {0};
-    ThreadData* thread_data = worker_group_get_thread_data(nullptr, 0, 1, nullptr,
-        nullptr, nullptr, nullptr, nullptr, &error_info);
+    ThreadData* thread_data = worker_group_get_thread_data(nullptr, 0, 1, nullptr, nullptr,
+                                                           nullptr, nullptr, nullptr, nullptr, &error_info);
     EXPECT_EQ(thread_data, nullptr);
 }
 
-TEST(WorkerGroupTests, FreeThreadData_NullInput) {
+TEST(WorkerGroupTests, FreeThreadData_NullInput)
+{
     worker_group_free_thread_data(nullptr);
     SUCCEED();
 }

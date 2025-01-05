@@ -27,6 +27,13 @@ add_library(ExecutorLib STATIC
         converters/hash_table_to_query_response_converter.c
         error_handling/error_handling.h
         logging/logging.h
+        hash_table/hash_table_optimized.c
+        hash_table/hash_table_optimized.h
+        hash_table/farmhash-c.h
+        hash_table/farmhash-c.c
+        hash_table/hash_table_interface.h
+        hash_table/hash_table_interface.c
+        hash_table/hash_table_struct.h
 )
 
 target_include_directories(ExecutorLib PUBLIC
@@ -52,7 +59,7 @@ add_executable(ExecutorApp main.c)
 
 target_link_libraries(ExecutorApp ExecutorLib)
 
-if(ENABLE_UNIT_TESTING)
+if (ENABLE_UNIT_TESTING)
     include(CTest)
 
     include(FetchContent)
@@ -67,4 +74,4 @@ if(ENABLE_UNIT_TESTING)
 
     include(GoogleTest)
     add_subdirectory(unit_tests)
-endif()
+endif ()

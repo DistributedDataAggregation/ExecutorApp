@@ -4,12 +4,14 @@
 
 #include <parquet-glib/arrow-file-reader.h>
 #include <stdio.h>
+#include <sys/types.h>
+#include "logging.h"
 #include "../../parquet_helpers/parquet_helpers.h"
 #include "hash_table.h"
 #include "worker.h"
-#include <sys/types.h>
+#include "hash_table_interface.h"
 
-#include "logging.h"
+#define HASH_TABLE_SIZE 1024
 
 void* compute_on_thread(void* arg)
 {
@@ -18,7 +20,8 @@ void* compute_on_thread(void* arg)
     // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
     print_thread_data(data);
 
-    HashTable* ht = hash_table_create(10, &err);
+    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, &err);
+
     for (int i = 0; i < data->n_files; i++)
     {
         compute_file(i, data, ht, &err);
@@ -308,7 +311,8 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     }
                 }
 
-                const HashTableEntry* found = hash_table_search(hash_table, grouping_string);
+                const HashTableEntry* found = data->ht_interface->search(hash_table, grouping_string);
+                // const HashTableEntry* found = whash_table_search(hash_table, grouping_string);
                 if (found == NULL)
                 {
                     // add grouping into hash table
@@ -325,7 +329,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     new_entry->values = hash_table_values;
                     new_entry->n_values = data->n_select;
                     new_entry->next = NULL;
-                    hash_table_insert(hash_table, new_entry, err);
+                    new_entry->is_deleted = FALSE;
+                    data->ht_interface->insert(hash_table, new_entry, err);
+                    //hash_table_insert(hash_table, new_entry, err);
                     if (err->error_code != NO_ERROR)
                     {
                         // TODO free allocated data
@@ -336,7 +342,10 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 {
                     for (int value_index = 0; value_index < data->n_select; value_index++)
                     {
-                        found->values[value_index] = hash_table_update_value(
+                        // found->values[value_index] = hash_table_update_value(
+                        //     found->values[value_index], hash_table_values[value_index], err);
+
+                        found->values[value_index] = data->ht_interface->update_value(
                             found->values[value_index], hash_table_values[value_index], err);
                         if (err->error_code != NO_ERROR)
                         {
@@ -360,6 +369,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             {
                 g_object_unref(select_arrays[select]);
             }
+
+            free(grouping_arrays);
+            free(select_arrays);
         }
 
         for (int grouping_index = 0; grouping_index < data->n_group_columns; grouping_index++)
@@ -386,8 +398,10 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 }
 
 char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data_type, const int row_index,
-                          ErrorInfo* err) {
-    if (garrow_array_is_null(grouping_array, row_index)) {
+                          ErrorInfo* err)
+{
+    if (garrow_array_is_null(grouping_array, row_index))
+    {
         return strdup("null");
     }
 
@@ -412,9 +426,17 @@ char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data
     }
 }
 
+
 char* construct_grouping_string(const int n_group_columns, GArrowArray** grouping_arrays, const int row_index,
                                 const ColumnDataType* group_columns_data_types, ErrorInfo* err)
 {
+    if (err == NULL)
+    {
+        LOG_ERR("ErrorInfo is NULL");
+        SET_ERR(err, INTERNAL_ERROR, "ErrorInfo is NULL", "");
+        return NULL;
+    }
+
     char* grouping_string = malloc(1);
     if (grouping_string == NULL)
     {
@@ -432,17 +454,20 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
             grouping_arrays[grouping_col_index],
             group_columns_data_types[grouping_col_index],
             row_index, err);
+
         if (err->error_code != NO_ERROR)
         {
-            free(grouping_string);
             free(column_value_string);
+            free(grouping_string);
             return NULL;
         }
 
         int current_length = (int)strlen(column_value_string);
+
         if (grouping_col_index > 0)
-            current_length+=1;
-        char* grouping_string_realloced = (char*)realloc(grouping_string, grouping_string_size + current_length+1);
+            current_length += 1;
+
+        char* grouping_string_realloced = realloc(grouping_string, grouping_string_size + current_length + 1);
         if (grouping_string_realloced == NULL)
         {
             LOG_ERR("Failed to allocate memory for grouping string");
@@ -451,24 +476,19 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
             free(column_value_string);
             return NULL;
         }
-        grouping_string = grouping_string_realloced;
 
+        grouping_string = grouping_string_realloced;
         memset(grouping_string + grouping_string_size - 1, 0, current_length);
         if (grouping_col_index > 0)
             grouping_string[grouping_string_size - 1] = '|';
 
+        strcat(grouping_string, column_value_string);
+
         grouping_string_size += current_length;
-        grouping_string = strcat(grouping_string, column_value_string);
-        free(column_value_string);
-        if (grouping_string == NULL)
-        {
-            LOG_ERR("Failed to concatenation grouping string");
-            SET_ERR(err, INTERNAL_ERROR, "Failed to concatenation grouping string", "");
-            free(grouping_string);
-            return NULL;
-        }
         grouping_string[grouping_string_size - 1] = '\0';
+        free(column_value_string);
     }
+
 
     return grouping_string;
 }
@@ -514,7 +534,8 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
 
     long value = 0;
 
-    if (garrow_array_is_null(select_array, row_index)) {
+    if (garrow_array_is_null(select_array, row_index))
+    {
         hash_table_value.is_null = TRUE;
         return hash_table_value;
     }

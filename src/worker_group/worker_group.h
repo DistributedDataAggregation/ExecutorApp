@@ -8,13 +8,15 @@
 #include <parquet-glib/arrow-file-reader.h>
 #include "error_handling.h"
 #include "hash_table.h"
+#include "hash_table_interface.h"
 #include "query_request.pb-c.h"
 #include "thread_data.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table, ErrorInfo* err);
+void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
+                              HashTableInterface* hash_table_interface, ErrorInfo* err);
 
 ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indices_count, const char* filename,
                                                     ErrorInfo* err);
@@ -23,7 +25,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
                                          RowGroupsRange* row_groups_ranges, int* grouping_indices,
                                          const int* select_indices,
                                          ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         ErrorInfo* err);
+                                         HashTableInterface* hash_table_interface, ErrorInfo* err);
 
 void worker_group_free_thread_data(ThreadData* thread_data);
 

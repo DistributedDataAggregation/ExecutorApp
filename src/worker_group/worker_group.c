@@ -10,14 +10,15 @@
 #include "../parquet_helpers/parquet_helpers.h"
 #include "thread_data.h"
 #include "worker_group.h"
-
+#include "hash_table_interface.h"
 #include "logging.h"
 #include "workers/worker.h"
 
 #define NUM_THREADS 4
 
 // TODO() probably split this function
-void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table, ErrorInfo* err)
+void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
+                              HashTableInterface* hash_table_interface, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -121,7 +122,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     {
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
                                                       grouping_indices, select_indices, grouping_columns_data_type,
-                                                      select_columns_data_type, err);
+                                                      select_columns_data_type, hash_table_interface, err);
         if (err->error_code != NO_ERROR)
         {
             for (int j = 0; j < i; j++)
@@ -177,14 +178,16 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         }
         else
         {
-            hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
+            hash_table_interface->combine(*request_hash_table, thread_ht, err);
+            //hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
             if (err->error_code != NO_ERROR)
             {
                 LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine hash tables");
                 SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Failed to combine hash tables");
                 // TODO handle exit?? or we need to wait for other threads anyway (now)
             }
-            free(thread_ht);
+            hash_table_interface->free(thread_ht);
+            // hash_table_free(thread_ht);
         }
     }
 
@@ -201,7 +204,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
                                          RowGroupsRange* row_groups_ranges, int* grouping_indices,
                                          const int* select_indices,
                                          ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         ErrorInfo* err)
+                                         HashTableInterface* ht_interface, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -234,6 +237,8 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     thread_data->n_files = (int)request->n_files_names;
     thread_data->n_group_columns = (int)request->n_group_columns;
     thread_data->n_select = (int)request->n_select;
+
+    thread_data->ht_interface = ht_interface;
 
     thread_data->file_names = (char**)malloc(sizeof(char*) * thread_data->n_files);
     if (thread_data->file_names == NULL)
@@ -334,8 +339,9 @@ void worker_group_free_thread_data(ThreadData* thread_data)
         free(thread_data->file_names);
     }
 
-    free(thread_data->selects_aggregate_functions);
+    free(thread_data->selects_indices);
     free(thread_data->file_row_groups_ranges);
+    free(thread_data->selects_aggregate_functions);
     free(thread_data);
 }
 
@@ -434,14 +440,23 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(request->files_names[0], &error);
     if (reader == NULL)
     {
-        report_g_error(error, err, "Failed to open file");
+        if (error != NULL)
+        {
+            report_g_error(error, err, "Failed to open file");
+            g_error_free(error);
+        }
         return;
     }
 
     GArrowSchema* schema = gparquet_arrow_file_reader_get_schema(reader, &error);
     if (schema == NULL)
     {
-        report_g_error(error, err, "Failed to get schema");
+        if (error != NULL)
+        {
+            report_g_error(error, err, "Failed to get schema");
+            g_error_free(error);
+        }
+        g_object_unref(reader);
         return;
     }
 
@@ -453,6 +468,12 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
             LOG_INTERNAL_ERR("Failed to get grouping indices: Cannot find provided column name");
             fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get grouping indices", "Cannot find provided column name");
+            g_object_unref(schema);
+            g_object_unref(reader);
+            if (error != NULL)
+            {
+                g_error_free(error);
+            }
             return;
         }
     }
@@ -465,9 +486,22 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
             LOG_INTERNAL_ERR("Failed to get select indices: Cannot find provided column name");
             fprintf(stderr, "Cannot find provided column: %s\n", request->select[i]->column);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get select indices", "Cannot find provided column name");
+            g_object_unref(schema);
+            g_object_unref(reader);
+            if (error != NULL)
+            {
+                g_error_free(error);
+            }
             return;
         }
     }
+
+    if (error != NULL)
+    {
+        g_error_free(error);
+    }
+    g_object_unref(schema);
+    g_object_unref(reader);
 }
 
 ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indices_count, const char* filename,

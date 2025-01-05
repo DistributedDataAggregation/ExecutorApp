@@ -8,9 +8,13 @@
 #include <string.h>
 #include "hash_table.h"
 
-unsigned int hash(const char* string, const int table_size) {
+#include "logging.h"
+
+unsigned int hash(const char* string, const int table_size)
+{
       unsigned int hash_value = 0;
-      while (*string) {
+      while (*string)
+      {
             hash_value = (hash_value * 31) + *string;
             string++;
       }
@@ -32,7 +36,8 @@ HashTable* hash_table_create(const int size, ErrorInfo* err) {
       }
 
       HashTable* hash_table = malloc(sizeof(HashTable));
-      if(hash_table == NULL) {
+      if (hash_table == NULL)
+      {
             LOG_ERR("Failed to allocate memory for a hash table");
             SET_ERR(err, errno, "Failed to allocate memory for a hash table", strerror(errno));
             return NULL;
@@ -40,31 +45,37 @@ HashTable* hash_table_create(const int size, ErrorInfo* err) {
 
       hash_table->entries_count = 0;
       hash_table->size = size;
-      hash_table->table = (HashTableEntry**)(malloc(sizeof(HashTableEntry*)*size));
-      if(hash_table->table == NULL) {
+      hash_table->table = (HashTableEntry**)(malloc(sizeof(HashTableEntry*) * size));
+      if (hash_table->table == NULL)
+      {
             LOG_ERR("Failed to allocate memory for a hash table table");
             SET_ERR(err, errno, "Failed to allocate memory for a hash table table", strerror(errno));
             free(hash_table);
             return NULL;
       }
 
-      for(int i = 0; i < size; i++) {
+      for (int i = 0; i < size; i++)
+      {
             hash_table->table[i] = NULL;
       }
 
       return hash_table;
 }
 
-void hash_table_free(HashTable* table) {
-
-      if (table == NULL) {
+void hash_table_free(HashTable* table)
+{
+      if (table == NULL)
+      {
             return;
       }
 
-      for(int i = 0; i < table->size; i++) {
-            if(table->table[i] != NULL) {
+      for (int i = 0; i < table->size; i++)
+      {
+            if (table->table[i] != NULL)
+            {
                   HashTableEntry* entry = table->table[i];
-                  while(entry != NULL) {
+                  while (entry != NULL)
+                  {
                         HashTableEntry* next = entry->next;
                         free(entry->key);
                         free(entry->values);
@@ -91,20 +102,25 @@ void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err){
             return;
       }
 
-      if (table == NULL || table->table == NULL) {
+      if (table == NULL || table->table == NULL)
+      {
             LOG_INTERNAL_ERR("Failed to insert to a hash table: Uninitialized hash table");
             SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Uninitialized hash table");
             return;
       }
 
       const unsigned int hash_value = hash(entry->key, table->size);
-      if(table->table[hash_value] == NULL) {
+      if (table->table[hash_value] == NULL)
+      {
             table->table[hash_value] = entry;
             table->table[hash_value]->next = NULL;
-      } else {
+      }
+      else
+      {
             HashTableEntry* current = table->table[hash_value];
 
-            while(current->next != NULL) {
+            while (current->next != NULL)
+            {
                   current = current->next;
             }
 
@@ -163,39 +179,51 @@ void hash_table_delete(HashTable* table, const char* key) {
       }
 }
 
-void hash_table_print(const HashTable* ht) {
-      if (ht == NULL || ht->table == NULL) {
+void hash_table_print(const HashTable* ht)
+{
+      if (ht == NULL || ht->table == NULL)
+      {
             printf("HashTable is empty.\n");
             return;
       }
 
-      for (int i = 0; i < ht->size; ++i) {
+      for (int i = 0; i < ht->size; ++i)
+      {
             HashTableEntry* entry = ht->table[i];
-            while (entry != NULL) {
+            while (entry != NULL)
+            {
                   printf("Key: %s\n", entry->key);
                   printf("Values:\n");
 
-                  for (int j = 0; j < entry->n_values; ++j) {
+                  for (int j = 0; j < entry->n_values; ++j)
+                  {
                         HashTableValue* value = &entry->values[j];
 
-                        switch(value->aggregate_function) {
-                              case MIN: {
+                        switch (value->aggregate_function)
+                        {
+                        case MIN:
+                              {
                                     printf("  Value[%d]: %ld (Min)\n", j, value->value);
                                     break;
                               }
-                              case MAX: {
+                        case MAX:
+                              {
                                     printf("  Value[%d]: %ld (Max)\n", j, value->value);
                                     break;
                               }
-                              case AVG:{
-                                    printf("  Value[%d]: Accumulator = %ld, Count = %ld (Average)\n", j, value->value, value->count);
+                        case AVG:
+                              {
+                                    printf("  Value[%d]: Accumulator = %ld, Count = %ld (Average)\n", j, value->value,
+                                           value->count);
                                     break;
                               }
-                              case MEDIAN:{
+                        case MEDIAN:
+                              {
                                     printf("  Value[%d]: %ld (Max)\n", j, value->value);
                                     break;
                               }
-                              case UNKNOWN: {
+                        case UNKNOWN:
+                              {
                                     printf("  Value[%d]: (Unknown)\n", j);
                                     break;
                               }
@@ -215,10 +243,11 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
             return;
       }
 
-      if(entry1 == NULL || entry2 == NULL) {
+      if (entry1 == NULL || entry2 == NULL)
+      {
             LOG_INTERNAL_ERR("Failed to combine hash table entries: At least one of combined entries was NULL");
             SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
-                  "At least one of combined entries was NULL");
+                    "At least one of combined entries was NULL");
             return;
       }
 
@@ -230,17 +259,21 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
       }
       const int size = entry1->n_values;
 
-      for(int i=0; i<size; i++) {
+      for (int i = 0; i < size; i++)
+      {
             entry1->values[i] = hash_table_update_value(entry1->values[i], entry2->values[i], err);
-            if (err->error_code != NO_ERROR) {
+            if (err->error_code != NO_ERROR)
+            {
                   return;
             }
       }
 }
 
-HashTableValue hash_table_update_value(HashTableValue current_value, const HashTableValue incoming_value, ErrorInfo* err) {
-
-      if (err == NULL) {
+HashTableValue hash_table_update_value(HashTableValue current_value, const HashTableValue incoming_value,
+                                       ErrorInfo* err)
+{
+      if (err == NULL)
+      {
             LOG_INTERNAL_ERR("Passed error info was NULL");
             return current_value;
       }
@@ -294,14 +327,16 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
                   SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
                   return;
             }
-            for(int j=0; j<current->n_results; j++) {
+            for (int j = 0; j < current->n_results; j++)
+            {
                   values[j].value = current->results[j]->value;
                   values[j].count = current->results[j]->count;
                   values[j].is_null = current->results[j]->is_null;
             }
 
             HashTableEntry* entry = malloc(sizeof(HashTableEntry));
-            if (entry == NULL) {
+            if (entry == NULL)
+            {
                   LOG_ERR("Failed to allocate memory for hash table entry");
                   SET_ERR(err, errno, "Failed to allocate memory for hash table entry", strerror(errno));
                   free(values);
@@ -313,16 +348,21 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
             entry->values = values;
 
             HashTableEntry* found = hash_table_search(ht, entry->key);
-            if(found == NULL) {
+            if (found == NULL)
+            {
                   hash_table_insert(ht, entry, err);
-                  if (err->error_code != NO_ERROR) {
+                  if (err->error_code != NO_ERROR)
+                  {
                         free(values);
                         free(entry);
                         return;
                   }
-            } else {
+            }
+            else
+            {
                   hash_table_combine_entries(found, entry, err);
-                  if (err->error_code != NO_ERROR) {
+                  if (err->error_code != NO_ERROR)
+                  {
                         free(values);
                         free(entry);
                         return;
@@ -345,7 +385,8 @@ void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, E
 
       for(int i=0;i<source->size;i++) {
             HashTableEntry* entry = source->table[i];
-            while(entry != NULL) {
+            while (entry != NULL)
+            {
                   HashTableEntry* next = entry->next;
 
                   HashTableEntry* found = hash_table_search(destination, entry->key);

@@ -4,6 +4,7 @@
 #ifndef THREAD_DATA_H
 #define THREAD_DATA_H
 #include "aggregate_function.h"
+#include "hash_table_interface.h"
 
 
 typedef enum ColumnDataType
@@ -44,6 +45,8 @@ typedef struct thread_data
     int* selects_indices;
     AggregateFunction* selects_aggregate_functions;
     ColumnDataType* select_columns_types;
+
+    HashTableInterface* ht_interface;
 } ThreadData;
 
 #endif //THREAD_DATA_H

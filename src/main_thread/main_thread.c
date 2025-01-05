@@ -12,8 +12,9 @@
 #include "client_array.h"
 #include "error_handling.h"
 #include "executors_server.h"
-#include "hash_table.h"
 #include "main_thread.h"
+
+#include "hash_table_interface.h"
 #include "query_request.pb-c.h"
 #include "query_response.pb-c.h"
 #include "request_protocol/request_protocol.h"
@@ -103,8 +104,9 @@ int main_thread_run()
             if (FD_ISSET(controllers_client_array.clients[i], &read_fds))
             {
                 main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
-                    executors_socket_fd, &main_executors_sockets, &error_info);
-                if (error_info.error_code != NO_ERROR) {
+                                          executors_socket_fd, &main_executors_sockets, &error_info);
+                if (error_info.error_code != NO_ERROR)
+                {
                     if (error_info.error_code == SOCKET_CLOSED || error_info.error_code == EAGAIN
                         || error_info.error_code == ECONNRESET || error_info.error_code == EPIPE)
                     {
@@ -144,11 +146,15 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
+    // to change hash_map
+    //HashTableInterface* ht_interface = create_default_hash_table_interface();
+    HashTableInterface* ht_interface = create_optimized_hash_table_interface();
+
 
     if (request->executor->is_current_node_main)
     {
         LOG("This node is main\n");
-        worker_group_run_request(request, &ht, err);
+        worker_group_run_request(request, &ht, ht_interface, err);
 
         if (err->error_code != NO_ERROR)
         {
@@ -221,7 +227,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                             else
                             {
                                 LOG("Combining response for query of id: %s", response->guid);
-                                hash_table_combine_table_with_response(ht, response, err);
+                                ht_interface->combine_with_response(ht, response, err);
                                 if (err->error_code != NO_ERROR)
                                 {
                                     LOG("ERROR Combining response for query of id: %s", response->guid);
@@ -246,7 +252,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             LOG("Collected from other nodes\n");
         }
 
-        prepare_and_send_response(client_fd, request->guid, ht, err);
+        prepare_and_send_response(client_fd, request->guid, ht_interface, ht, err);
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to send response to controller");
@@ -271,8 +277,8 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
         else
         {
-            worker_group_run_request(request, &ht, err);
-            prepare_and_send_response(main_executor_socket, request->guid, ht, err);
+            worker_group_run_request(request, &ht, ht_interface, err);
+            prepare_and_send_response(main_executor_socket, request->guid, ht_interface, ht, err);
             if (err->error_code != NO_ERROR)
             {
                 LOG_INTERNAL_ERR("Failed to send response to main executor\n");
@@ -291,6 +297,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         }
     }
 
-    hash_table_free(ht);
+    ht_interface->free(ht);
+    free(ht_interface);
     query_request__free_unpacked(request, NULL);
 }

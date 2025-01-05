@@ -5,29 +5,10 @@
 #ifndef HASH_TABLE_H
 #define HASH_TABLE_H
 
-#include "aggregate_function.h"
+
 #include "error_handling.h"
 #include "query_response.pb-c.h"
-
-typedef struct HashTableValue {
-    long value;
-    long count;
-    int is_null;
-    AggregateFunction aggregate_function;
-} HashTableValue;
-
-typedef struct HashTableEntry {
-    char* key;
-    int n_values;
-    HashTableValue* values;
-    struct HashTableEntry* next;
-} HashTableEntry;
-
-typedef struct HashTable {
-    int size;
-    int entries_count;
-    HashTableEntry** table;
-} HashTable;
+#include "hash_table_struct.h"
 
 unsigned int hash(const char* string, int table_size);
 HashTable* hash_table_create(int size, ErrorInfo* err);

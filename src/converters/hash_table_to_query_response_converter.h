@@ -11,4 +11,6 @@
 
 QueryResponse* convert_hash_table_to_query_response(const HashTable* table, ErrorInfo* err);
 
+QueryResponse* convert_hash_table_to_query_response_optimized(const HashTable* table, ErrorInfo* err);
+
 #endif //HASH_TABLE_TO_QUERY_RESPONSE_CONVERTER_H
