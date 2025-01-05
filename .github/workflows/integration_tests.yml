@@ -43,7 +43,7 @@ jobs:
       run: |
         cd TestingSetup/github_actions
         pip install -r requirements.txt
-        pytest --disable-warnings integration_test_actions.py
+        pytest --disable-warnings integration_actions_test.py
     - name: Stop services
       run: |
         docker compose down
