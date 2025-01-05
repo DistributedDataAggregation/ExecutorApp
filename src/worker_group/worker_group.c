@@ -195,8 +195,8 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     free(row_group_ranges);
     free(grouping_indices);
     free(select_indices);
-    free(select_columns_data_type);
     free(grouping_columns_data_type);
+    free(select_columns_data_type);
     free(thread_data);
 }
 
@@ -230,7 +230,6 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     thread_data->file_row_groups_ranges = row_groups_ranges;
     thread_data->group_columns_data_types = group_columns_types;
     thread_data->select_columns_types = select_columns_types;
-
 
     thread_data->thread_index = thread_index;
     thread_data->num_threads = num_threads;
@@ -437,6 +436,7 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
     }
 
     GError* error = NULL;
+    // i assume all files have the same schema
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(request->files_names[0], &error);
     if (reader == NULL)
     {
@@ -484,7 +484,7 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
         if (select_indices[i] == -1)
         {
             LOG_INTERNAL_ERR("Failed to get select indices: Cannot find provided column name");
-            fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
+            fprintf(stderr, "Cannot find provided column: %s\n", request->select[i]->column);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get select indices", "Cannot find provided column name");
             g_object_unref(schema);
             g_object_unref(reader);

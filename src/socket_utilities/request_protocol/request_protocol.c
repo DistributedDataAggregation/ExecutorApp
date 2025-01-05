@@ -12,7 +12,6 @@
 #include "hash_table_to_query_response_converter.h"
 #include "query_response.pb-c.h"
 #include "request_protocol.h"
-
 #include "hash_table_interface.h"
 #include "logging.h"
 
@@ -106,8 +105,6 @@ QueryRequest* parse_incoming_request(const int client_fd, ErrorInfo* err)
 void send_response(const int client_fd, const QueryResponse* response, ErrorInfo* err)
 {
     const ssize_t size = (ssize_t)query_response__get_packed_size(response);
-    LOG("Calculated message size to send: %zd bytes", size);
-
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * size);
     if (buffer == NULL)
     {
@@ -145,42 +142,42 @@ void send_response(const int client_fd, const QueryResponse* response, ErrorInfo
         LOG_ERR("Failed to send message to client");
         SET_ERR(err, errno, "Failed to send message to client", strerror(errno));
     }
-    else
-    {
-        LOG("Successfully sent %zd bytes to client", bytes_sent);
-    }
+
+    LOG("Successfully sent %zd bytes to client", bytes_sent);
+
 
     free(buffer);
 }
 
-
-void prepare_and_send_response(const int client_fd, const HashTable* ht, ErrorInfo* err)
+void prepare_and_send_response(const int client_fd, const char* guid, HashTableInterface* ht_interface,
+                               const HashTable* ht, ErrorInfo* err)
 {
     if (err == NULL || err->error_code != NO_ERROR)
     {
-        prepare_and_send_failure_response(client_fd, err);
+        prepare_and_send_failure_response(client_fd, guid, err);
         return;
     }
-     // CHANGE IT CHANGE IT
-    QueryResponse* response = convert_hash_table_to_query_response_optimized(ht, err);
+
+    QueryResponse* response = ht_interface->convert_to_response(ht, err);
 
     if (err->error_code != NO_ERROR)
     {
-        prepare_and_send_failure_response(client_fd, err);
+        prepare_and_send_failure_response(client_fd, guid, err);
         query_response__free_unpacked(response, NULL);
         return;
     }
+    response->guid = strdup(guid);
 
     send_response(client_fd, response, err);
     if (err->error_code != NO_ERROR)
     {
-        prepare_and_send_failure_response(client_fd, err);
+        prepare_and_send_failure_response(client_fd, guid, err);
     }
 
     query_response__free_unpacked(response, NULL);
 }
 
-void prepare_and_send_failure_response(const int client_fd, ErrorInfo* err)
+void prepare_and_send_failure_response(const int client_fd, const char* guid, ErrorInfo* err)
 {
     QueryResponse* response = malloc(sizeof(QueryResponse));
     if (response == NULL)
@@ -191,6 +188,7 @@ void prepare_and_send_failure_response(const int client_fd, ErrorInfo* err)
     }
 
     query_response__init(response);
+    response->guid = strdup(guid);
     response->error = malloc(sizeof(Error));
     if (response->error == NULL)
     {
@@ -275,7 +273,14 @@ QueryResponse* parse_query_response(const int client_fd, ErrorInfo* err)
 
 void get_message_size(const int client_fd, uint32_t* message_size, ErrorInfo* err)
 {
-    if (read(client_fd, message_size, sizeof(uint32_t)) <= 0)
+    const ssize_t bytes = read(client_fd, message_size, sizeof(uint32_t));
+    if (bytes == 0)
+    {
+        LOG_INTERNAL_ERR("Failed reading message size: Attempted to read from a closed socket");
+        SET_ERR(err, SOCKET_CLOSED, "Failed reading message size", "Attempted to read from a closed socket");
+        return;
+    }
+    if (bytes < 0)
     {
         LOG_ERR("Failed reading message size");
         SET_ERR(err, errno, "Failed reading message size", strerror(errno));
@@ -294,10 +299,16 @@ void get_packed_proto_buffer(const int client_fd, const uint32_t message_size, u
     while (total_bytes_read < (message_size))
     {
         bytes = read(client_fd, buffer + total_bytes_read, (message_size) - total_bytes_read);
-        if (bytes <= 0)
+        if (bytes == 0)
         {
-            LOG_ERR("Failed to read message buffer");
-            SET_ERR(err, errno, "Failed to read message buffer", strerror(errno));
+            LOG_INTERNAL_ERR("Failed reading message: Attempted to read from a closed socket");
+            SET_ERR(err, SOCKET_CLOSED, "Failed reading message", "Attempted to read from a closed socket");
+            return;
+        }
+        if (bytes < 0)
+        {
+            LOG_ERR("Failed reading message");
+            SET_ERR(err, errno, "Failed reading message", strerror(errno));
             return;
         }
         total_bytes_read += bytes;

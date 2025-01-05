@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash_table_to_query_response_converter.h"
+#include "stdbool.h"
 
 PartialResult* convert_value(HashTableValue value, ErrorInfo* err);
 Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err);
@@ -20,6 +21,13 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
     if (err == NULL)
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
+        return NULL;
+    }
+
+    if (table == NULL || table->table == NULL)
+    {
+        LOG_INTERNAL_ERR("Invalid or uninitialized hash table");
+        SET_ERR(err, INTERNAL_ERROR, "Invalid or uninitialized hash table", "Hash table or its table is NULL");
         return NULL;
     }
 
@@ -166,6 +174,14 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
     }
 
     partial_result__init(result);
+
+    if (true == value.is_null)
+    {
+        result->is_null = true;
+        result->count = 0;
+        result->value = 0;
+        return result;
+    }
 
     switch (value.aggregate_function)
     {

@@ -9,9 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "boolean.h"
+#include "stdbool.h"
 #include "error_handling.h"
 #include "executors_server.h"
+#include "logging.h"
 #include "socket_utilities.h"
 
 void executors_server_init_main_executors_sockets(MainExecutorsSockets* sockets,
@@ -60,7 +61,7 @@ int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, cons
     {
         if (strcmp(sockets->sockets[i].ip_address, ip_address) == 0)
         {
-            printf("Found main socket %s\n", sockets->sockets[i].ip_address);
+            LOG("Found main socket %s\n", sockets->sockets[i].ip_address);
             return sockets->sockets[i].socket;
         }
     }
@@ -77,18 +78,19 @@ int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, cons
         }
     }
 
-    const int new_socket = create_tcp_socket("0.0.0.0", TRUE, FALSE, 0, err);
+    const int new_socket = create_tcp_socket("0.0.0.0", true, false, 0, err);
     if (err->error_code != NO_ERROR)
     {
         return -1;
     }
 
-    struct sockaddr_in server_addr = {
+    //ip_address = "0.0.0.0";
+    struct sockaddr_in address = {
         .sin_family = AF_INET,
         .sin_port = htons(port)
     };
 
-    if (inet_pton(AF_INET, ip_address, &server_addr.sin_addr) <= 0)
+    if (inet_aton(ip_address, &address.sin_addr) == 0)
     {
         close(new_socket);
         LOG_ERR("Failed to convert ip address");
@@ -96,7 +98,7 @@ int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, cons
         return -1;
     }
 
-    if (connect(new_socket, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
+    if (connect(new_socket, (struct sockaddr*)&address, sizeof(address)) < 0)
     {
         close(new_socket);
         LOG_ERR("Failed to connect to main socket");
@@ -108,6 +110,26 @@ int executors_server_find_or_add_main_socket(MainExecutorsSockets* sockets, cons
     sockets->sockets[sockets->count].socket = new_socket;
     sockets->count++;
 
-    printf("Added new main socket to main_executors\n");
+    LOG("Added new main socket %d to main_executors\n", new_socket);
     return new_socket;
+}
+
+void executors_server_remove_main_socket(MainExecutorsSockets* sockets, const int socket)
+{
+    int index = -1;
+    for (int i = 0; i < sockets->count; i++)
+    {
+        if (sockets->sockets[i].socket == socket)
+        {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1)
+        return;
+
+    close(sockets->sockets[index].socket);
+    sockets->sockets[index].socket = sockets->sockets[sockets->count - 1].socket;
+    strncpy(sockets->sockets[index].ip_address, sockets->sockets[sockets->count - 1].ip_address, INET_ADDRSTRLEN);
+    sockets->count--;
 }
