@@ -18,13 +18,6 @@ typedef enum ColumnDataType
     COLUMN_DATA_TYPE_UNKNOWN
 } ColumnDataType;
 
-
-//
-// typedef struct SelectData {
-//     int column_index;
-//     AggregateFunction aggregate;
-// } SelectData;
-
 typedef struct RowGroupsRange
 {
     int start;

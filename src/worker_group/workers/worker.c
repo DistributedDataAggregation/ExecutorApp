@@ -549,7 +549,8 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     double double_value = 0.0f;
 
     hash_table_value.type = worker_map_column_data_type(select_columns_data_types);
-    if (garrow_array_is_null(select_array, row_index)) {
+    if (garrow_array_is_null(select_array, row_index))
+    {
         hash_table_value.is_null = TRUE;
         return hash_table_value;
     }
@@ -579,11 +580,16 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
         SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
     }
 
-    if (COLUMN_DATA_TYPE_FLOAT == select_columns_data_types) {
+    if (COLUMN_DATA_TYPE_FLOAT == select_columns_data_types)
+    {
         hash_table_value.float_value = float_value;
-    } else if (COLUMN_DATA_TYPE_DOUBLE == select_columns_data_types) {
+    }
+    else if (COLUMN_DATA_TYPE_DOUBLE == select_columns_data_types)
+    {
         hash_table_value.double_value = double_value;
-    } else if ( COLUMN_DATA_TYPE_INT32== select_columns_data_types || COLUMN_DATA_TYPE_INT64 == select_columns_data_types ) {
+    }
+    else if (COLUMN_DATA_TYPE_INT32 == select_columns_data_types || COLUMN_DATA_TYPE_INT64 == select_columns_data_types)
+    {
         hash_table_value.value = value;
     }
 
@@ -628,19 +634,21 @@ void worker_calculate_new_column_indices(int* new_column_indices, const gint* ol
     }
 }
 
-HashTableValueType worker_map_column_data_type(const ColumnDataType column_data_type) {
-    switch (column_data_type) {
-        case COLUMN_DATA_TYPE_INT32:
-        case COLUMN_DATA_TYPE_INT64:
-            return HASH_TABLE_INT;
-        case COLUMN_DATA_TYPE_FLOAT:
-            return HASH_TABLE_FLOAT;
-        case COLUMN_DATA_TYPE_DOUBLE:
-            return HASH_TABLE_DOUBLE;
-        case COLUMN_DATA_TYPE_BOOLEAN:
-        case COLUMN_DATA_TYPE_STRING:
-        case COLUMN_DATA_TYPE_UNKNOWN:
-        default:
-            return HASH_TABLE_UNSUPPORTED;
+HashTableValueType worker_map_column_data_type(const ColumnDataType column_data_type)
+{
+    switch (column_data_type)
+    {
+    case COLUMN_DATA_TYPE_INT32:
+    case COLUMN_DATA_TYPE_INT64:
+        return HASH_TABLE_INT;
+    case COLUMN_DATA_TYPE_FLOAT:
+        return HASH_TABLE_FLOAT;
+    case COLUMN_DATA_TYPE_DOUBLE:
+        return HASH_TABLE_DOUBLE;
+    case COLUMN_DATA_TYPE_BOOLEAN:
+    case COLUMN_DATA_TYPE_STRING:
+    case COLUMN_DATA_TYPE_UNKNOWN:
+    default:
+        return HASH_TABLE_UNSUPPORTED;
     }
 }

@@ -21,8 +21,8 @@ void hash_table_combine_entries(HashTableEntry* entry1, const HashTableEntry* en
 HashTableValue hash_table_update_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
 void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
 void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err);
-void hash_table_free_entry(HashTableEntry* value) ;
+void hash_table_free_entry(HashTableEntry* value);
 HashTableValue hash_table_value_initialize();
-HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorInfo* err) ;
+HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorInfo* err);
 
 #endif //HASH_TABLE_H

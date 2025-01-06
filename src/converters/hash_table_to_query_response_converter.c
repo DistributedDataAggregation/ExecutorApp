@@ -186,25 +186,26 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
         return result;
     }
 
-    switch (value.type) {
-        case HASH_TABLE_INT:
-            result->type = RESULT_TYPE__INT;
-            result->int_value = value.value;
-            result->value_case = PARTIAL_RESULT__VALUE_INT_VALUE;
-            break;
-        case HASH_TABLE_FLOAT:
-            result->type = RESULT_TYPE__FLOAT;
-            result->float_value = value.float_value;
-            result->value_case = PARTIAL_RESULT__VALUE_FLOAT_VALUE;
-            break;
-        case HASH_TABLE_DOUBLE:
-            result->type = RESULT_TYPE__DOUBLE;
-            result->double_value = value.double_value;
-            result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
-            break;
-        default:
-            LOG_INTERNAL_ERR("Unsupported hash table type");
-            break;
+    switch (value.type)
+    {
+    case HASH_TABLE_INT:
+        result->type = RESULT_TYPE__INT;
+        result->int_value = value.value;
+        result->value_case = PARTIAL_RESULT__VALUE_INT_VALUE;
+        break;
+    case HASH_TABLE_FLOAT:
+        result->type = RESULT_TYPE__FLOAT;
+        result->float_value = value.float_value;
+        result->value_case = PARTIAL_RESULT__VALUE_FLOAT_VALUE;
+        break;
+    case HASH_TABLE_DOUBLE:
+        result->type = RESULT_TYPE__DOUBLE;
+        result->double_value = value.double_value;
+        result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
+        break;
+    default:
+        LOG_INTERNAL_ERR("Unsupported hash table type");
+        break;
     }
 
     result->is_null = false;

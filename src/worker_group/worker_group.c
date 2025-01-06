@@ -179,12 +179,12 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         }
         else
         {
-            hash_table_interface->combine(*request_hash_table, thread_ht, err);
+            hash_table_interface->combine_hash_tables(*request_hash_table, thread_ht, err);
             //hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
             if (err->error_code != NO_ERROR)
             {
-                LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine hash tables");
-                SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Failed to combine hash tables");
+                LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine_hash_tables hash tables");
+                SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Failed to combine_hash_tables hash tables");
                 // TODO handle exit?? or we need to wait for other threads anyway (now)
             }
             hash_table_interface->free(thread_ht);
@@ -297,7 +297,6 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
 
     return thread_data;
 }
-
 
 
 void worker_group_free_thread_data(ThreadData* thread_data)
@@ -577,15 +576,18 @@ ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, Error
         return COLUMN_DATA_TYPE_STRING;
     }
 
-    if (GARROW_IS_FLOAT_DATA_TYPE(data_type)) {
+    if (GARROW_IS_FLOAT_DATA_TYPE(data_type))
+    {
         return COLUMN_DATA_TYPE_FLOAT;
     }
 
-    if (GARROW_IS_DOUBLE_DATA_TYPE(data_type)) {
+    if (GARROW_IS_DOUBLE_DATA_TYPE(data_type))
+    {
         return COLUMN_DATA_TYPE_DOUBLE;
     }
 
-    if (GARROW_IS_BOOLEAN_DATA_TYPE(data_type)) {
+    if (GARROW_IS_BOOLEAN_DATA_TYPE(data_type))
+    {
         return COLUMN_DATA_TYPE_BOOLEAN;
     }
 

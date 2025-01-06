@@ -21,7 +21,7 @@ HashTableInterface* create_default_hash_table_interface()
     default_interface->combine_entries = hash_table_combine_entries;
     default_interface->update_value = hash_table_update_value;
     default_interface->combine_with_response = hash_table_combine_table_with_response;
-    default_interface->combine = hash_table_combine_hash_tables;
+    default_interface->combine_hash_tables = hash_table_combine_hash_tables;
     default_interface->convert_to_response = convert_hash_table_to_query_response;
 
     return default_interface;
@@ -45,7 +45,7 @@ HashTableInterface* create_optimized_hash_table_interface()
     optimized_interface->combine_entries = hash_table_combine_entries;
     optimized_interface->update_value = hash_table_update_value;
     optimized_interface->combine_with_response = hash_table_combine_table_with_response_optimized;
-    optimized_interface->combine = hash_table_optimized_combine_hash_tables;
+    optimized_interface->combine_hash_tables = hash_table_optimized_combine_hash_tables;
     optimized_interface->convert_to_response = convert_hash_table_to_query_response_optimized;
 
     return optimized_interface;
