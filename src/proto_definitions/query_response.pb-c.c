@@ -302,7 +302,7 @@ const ProtobufCMessageDescriptor value__descriptor =
   (ProtobufCMessageInit) value__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor partial_result__field_descriptors[3] =
+static const ProtobufCFieldDescriptor partial_result__field_descriptors[7] =
 {
   {
     "is_null",
@@ -317,20 +317,56 @@ static const ProtobufCFieldDescriptor partial_result__field_descriptors[3] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "value",
+    "type",
     2,
     PROTOBUF_C_LABEL_NONE,
-    PROTOBUF_C_TYPE_INT64,
+    PROTOBUF_C_TYPE_ENUM,
     0,   /* quantifier_offset */
-    offsetof(PartialResult, value),
-    NULL,
+    offsetof(PartialResult, type),
+    &result_type__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "count",
+    "int_value",
     3,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_INT64,
+    offsetof(PartialResult, value_case),
+    offsetof(PartialResult, int_value),
+    NULL,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "float_value",
+    4,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_FLOAT,
+    offsetof(PartialResult, value_case),
+    offsetof(PartialResult, float_value),
+    NULL,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "double_value",
+    5,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_DOUBLE,
+    offsetof(PartialResult, value_case),
+    offsetof(PartialResult, double_value),
+    NULL,
+    NULL,
+    PROTOBUF_C_FIELD_FLAG_ONEOF,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "count",
+    7,
     PROTOBUF_C_LABEL_NONE,
     PROTOBUF_C_TYPE_INT64,
     0,   /* quantifier_offset */
@@ -340,16 +376,33 @@ static const ProtobufCFieldDescriptor partial_result__field_descriptors[3] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "function",
+    8,
+    PROTOBUF_C_LABEL_NONE,
+    PROTOBUF_C_TYPE_ENUM,
+    0,   /* quantifier_offset */
+    offsetof(PartialResult, function),
+    &aggregate__descriptor,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned partial_result__field_indices_by_name[] = {
-  2,   /* field[2] = count */
+  5,   /* field[5] = count */
+  4,   /* field[4] = double_value */
+  3,   /* field[3] = float_value */
+  6,   /* field[6] = function */
+  2,   /* field[2] = int_value */
   0,   /* field[0] = is_null */
-  1,   /* field[1] = value */
+  1,   /* field[1] = type */
 };
-static const ProtobufCIntRange partial_result__number_ranges[1 + 1] =
+static const ProtobufCIntRange partial_result__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 0, 3 }
+  { 7, 5 },
+  { 0, 7 }
 };
 const ProtobufCMessageDescriptor partial_result__descriptor =
 {
@@ -359,10 +412,10 @@ const ProtobufCMessageDescriptor partial_result__descriptor =
   "PartialResult",
   "",
   sizeof(PartialResult),
-  3,
+  7,
   partial_result__field_descriptors,
   partial_result__field_indices_by_name,
-  1,  partial_result__number_ranges,
+  2,  partial_result__number_ranges,
   (ProtobufCMessageInit) partial_result__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
@@ -416,4 +469,36 @@ const ProtobufCMessageDescriptor error__descriptor =
   1,  error__number_ranges,
   (ProtobufCMessageInit) error__init,
   NULL,NULL,NULL    /* reserved[123] */
+};
+static const ProtobufCEnumValue result_type__enum_values_by_number[4] =
+{
+  { "UNKNOWN", "RESULT_TYPE__UNKNOWN", 0 },
+  { "INT", "RESULT_TYPE__INT", 1 },
+  { "FLOAT", "RESULT_TYPE__FLOAT", 2 },
+  { "DOUBLE", "RESULT_TYPE__DOUBLE", 3 },
+};
+static const ProtobufCIntRange result_type__value_ranges[] = {
+{0, 0},{0, 4}
+};
+static const ProtobufCEnumValueIndex result_type__enum_values_by_name[4] =
+{
+  { "DOUBLE", 3 },
+  { "FLOAT", 2 },
+  { "INT", 1 },
+  { "UNKNOWN", 0 },
+};
+const ProtobufCEnumDescriptor result_type__descriptor =
+{
+  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
+  "ResultType",
+  "ResultType",
+  "ResultType",
+  "",
+  4,
+  result_type__enum_values_by_number,
+  4,
+  result_type__enum_values_by_name,
+  1,
+  result_type__value_ranges,
+  NULL,NULL,NULL,NULL   /* reserved[1234] */
 };

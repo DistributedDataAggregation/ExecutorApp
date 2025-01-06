@@ -27,6 +27,8 @@ add_library(ExecutorLib STATIC
         converters/hash_table_to_query_response_converter.c
         error_handling/error_handling.h
         logging/logging.h
+        converters/internal_to_proto_aggregate_converters.c
+        converters/internal_to_proto_aggregate_converters.h
         hash_table/hash_table_optimized.c
         hash_table/hash_table_optimized.h
         hash_table/farmhash-c.h

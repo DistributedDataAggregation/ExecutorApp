@@ -30,6 +30,9 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, int row_index, Co
 
 void worker_calculate_new_column_indices(int* new_column_indices, const gint* old_column_indices,
                                          int number_of_columns);
+
+HashTableValueType worker_map_column_data_type(ColumnDataType column_data_type);
+
 #ifdef __cplusplus
 }
 #endif

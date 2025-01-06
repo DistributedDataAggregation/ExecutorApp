@@ -29,8 +29,6 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
 
 void worker_group_free_thread_data(ThreadData* thread_data);
 
-AggregateFunction worker_group_map_aggregate_function(Aggregate aggregate, ErrorInfo* err);
-
 RowGroupsRange** worker_group_get_row_group_ranges(int n_files, char** file_names, int num_threads, ErrorInfo* err);
 
 void worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices,

@@ -1,4 +1,5 @@
 #include <error.h>
+#include <hash_table.h>
 
 extern "C" {
 #include "hash_table_optimized.h"
@@ -118,30 +119,6 @@ TEST(OptimizedHashTableTest, DeleteFromHashTable)
     hash_table_optimized_free(ht);
 }
 
-TEST(OptimizedHashTableTest, CombineEntries)
-{
-    ErrorInfo error_info = {0};
-    HashTableEntry entry1;
-    entry1.key = strdup("key1");
-    entry1.n_values = 1;
-    entry1.values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1.n_values);
-    entry1.values[0].aggregate_function = MIN;
-    entry1.values[0].value = 500;
-
-    HashTableEntry entry2;
-    entry2.key = strdup("key1");
-    entry2.n_values = 1;
-    entry2.values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2.n_values);
-    entry2.values[0].aggregate_function = MIN;
-    entry2.values[0].value = 300;
-
-    hash_table_optimized_combine_entries(&entry1, &entry2, &error_info);
-    EXPECT_EQ(entry1.values[0].value, 300);
-
-    free(entry1.values);
-    free(entry2.values);
-}
-
 TEST(OptimizedHashTableTest, CombineHashTables)
 {
     ErrorInfo error_info = {0};
@@ -156,6 +133,7 @@ TEST(OptimizedHashTableTest, CombineHashTables)
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1->n_values);
     entry1->values[0].aggregate_function = MIN;
     entry1->values[0].value = 300;
+    entry1->values[0].type = HASH_TABLE_INT;
 
     const char* key2 = "key2";
     HashTableEntry* entry2 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -164,6 +142,7 @@ TEST(OptimizedHashTableTest, CombineHashTables)
     entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2->n_values);
     entry2->values[0].aggregate_function = MIN;
     entry2->values[0].value = 400;
+    entry2->values[0].type = HASH_TABLE_INT;
 
     hash_table_optimized_insert(source, entry1, nullptr);
     hash_table_optimized_insert(source, entry2, nullptr);
@@ -175,6 +154,7 @@ TEST(OptimizedHashTableTest, CombineHashTables)
     entry1_duplicate->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1_duplicate->n_values);
     entry1_duplicate->values[0].aggregate_function = MIN;
     entry1_duplicate->values[0].value = 500;
+    entry1_duplicate->values[0].type = HASH_TABLE_INT;
 
     hash_table_optimized_insert(destination, entry1_duplicate, nullptr);
 
@@ -212,6 +192,7 @@ TEST(OptimizedHashTableTest, HandleCollision)
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue));
     entry1->values[0].value = 100;
     entry1->values[0].aggregate_function = MIN;
+    entry1->values[0].type= HASH_TABLE_INT;
 
     HashTableEntry* entry2 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry2->key = strdup("key2");
@@ -219,6 +200,7 @@ TEST(OptimizedHashTableTest, HandleCollision)
     entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue));
     entry2->values[0].value = 200;
     entry2->values[0].aggregate_function = MAX;
+    entry2->values[0].type= HASH_TABLE_INT;
 
     hash_table_optimized_insert(ht, entry1, nullptr);
     hash_table_optimized_insert(ht, entry2, nullptr);
@@ -249,6 +231,7 @@ TEST(OptimizedHashTableTest, ResizeHashTable)
         entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
         entry->values[0].value = i * 10;
         entry->values[0].aggregate_function = AVG;
+        entry->values[0].type= HASH_TABLE_INT;
 
         hash_table_optimized_insert(ht, entry, &error_info);
     }
@@ -353,34 +336,6 @@ TEST(OptimizedHashTableTest, HandleDeleteNonExistentKey)
     EXPECT_EQ(result, nullptr);
 
     hash_table_optimized_free(ht);
-}
-
-TEST(OptimizedHashTableTest, CombineEntriesWithConflictingValues)
-{
-    ErrorInfo error_info = {0};
-
-    HashTableEntry entry1;
-    entry1.key = strdup("key1");
-    entry1.n_values = 1;
-    entry1.values = (HashTableValue*)malloc(sizeof(HashTableValue));
-    entry1.values[0].value = 50;
-    entry1.values[0].aggregate_function = MIN;
-
-    HashTableEntry entry2;
-    entry2.key = strdup("key1");
-    entry2.n_values = 1;
-    entry2.values = (HashTableValue*)malloc(sizeof(HashTableValue));
-    entry2.values[0].value = 100;
-    entry2.values[0].aggregate_function = MIN;
-
-    hash_table_optimized_combine_entries(&entry1, &entry2, &error_info);
-
-    EXPECT_EQ(entry1.values[0].value, 50); // Retains the minimum value.
-
-    free(entry1.values);
-    free(entry2.values);
-    free(entry1.key);
-    free(entry2.key);
 }
 
 TEST(OptimizedHashTableTest, StressTestLargeInserts)

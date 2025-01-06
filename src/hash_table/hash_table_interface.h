@@ -18,7 +18,7 @@ typedef struct HashTableInterface
     void (*combine_entries)(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err);
     HashTableValue (*update_value)(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
     void (*combine_with_response)(HashTable* ht, const QueryResponse* query_response, ErrorInfo* err);
-    void (*combine)(HashTable* destination, HashTable* source, ErrorInfo* err);
+    void (*combine_hash_tables)(HashTable* destination, const HashTable* source, ErrorInfo* err);
     void (*free_entry)(HashTableEntry* value);
     QueryResponse* (*convert_to_response)(const HashTable* table, ErrorInfo* err);
 } HashTableInterface;

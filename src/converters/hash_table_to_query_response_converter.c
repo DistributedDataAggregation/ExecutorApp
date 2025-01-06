@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash_table_to_query_response_converter.h"
+
+#include "internal_to_proto_aggregate_converters.h"
 #include "stdbool.h"
 
 PartialResult* convert_value(HashTableValue value, ErrorInfo* err);
@@ -179,28 +181,36 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
     {
         result->is_null = true;
         result->count = 0;
-        result->value = 0;
+        result->value_case = PARTIAL_RESULT__VALUE__NOT_SET;
+        result->type = RESULT_TYPE__UNKNOWN;
         return result;
     }
 
-    switch (value.aggregate_function)
+    switch (value.type)
     {
-    case MIN:
-    case MAX:
-        {
-            result->value = value.value;
-            break;
-        }
-    case AVG:
-        {
-            result->count = value.count;
-            result->value = value.value;
-            break;
-        }
+    case HASH_TABLE_INT:
+        result->type = RESULT_TYPE__INT;
+        result->int_value = value.value;
+        result->value_case = PARTIAL_RESULT__VALUE_INT_VALUE;
+        break;
+    case HASH_TABLE_FLOAT:
+        result->type = RESULT_TYPE__FLOAT;
+        result->float_value = value.float_value;
+        result->value_case = PARTIAL_RESULT__VALUE_FLOAT_VALUE;
+        break;
+    case HASH_TABLE_DOUBLE:
+        result->type = RESULT_TYPE__DOUBLE;
+        result->double_value = value.double_value;
+        result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
+        break;
     default:
-        result->value = 0;
+        LOG_INTERNAL_ERR("Unsupported hash table type");
         break;
     }
+
+    result->is_null = false;
+    result->count = value.count;
+    result->function = convert_aggregate(value.aggregate_function, err);
 
     return result;
 }

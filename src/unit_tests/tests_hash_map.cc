@@ -131,6 +131,7 @@ TEST(HashTableTest, CombineEntries)
     entry1.values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1.n_values);
     entry1.values[0].aggregate_function = MIN;
     entry1.values[0].value = 500;
+    entry1.values[0].type = HASH_TABLE_INT;
 
     HashTableEntry entry2;
     entry2.key = strdup("key1");
@@ -138,6 +139,7 @@ TEST(HashTableTest, CombineEntries)
     entry2.values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2.n_values);
     entry2.values[0].aggregate_function = MIN;
     entry2.values[0].value = 300;
+    entry2.values[0].type = HASH_TABLE_INT;
 
     hash_table_combine_entries(&entry1, &entry2, &error_info);
     EXPECT_EQ(entry1.values[0].value, 300);
@@ -155,9 +157,19 @@ TEST(HashTableTest, CombineHashTables)
 
     const char* key1 = "key1";
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry1 == nullptr)
+    {
+     return;
+    }
     entry1->key = strdup(key1);
     entry1->n_values = 1;
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1->n_values);
+    if (entry1->values == nullptr)
+    {
+        free(entry1->values);
+        free(entry1);
+        return;
+    }
     entry1->values[0].aggregate_function = MIN;
     entry1->values[0].value = 300;
 

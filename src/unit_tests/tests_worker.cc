@@ -1,4 +1,3 @@
-
 #include "worker.h"
 
 #include <gtest/gtest.h>
@@ -6,7 +5,8 @@
 #include <arrow-glib/arrow-glib.h>
 
 
-TEST(WorkerTests, CalculateNewColumnIndices_UniqueColumns) {
+TEST(WorkerTests, CalculateNewColumnIndices_UniqueColumns)
+{
     gint old_column_indices[] = {1, 2, 3};
     int new_column_indices[3];
     worker_calculate_new_column_indices(new_column_indices, old_column_indices, 3);
@@ -16,7 +16,8 @@ TEST(WorkerTests, CalculateNewColumnIndices_UniqueColumns) {
     EXPECT_EQ(new_column_indices[2], 2);
 }
 
-TEST(WorkerTests, CalculateNewColumnIndices_RepeatedColumns) {
+TEST(WorkerTests, CalculateNewColumnIndices_RepeatedColumns)
+{
     gint old_column_indices[] = {1, 2, 1};
     int new_column_indices[3];
     worker_calculate_new_column_indices(new_column_indices, old_column_indices, 3);
@@ -26,13 +27,15 @@ TEST(WorkerTests, CalculateNewColumnIndices_RepeatedColumns) {
     EXPECT_EQ(new_column_indices[2], 0);
 }
 
-TEST(WorkerTests, CalculateNewColumnIndices_EmptyInput) {
+TEST(WorkerTests, CalculateNewColumnIndices_EmptyInput)
+{
     gint old_column_indices[] = {};
     int new_column_indices[0];
     worker_calculate_new_column_indices(new_column_indices, old_column_indices, 0);
 
     SUCCEED();
 }
+
 //
 // TEST(WorkerTests, ConstructGroupingString) {
 //     GArrowArray* grouping_arrays[2];

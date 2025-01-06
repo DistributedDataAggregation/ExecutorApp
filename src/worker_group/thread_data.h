@@ -12,15 +12,11 @@ typedef enum ColumnDataType
     COLUMN_DATA_TYPE_INT32,
     COLUMN_DATA_TYPE_INT64,
     COLUMN_DATA_TYPE_STRING,
+    COLUMN_DATA_TYPE_FLOAT,
+    COLUMN_DATA_TYPE_DOUBLE,
+    COLUMN_DATA_TYPE_BOOLEAN,
     COLUMN_DATA_TYPE_UNKNOWN
 } ColumnDataType;
-
-
-//
-// typedef struct SelectData {
-//     int column_index;
-//     AggregateFunction aggregate;
-// } SelectData;
 
 typedef struct RowGroupsRange
 {
