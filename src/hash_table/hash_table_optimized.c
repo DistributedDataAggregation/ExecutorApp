@@ -241,6 +241,16 @@ void hash_table_optimized_print(const HashTable* ht)
                     printf("  Value[%d]: %ld (Max)\n", j, value->value);
                     break;
                 }
+            case SUM:
+                {
+                    printf("  Value[%d]: %ld (Sum)\n", j, value->value);
+                    break;
+                }
+            case COUNT:
+                {
+                    printf("  Value[%d]: %ld (Count)\n", j, value->value);
+                    break;
+                }
             case UNKNOWN:
                 {
                     printf("  Value[%d]: (Unknown)\n", j);

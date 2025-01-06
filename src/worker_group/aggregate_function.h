@@ -12,6 +12,8 @@ typedef enum aggregate_function
     MAX = 1,
     AVG = 2,
     MEDIAN = 3,
+    SUM = 4,
+    COUNT = 5,
 } AggregateFunction;
 
 #endif //AGGREGATE_FUNCTION_H

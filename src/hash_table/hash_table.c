@@ -272,6 +272,16 @@ void hash_table_print(const HashTable* ht)
                         printf("  Value[%d]: %ld (Max)\n", j, value->value);
                         break;
                     }
+                case SUM:
+                    {
+                        printf("  Value[%d]: %ld (Sum)\n", j, value->value);
+                        break;
+                    }
+                case COUNT:
+                    {
+                        printf("  Value[%d]: %ld (Count)\n", j, value->value);
+                        break;
+                    }
                 case UNKNOWN:
                     {
                         printf("  Value[%d]: (Unknown)\n", j);
@@ -378,6 +388,16 @@ HashTableValue combine_hash_table_int_value(HashTableValue current_value, const 
                                       : current_value.value;
             break;
         }
+    case SUM:
+        {
+            current_value.value += incoming_value.value;
+            break;
+        }
+    case COUNT:
+        {
+            current_value.count += incoming_value.count;
+            break;
+        }
     case AVG:
         {
             current_value.value += incoming_value.value;
@@ -410,6 +430,16 @@ HashTableValue combine_hash_table_float_value(HashTableValue current_value, cons
             current_value.float_value = incoming_value.float_value > current_value.float_value
                                             ? incoming_value.float_value
                                             : current_value.float_value;
+            break;
+        }
+    case COUNT:
+        {
+            current_value.count += incoming_value.count;
+            break;
+        }
+    case SUM:
+        {
+            current_value.float_value += incoming_value.float_value;
             break;
         }
     case AVG:
@@ -453,6 +483,17 @@ HashTableValue combine_hash_table_double_value(HashTableValue current_value, con
             current_value.count += incoming_value.count;
             break;
         }
+    case COUNT:
+        {
+            current_value.count += incoming_value.count;
+            break;
+        }
+    case SUM:
+        {
+            current_value.double_value += incoming_value.double_value;
+            break;
+        }
+
     default:
     case UNKNOWN:
         LOG_INTERNAL_ERR("Unsupported aggregate function");

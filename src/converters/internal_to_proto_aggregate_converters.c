@@ -21,6 +21,10 @@ AggregateFunction convert_aggregate_function(Aggregate aggregate, ErrorInfo* err
         return AVG;
     case AGGREGATE__Median:
         return MEDIAN;
+    case AGGREGATE__Sum:
+        return SUM;
+    case AGGREGATE__Count:
+        return COUNT;
     default:
         LOG_INTERNAL_ERR("Unsupported aggregate function");
         SET_ERR(err, INTERNAL_ERROR, "Unsupported aggregate function", "");
@@ -46,6 +50,10 @@ Aggregate convert_aggregate(AggregateFunction aggregate, ErrorInfo* err)
         return AGGREGATE__Average;
     case MEDIAN:
         return AGGREGATE__Median;
+    case SUM:
+        return AGGREGATE__Sum;
+    case COUNT:
+        return AGGREGATE__Count;
     default:
         LOG_INTERNAL_ERR("Unsupported aggregate function");
         SET_ERR(err, INTERNAL_ERROR, "Unsupported AggregateFunction",
