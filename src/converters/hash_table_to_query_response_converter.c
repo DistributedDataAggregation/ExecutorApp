@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash_table_to_query_response_converter.h"
+
+#include "internal_to_proto_aggregate_converters.h"
 #include "stdbool.h"
 
 PartialResult* convert_value(HashTableValue value, ErrorInfo* err);
@@ -201,13 +203,13 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
             result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
             break;
         default:
-        case HASH_TABLE_UNSUPPORTED:
             LOG_INTERNAL_ERR("Unsupported hash table type");
-            SET_ERR(err, INTERNAL_ERROR, "Unsupported hash table type", strerror(errno));
+            break;
     }
 
     result->is_null = false;
     result->count = value.count;
+    result->function = convert_aggregate(value.aggregate_function, err);
 
     return result;
 }

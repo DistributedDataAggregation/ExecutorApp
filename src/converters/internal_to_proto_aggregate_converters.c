@@ -60,7 +60,6 @@ Aggregate convert_aggregate(AggregateFunction aggregate, ErrorInfo* err) {
             return AGGREGATE__Average;
         case MEDIAN:
             return AGGREGATE__Median;
-        case UNKNOWN:
         default:
             LOG_INTERNAL_ERR("Unsupported aggregate function");
             SET_ERR(err, INTERNAL_ERROR, "Unsupported AggregateFunction", "Unsupported AggregateFunction enum value for mapping to proto Aggreagate\n");

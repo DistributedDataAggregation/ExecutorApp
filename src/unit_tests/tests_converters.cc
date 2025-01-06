@@ -20,6 +20,7 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
     entry->values[0].value = 42;
     entry->values[0].count = 1;
+    entry->values[0].type = HASH_TABLE_INT;
     entry->values[0].aggregate_function = AVG;
     entry->next = nullptr;
 
@@ -34,7 +35,7 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
 
     EXPECT_STREQ(response->values[0]->grouping_value, "key1");
     EXPECT_EQ(response->values[0]->n_results, 1);
-    EXPECT_EQ(response->values[0]->results[0]->value, 42);
+    EXPECT_EQ(response->values[0]->results[0]->int_value, 42);
     EXPECT_EQ(response->values[0]->results[0]->count, 1);
 
     for (int i = 0; i < response->n_values; i++)

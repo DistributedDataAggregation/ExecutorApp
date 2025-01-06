@@ -548,8 +548,8 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     float float_value = 0.0f;
     double double_value = 0.0f;
 
-    if (garrow_array_is_null(select_array, row_index))
-    {
+    hash_table_value.type = worker_map_column_data_type(select_columns_data_types);
+    if (garrow_array_is_null(select_array, row_index)) {
         hash_table_value.is_null = TRUE;
         return hash_table_value;
     }
@@ -591,8 +591,6 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     {
         hash_table_value.count = 1;
     }
-
-    hash_table_value.type = worker_map_column_data_type(select_columns_data_types);
 
     return hash_table_value;
 }

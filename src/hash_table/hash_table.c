@@ -29,8 +29,19 @@ unsigned int hash(const char* string, const int table_size)
 }
 
 void hash_table_free_entry(HashTableEntry* value) {
-      free(value->key);
-      free(value->values);
+      if(value == NULL)
+        return;
+
+      if(value->key != NULL) {
+        free(value->key);
+        value->key = NULL;
+      }
+
+      if(value->values != NULL) {
+        free(value->values);
+        value->values = NULL;
+      }
+
       free(value);
       value = NULL;
 }
@@ -84,16 +95,28 @@ void hash_table_free(HashTable* table)
                   while (entry != NULL)
                   {
                         HashTableEntry* next = entry->next;
-                        free(entry->key);
-                        free(entry->values);
+                        if(entry->key != NULL) {
+                              free(entry->key);
+                              entry->key = NULL;
+                        }
+                        if (entry->values != NULL) {
+                              free(entry->values);
+                              entry->values = NULL;
+                        }
                         free(entry);
                         entry = next;
                   }
+                  table->table[i] = NULL;
             }
       }
 
-      free(table->table);
+      if(table->table != NULL) {
+            free(table->table);
+            table->table = NULL;
+      }
+
       free(table);
+      table = NULL;
 }
 
 void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err){
@@ -416,13 +439,14 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
             entry->values = values;
 
             HashTableEntry* found = hash_table_search(ht, entry->key);
-            if (found == NULL)
-            {
+            if(found == NULL) {
                   hash_table_insert(ht, entry, err);
-                  if (err->error_code != NO_ERROR)
-                  {
+                  if (err->error_code != NO_ERROR) {
                         free(values);
+                        values = NULL;
+
                         free(entry);
+                        entry = NULL;
                         return;
                   }
             }
@@ -432,13 +456,14 @@ void hash_table_combine_table_with_response(HashTable* ht, const QueryResponse* 
                   if (err->error_code != NO_ERROR)
                   {
                         free(values);
+                        values = NULL;
+
                         free(entry);
+                        entry = NULL;
                         return;
                   }
+                  hash_table_free_entry(entry);
             }
-
-            free(values);
-            free(entry);
       }
 }
 
