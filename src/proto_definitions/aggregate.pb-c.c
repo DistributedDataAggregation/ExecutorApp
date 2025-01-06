@@ -7,24 +7,28 @@
 #endif
 
 #include "aggregate.pb-c.h"
-static const ProtobufCEnumValue aggregate__enum_values_by_number[5] =
+static const ProtobufCEnumValue aggregate__enum_values_by_number[7] =
 {
   { "Minimum", "AGGREGATE__Minimum", 0 },
   { "Maximum", "AGGREGATE__Maximum", 1 },
   { "Average", "AGGREGATE__Average", 2 },
   { "Median", "AGGREGATE__Median", 3 },
-  { "Unknown", "AGGREGATE__Unknown", 4 },
+  { "Sum", "AGGREGATE__Sum", 4 },
+  { "Count", "AGGREGATE__Count", 5 },
+  { "Unknown", "AGGREGATE__Unknown", 6 },
 };
 static const ProtobufCIntRange aggregate__value_ranges[] = {
-{0, 0},{0, 5}
+{0, 0},{0, 7}
 };
-static const ProtobufCEnumValueIndex aggregate__enum_values_by_name[5] =
+static const ProtobufCEnumValueIndex aggregate__enum_values_by_name[7] =
 {
   { "Average", 2 },
+  { "Count", 5 },
   { "Maximum", 1 },
   { "Median", 3 },
   { "Minimum", 0 },
-  { "Unknown", 4 },
+  { "Sum", 4 },
+  { "Unknown", 6 },
 };
 const ProtobufCEnumDescriptor aggregate__descriptor =
 {
@@ -33,9 +37,9 @@ const ProtobufCEnumDescriptor aggregate__descriptor =
   "Aggregate",
   "Aggregate",
   "",
-  5,
+  7,
   aggregate__enum_values_by_number,
-  5,
+  7,
   aggregate__enum_values_by_name,
   1,
   aggregate__value_ranges,

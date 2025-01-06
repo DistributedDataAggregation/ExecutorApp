@@ -78,6 +78,10 @@ void print_thread_data(ThreadData* data)
             break;
         case MEDIAN: agg_func = "MEDIAN";
             break;
+        case SUM: agg_func = "SUM";
+            break;
+        case COUNT: agg_func = "COUNT";
+            break;
         default: agg_func = "UNKNOWN";
             break;
         }
@@ -537,6 +541,16 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
             hash_table_value.aggregate_function = MEDIAN;
             break;
         }
+    case SUM:
+        {
+            hash_table_value.aggregate_function = SUM;
+            break;
+        }
+    case COUNT:
+        {
+            hash_table_value.aggregate_function = COUNT;
+            break;
+        }
     case UNKNOWN:
         {
             hash_table_value.aggregate_function = UNKNOWN;
@@ -593,7 +607,7 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
         hash_table_value.value = value;
     }
 
-    if (hash_table_value.aggregate_function == AVG)
+    if (hash_table_value.aggregate_function == AVG || hash_table_value.aggregate_function == COUNT)
     {
         hash_table_value.count = 1;
     }
