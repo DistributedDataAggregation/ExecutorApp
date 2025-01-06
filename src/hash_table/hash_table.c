@@ -11,7 +11,6 @@
 #include <stdbool.h>
 #include "internal_to_proto_aggregate_converters.h"
 
-HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorInfo* err) ;
 HashTableValue combine_hash_table_int_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
 HashTableValue combine_hash_table_float_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
 HashTableValue combine_hash_table_double_value(HashTableValue current_value, HashTableValue incoming_value, ErrorInfo* err);
@@ -473,6 +472,7 @@ HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorI
       if (pr_value == NULL) {
             LOG_INTERNAL_ERR("Passed pr_value info was NULL");
             SET_ERR(err, INTERNAL_ERROR, "Null parameter passed", "Received null pr value in map_partial_result_to_table_value");
+            return ht_value;
       }
 
       ht_value.is_null = pr_value->is_null;
@@ -505,7 +505,7 @@ HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorI
       }
 }
 
-void hash_table_combine_hash_tables(HashTable* destination, HashTable* source, ErrorInfo* err) {
+void hash_table_combine_hash_tables(HashTable* destination, const HashTable* source, ErrorInfo* err) {
 
       if (err == NULL) {
             LOG_INTERNAL_ERR("Passed error info was NULL");

@@ -42,8 +42,8 @@ HashTableInterface* create_optimized_hash_table_interface()
     optimized_interface->search = hash_table_optimized_search;
     optimized_interface->remove = hash_table_optimized_delete;
     optimized_interface->print = hash_table_optimized_print;
-    optimized_interface->combine_entries = hash_table_optimized_combine_entries;
-    optimized_interface->update_value = hash_table_optimized_update_value;
+    optimized_interface->combine_entries = hash_table_combine_entries;
+    optimized_interface->update_value = hash_table_update_value;
     optimized_interface->combine_with_response = hash_table_combine_table_with_response_optimized;
     optimized_interface->combine = hash_table_optimized_combine_hash_tables;
     optimized_interface->convert_to_response = convert_hash_table_to_query_response_optimized;

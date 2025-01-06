@@ -8,6 +8,7 @@
 // Created by kapiszon on 32.12.24.
 //
 #include <errno.h>
+#include <hash_table.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -256,79 +257,6 @@ void hash_table_optimized_print(const HashTable* ht)
 }
 
 
-void hash_table_optimized_combine_entries(HashTableEntry* entry1, const HashTableEntry* entry2, ErrorInfo* err)
-{
-      if (err == NULL)
-      {
-            LOG_INTERNAL_ERR("Passed error info was NULL");
-            return;
-      }
-
-      if (entry1 == NULL || entry2 == NULL)
-      {
-            LOG_INTERNAL_ERR("Failed to combine hash table entries: At least one of combined entries was NULL");
-            SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
-                    "At least one of combined entries was NULL");
-            return;
-      }
-
-      if (entry1->n_values > entry2->n_values)
-      {
-            LOG_INTERNAL_ERR("Failed to combine hash table entries: Entries have different number of values");
-            SET_ERR(err, INTERNAL_ERROR, "Failed to combine hash table entries",
-                    "Entries have different number of values");
-            return;
-      }
-      const int size = entry1->n_values;
-
-      for (int i = 0; i < size; i++)
-      {
-            entry1->values[i] = hash_table_optimized_update_value(entry1->values[i], entry2->values[i], err);
-            if (err->error_code != NO_ERROR)
-            {
-                  return;
-            }
-      }
-}
-
-HashTableValue hash_table_optimized_update_value(HashTableValue current_value, HashTableValue incoming_value,
-                                                 ErrorInfo* err)
-{
-      switch (current_value.aggregate_function)
-      {
-      case MIN:
-            {
-                  current_value.value = incoming_value.value < current_value.value
-                                              ? incoming_value.value
-                                              : current_value.value;
-                  break;
-            }
-      case MAX:
-            {
-                  current_value.value = incoming_value.value > current_value.value
-                                              ? incoming_value.value
-                                              : current_value.value;
-                  break;
-            }
-      case AVG:
-            {
-                  current_value.value += incoming_value.value;
-                  current_value.count += incoming_value.count;
-                  break;
-            }
-      case MEDIAN:
-            {
-                  // TODO: implement median calculation
-                  current_value.value = -1;
-                  break;
-            }
-      case UNKNOWN:
-            break;
-      }
-
-      return current_value;
-}
-
 void hash_table_combine_table_with_response_optimized(HashTable* ht, const QueryResponse* query_response,
                                                       ErrorInfo* err)
 {
@@ -341,17 +269,15 @@ void hash_table_combine_table_with_response_optimized(HashTable* ht, const Query
       for (int i = 0; i < query_response->n_values; i++)
       {
             const Value* current = query_response->values[i];
-            HashTableValue* values = malloc(sizeof(HashTableValue) * current->n_results);
-            if (values == NULL)
-            {
+            HashTableValue* values = malloc(sizeof(HashTableValue)*current->n_results);
+            if (values == NULL) {
                   LOG_ERR("Failed to allocate memory for hash table values");
                   SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
                   return;
             }
-            for (int j = 0; j < current->n_results; j++)
-            {
-                  values[j].value = current->results[j]->value;
-                  values[j].count = current->results[j]->count;
+
+            for(int j=0; j<current->n_results; j++) {
+                  values[j] = map_partial_result_to_table_value(current->results[j], err);
             }
 
             HashTableEntry* entry = malloc(sizeof(HashTableEntry));
@@ -380,17 +306,15 @@ void hash_table_combine_table_with_response_optimized(HashTable* ht, const Query
             }
             else
             {
-                  hash_table_optimized_combine_entries(found, entry, err);
+                  hash_table_combine_entries(found, entry, err);
                   if (err->error_code != NO_ERROR)
                   {
                         free(values);
                         free(entry);
                         return;
                   }
+                  hash_table_free_entry(entry);
             }
-
-            free(values);
-            free(entry);
       }
 }
 
@@ -448,7 +372,7 @@ void hash_table_optimized_combine_hash_tables(HashTable* destination, const Hash
             }
             else
             {
-                  hash_table_optimized_combine_entries(found, entry, err);
+                  hash_table_combine_entries(found, entry, err);
                   if (err->error_code != NO_ERROR)
                   {
                         return;

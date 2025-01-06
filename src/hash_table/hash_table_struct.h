@@ -4,11 +4,22 @@
 #include "aggregate_function.h"
 #include <stdbool.h>
 
-typedef struct HashTableValue
-{
-    long value;
+typedef enum HashTableValueType {
+    HASH_TABLE_UNSUPPORTED,
+    HASH_TABLE_INT,
+    HASH_TABLE_FLOAT,
+    HASH_TABLE_DOUBLE,
+}HashTableValueType;
+
+typedef struct HashTableValue {
     long count;
     int is_null;
+    HashTableValueType type;
+    union {
+        long value;
+        float float_value;
+        double double_value;
+    };
     AggregateFunction aggregate_function;
 } HashTableValue;
 
@@ -27,6 +38,5 @@ typedef struct HashTable
     int entries_count;
     HashTableEntry** table;
 } HashTable;
-
 
 #endif //HASH_TABLE_STRUCT_H

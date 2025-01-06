@@ -96,9 +96,11 @@ TEST(WorkerGroupTests, GetColumnsIndices)
 TEST(WorkerGroupTests, GetRowGroupRanges)
 {
     ErrorInfo error_info = {0};
-    char* file_names[] = {"test.parquet"};
+    char* file_name = strdup("test.parquet");
+    char* file_names[] = {file_name};
     RowGroupsRange** ranges = worker_group_get_row_group_ranges(1, file_names, 2, &error_info);
 
+    free(file_name);
     EXPECT_EQ(ranges, nullptr);
 }
 

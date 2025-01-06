@@ -1,4 +1,5 @@
 #include <error.h>
+#include <hash_table.h>
 
 extern "C" {
 #include "hash_table_optimized.h"
@@ -116,30 +117,6 @@ TEST(OptimizedHashTableTest, DeleteFromHashTable)
     EXPECT_EQ(found, nullptr);
 
     hash_table_optimized_free(ht);
-}
-
-TEST(OptimizedHashTableTest, CombineEntries)
-{
-    ErrorInfo error_info = {0};
-    HashTableEntry entry1;
-    entry1.key = strdup("key1");
-    entry1.n_values = 1;
-    entry1.values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1.n_values);
-    entry1.values[0].aggregate_function = MIN;
-    entry1.values[0].value = 500;
-
-    HashTableEntry entry2;
-    entry2.key = strdup("key1");
-    entry2.n_values = 1;
-    entry2.values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2.n_values);
-    entry2.values[0].aggregate_function = MIN;
-    entry2.values[0].value = 300;
-
-    hash_table_optimized_combine_entries(&entry1, &entry2, &error_info);
-    EXPECT_EQ(entry1.values[0].value, 300);
-
-    free(entry1.values);
-    free(entry2.values);
 }
 
 TEST(OptimizedHashTableTest, CombineHashTables)
@@ -353,34 +330,6 @@ TEST(OptimizedHashTableTest, HandleDeleteNonExistentKey)
     EXPECT_EQ(result, nullptr);
 
     hash_table_optimized_free(ht);
-}
-
-TEST(OptimizedHashTableTest, CombineEntriesWithConflictingValues)
-{
-    ErrorInfo error_info = {0};
-
-    HashTableEntry entry1;
-    entry1.key = strdup("key1");
-    entry1.n_values = 1;
-    entry1.values = (HashTableValue*)malloc(sizeof(HashTableValue));
-    entry1.values[0].value = 50;
-    entry1.values[0].aggregate_function = MIN;
-
-    HashTableEntry entry2;
-    entry2.key = strdup("key1");
-    entry2.n_values = 1;
-    entry2.values = (HashTableValue*)malloc(sizeof(HashTableValue));
-    entry2.values[0].value = 100;
-    entry2.values[0].aggregate_function = MIN;
-
-    hash_table_optimized_combine_entries(&entry1, &entry2, &error_info);
-
-    EXPECT_EQ(entry1.values[0].value, 50); // Retains the minimum value.
-
-    free(entry1.values);
-    free(entry2.values);
-    free(entry1.key);
-    free(entry2.key);
 }
 
 TEST(OptimizedHashTableTest, StressTestLargeInserts)
