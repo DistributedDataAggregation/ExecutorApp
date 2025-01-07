@@ -563,9 +563,23 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     double double_value = 0.0f;
 
     hash_table_value.type = worker_map_column_data_type(select_columns_data_types);
+
     if (garrow_array_is_null(select_array, row_index))
     {
+        if (aggregate_function == COUNT)
+        {
+            hash_table_value.type = HASH_TABLE_INT;
+            hash_table_value.value = 0;
+        }
+
         hash_table_value.is_null = TRUE;
+        return hash_table_value;
+    }
+
+    if (aggregate_function == COUNT)
+    {
+        hash_table_value.type = HASH_TABLE_INT;
+        hash_table_value.value = 1;
         return hash_table_value;
     }
 
@@ -607,7 +621,7 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
         hash_table_value.value = value;
     }
 
-    if (hash_table_value.aggregate_function == AVG || hash_table_value.aggregate_function == COUNT)
+    if (hash_table_value.aggregate_function == AVG)
     {
         hash_table_value.count = 1;
     }
