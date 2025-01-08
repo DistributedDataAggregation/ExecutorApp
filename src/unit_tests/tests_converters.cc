@@ -70,9 +70,5 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
     }
     free(response->values);
     free(response);
-
-    free(entry->values);
-    free(entry->key);
-    free(entry);
     hash_table_free(ht);
 }

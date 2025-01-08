@@ -92,6 +92,13 @@ void hash_table_free(HashTable* table)
         return;
     }
 
+    if (table->table == NULL)
+    {
+        free(table);
+        table = NULL;
+        return;
+    }
+
     for (int i = 0; i < table->size; i++)
     {
         if (table->table[i] != NULL)

@@ -365,6 +365,13 @@ RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** fil
         }
 
         const gint row_groups_count = gparquet_arrow_file_reader_get_n_row_groups(reader);
+        if (row_groups_count < 0)
+        {
+            g_object_unref(reader);
+            worker_group_free_row_group_ranges(row_group_ranges, n_files);
+            SET_ERR(err, INTERNAL_ERROR, "Failed to get row groups count", "");
+            return NULL;
+        }
 
         int start = 0;
         for (int j = 0; j < num_threads; j++)

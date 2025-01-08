@@ -112,8 +112,6 @@ TEST(HashTableTest, SearchInHashTable)
     HashTableEntry* not_found = hash_table_search(ht, "nonexistent_key");
     EXPECT_EQ(not_found, nullptr);
 
-    free(entry->key);
-    free(entry);
     hash_table_free(ht);
 }
 
@@ -299,16 +297,4 @@ TEST(HashTableTest, CombineHashTables)
     hash_table_insert(destination, entry1_duplicate, &error_info);
     hash_table_free(destination);
     hash_table_free(source);
-
-    free(entry1->values);
-    free(entry1->key);
-    free(entry1);
-
-    free(entry2->values);
-    free(entry2->key);
-    free(entry2);
-
-    free(entry1_duplicate->values);
-    free(entry1_duplicate->key);
-    free(entry1_duplicate);
 }

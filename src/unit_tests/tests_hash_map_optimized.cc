@@ -112,8 +112,6 @@ TEST(OptimizedHashTableTest, SearchInHashTable)
     HashTableEntry* not_found = hash_table_optimized_search(ht, "nonexistent_key");
     EXPECT_EQ(not_found, nullptr);
 
-    free(entry->key);
-    free(entry);
     hash_table_optimized_free(ht);
 }
 

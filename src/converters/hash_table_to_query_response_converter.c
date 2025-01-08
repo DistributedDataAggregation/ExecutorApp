@@ -302,7 +302,7 @@ QueryResponse* convert_hash_table_to_query_response_optimized(const HashTable* t
         if (entry != NULL && !entry->is_deleted)
         {
             query_response->values[converted_values] = convert_entry(entry, err);
-            if (err->error_code != NO_ERROR)
+            if (query_response->values[converted_values] == NULL)
             {
                 LOG_ERR("Error converting hash table entry to query response value");
                 free_values(query_response->values, converted_values);
