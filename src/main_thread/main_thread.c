@@ -247,20 +247,12 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             LOG_INTERNAL_ERR("Failed to collect from other executors");
             SET_ERR(err, INTERNAL_ERROR, "Failed to collect from other executors", "");
         }
-        else
-        {
-            LOG("Collected from other nodes\n");
-        }
 
         prepare_and_send_response(client_fd, request->guid, ht_interface, ht, err);
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to send response to controller");
             // TODO handle failed send to controller, retry if EAGAIN lub EWOULDBLOCK? (closing in main thread)
-        }
-        else
-        {
-            LOG("Sent results to controller\n");
         }
     }
 

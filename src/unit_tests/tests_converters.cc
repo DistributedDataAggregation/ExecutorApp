@@ -15,9 +15,29 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
     EXPECT_EQ(ht->entries_count, 0);
 
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry == nullptr)
+    {
+        hash_table_free(ht);
+        ASSERT_EQ(nullptr, entry);
+        return;
+    }
     entry->key = strdup("key1");
+    if (entry->key == nullptr)
+    {
+        hash_table_free(ht);
+        ASSERT_EQ(nullptr, entry);
+        return;
+    }
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+    if (entry->values == nullptr)
+    {
+        free(entry->key);
+        free(entry);
+        hash_table_free(ht);
+        ASSERT_EQ(nullptr, entry->values);
+        return;
+    }
     entry->values[0].value = 42;
     entry->values[0].count = 1;
     entry->values[0].type = HASH_TABLE_INT;
@@ -51,5 +71,8 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
     free(response->values);
     free(response);
 
+    free(entry->values);
+    free(entry->key);
+    free(entry);
     hash_table_free(ht);
 }

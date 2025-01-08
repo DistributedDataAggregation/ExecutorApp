@@ -74,11 +74,30 @@ TEST(OptimizedHashTableTest, SearchInHashTable)
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry == nullptr)
+    {
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     ASSERT_NE(entry, nullptr);
 
     entry->key = strdup(key);
+    if (entry->key == nullptr)
+    {
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
+    if (entry->values == nullptr)
+    {
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->values[0].aggregate_function = MAX;
     entry->values[0].value = 200;
 
@@ -93,6 +112,8 @@ TEST(OptimizedHashTableTest, SearchInHashTable)
     HashTableEntry* not_found = hash_table_optimized_search(ht, "nonexistent_key");
     EXPECT_EQ(not_found, nullptr);
 
+    free(entry->key);
+    free(entry);
     hash_table_optimized_free(ht);
 }
 
@@ -192,7 +213,7 @@ TEST(OptimizedHashTableTest, HandleCollision)
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue));
     entry1->values[0].value = 100;
     entry1->values[0].aggregate_function = MIN;
-    entry1->values[0].type= HASH_TABLE_INT;
+    entry1->values[0].type = HASH_TABLE_INT;
 
     HashTableEntry* entry2 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry2->key = strdup("key2");
@@ -200,7 +221,7 @@ TEST(OptimizedHashTableTest, HandleCollision)
     entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue));
     entry2->values[0].value = 200;
     entry2->values[0].aggregate_function = MAX;
-    entry2->values[0].type= HASH_TABLE_INT;
+    entry2->values[0].type = HASH_TABLE_INT;
 
     hash_table_optimized_insert(ht, entry1, nullptr);
     hash_table_optimized_insert(ht, entry2, nullptr);
@@ -231,7 +252,7 @@ TEST(OptimizedHashTableTest, ResizeHashTable)
         entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
         entry->values[0].value = i * 10;
         entry->values[0].aggregate_function = AVG;
-        entry->values[0].type= HASH_TABLE_INT;
+        entry->values[0].type = HASH_TABLE_INT;
 
         hash_table_optimized_insert(ht, entry, &error_info);
     }
