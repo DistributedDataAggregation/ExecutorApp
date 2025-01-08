@@ -395,7 +395,7 @@ HashTableValue combine_hash_table_int_value(HashTableValue current_value, const 
         }
     case COUNT:
         {
-            current_value.count += incoming_value.count;
+            current_value.value += incoming_value.value;
             break;
         }
     case AVG:
@@ -434,7 +434,8 @@ HashTableValue combine_hash_table_float_value(HashTableValue current_value, cons
         }
     case COUNT:
         {
-            current_value.count += incoming_value.count;
+            LOG_INTERNAL_ERR("Count cant be float!");
+            SET_ERR(err, INTERNAL_ERROR, "Count dont support float", "");
             break;
         }
     case SUM:
@@ -485,7 +486,8 @@ HashTableValue combine_hash_table_double_value(HashTableValue current_value, con
         }
     case COUNT:
         {
-            current_value.count += incoming_value.count;
+            LOG_INTERNAL_ERR("Count cant be double!");
+            SET_ERR(err, INTERNAL_ERROR, "Count dont support double", "");
             break;
         }
     case SUM:

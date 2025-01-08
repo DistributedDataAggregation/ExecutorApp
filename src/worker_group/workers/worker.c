@@ -314,6 +314,8 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     if (err->error_code != NO_ERROR)
                     {
                         // TODO free allocated data
+                        SET_ERR(err, errno, "Failed to get hash table values for select", strerror(errno));
+                        LOG_THREAD_ERR("Failed to get hash table values for select", data->thread_index);
                         return;
                     }
                 }
@@ -461,8 +463,8 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
     }
 
     grouping_string[0] = '\0';
-
     int grouping_string_size = 1;
+
     for (int grouping_col_index = 0; grouping_col_index < n_group_columns; grouping_col_index++)
     {
         char* column_value_string = get_grouping_string(
@@ -470,9 +472,8 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
             group_columns_data_types[grouping_col_index],
             row_index, err);
 
-        if (err->error_code != NO_ERROR)
+        if (NULL == column_value_string)
         {
-            free(column_value_string);
             free(grouping_string);
             return NULL;
         }
@@ -482,8 +483,8 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
         if (grouping_col_index > 0)
             current_length += 1;
 
-        char* grouping_string_realloced = realloc(grouping_string, grouping_string_size + current_length + 1);
-        if (grouping_string_realloced == NULL)
+        char* temp = realloc(grouping_string, grouping_string_size + current_length + 1);
+        if (temp == NULL)
         {
             LOG_ERR("Failed to allocate memory for grouping string");
             SET_ERR(err, errno, "Failed to allocate memory for grouping string", strerror(errno));
@@ -491,23 +492,17 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
             free(column_value_string);
             return NULL;
         }
-
-        grouping_string = grouping_string_realloced;
+        grouping_string = temp;
         memset(grouping_string + grouping_string_size - 1, 0, current_length);
+
         if (grouping_col_index > 0)
             grouping_string[grouping_string_size - 1] = '|';
 
         grouping_string_size += current_length;
-        grouping_string = strcat(grouping_string, column_value_string);
-        free(column_value_string);
-        if (grouping_string == NULL)
-        {
-            LOG_ERR("Failed to concatenation grouping string");
-            SET_ERR(err, INTERNAL_ERROR, "Failed to concatenation grouping string", "");
-            free(grouping_string);
-            return NULL;
-        }
+        strcat(grouping_string, column_value_string);
         grouping_string[grouping_string_size - 1] = '\0';
+
+        free(column_value_string);
     }
 
     return grouping_string;
@@ -519,43 +514,12 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
 {
     HashTableValue hash_table_value = hash_table_value_initialize();
 
-    switch (aggregate_function)
+    hash_table_value.aggregate_function = aggregate_function;
+
+    if (hash_table_value.aggregate_function == UNKNOWN)
     {
-    case MIN:
-        {
-            hash_table_value.aggregate_function = MIN;
-            break;
-        }
-    case MAX:
-        {
-            hash_table_value.aggregate_function = MAX;
-            break;
-        }
-    case AVG:
-        {
-            hash_table_value.aggregate_function = AVG;
-            break;
-        }
-    case MEDIAN:
-        {
-            hash_table_value.aggregate_function = MEDIAN;
-            break;
-        }
-    case SUM:
-        {
-            hash_table_value.aggregate_function = SUM;
-            break;
-        }
-    case COUNT:
-        {
-            hash_table_value.aggregate_function = COUNT;
-            break;
-        }
-    case UNKNOWN:
-        {
-            hash_table_value.aggregate_function = UNKNOWN;
-            break;
-        }
+        SET_ERR(err, INTERNAL_ERROR, "AggregateFunction is UNKNOWN", "");
+        return hash_table_value;
     }
 
     long value = 0;
@@ -563,9 +527,23 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
     double double_value = 0.0f;
 
     hash_table_value.type = worker_map_column_data_type(select_columns_data_types);
+
     if (garrow_array_is_null(select_array, row_index))
     {
+        if (aggregate_function == COUNT)
+        {
+            hash_table_value.type = HASH_TABLE_INT;
+            hash_table_value.value = 0;
+        }
+
         hash_table_value.is_null = TRUE;
+        return hash_table_value;
+    }
+
+    if (aggregate_function == COUNT)
+    {
+        hash_table_value.type = HASH_TABLE_INT;
+        hash_table_value.value = 1;
         return hash_table_value;
     }
 
@@ -607,7 +585,7 @@ HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_ind
         hash_table_value.value = value;
     }
 
-    if (hash_table_value.aggregate_function == AVG || hash_table_value.aggregate_function == COUNT)
+    if (hash_table_value.aggregate_function == AVG)
     {
         hash_table_value.count = 1;
     }

@@ -183,6 +183,7 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
         result->count = 0;
         result->value_case = PARTIAL_RESULT__VALUE__NOT_SET;
         result->type = RESULT_TYPE__UNKNOWN;
+        result->function = value.aggregate_function;
         return result;
     }
 
