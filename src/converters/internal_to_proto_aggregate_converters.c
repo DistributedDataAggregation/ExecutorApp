@@ -19,8 +19,6 @@ AggregateFunction convert_aggregate_function(Aggregate aggregate, ErrorInfo* err
         return MAX;
     case AGGREGATE__Average:
         return AVG;
-    case AGGREGATE__Median:
-        return MEDIAN;
     case AGGREGATE__Sum:
         return SUM;
     case AGGREGATE__Count:
@@ -48,8 +46,6 @@ Aggregate convert_aggregate(AggregateFunction aggregate, ErrorInfo* err)
         return AGGREGATE__Maximum;
     case AVG:
         return AGGREGATE__Average;
-    case MEDIAN:
-        return AGGREGATE__Median;
     case SUM:
         return AGGREGATE__Sum;
     case COUNT:

@@ -11,8 +11,8 @@
 #include "internal_to_proto_aggregate_converters.h"
 #include "stdbool.h"
 
-PartialResult* convert_value(HashTableValue value, ErrorInfo* err);
-Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err);
+PartialResult* convert_value_to_partial_result(HashTableValue value, ErrorInfo* err);
+Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err);
 void free_values(Value** values, int count);
 void free_value(Value* value);
 
@@ -78,7 +78,7 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
         {
             if (converted_values < query_response->n_values)
             {
-                query_response->values[converted_values] = convert_entry(current, err);
+                query_response->values[converted_values] = convert_entry_to_value(current, err);
                 if (err->error_code != NO_ERROR)
                 {
                     LOG_INTERNAL_ERR("Failed to convert query response values");
@@ -110,7 +110,7 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
     return query_response;
 }
 
-Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err)
+Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -148,7 +148,7 @@ Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err)
 
     for (int i = 0; i < entry->n_values; i++)
     {
-        value->results[i] = convert_value(entry->values[i], err);
+        value->results[i] = convert_value_to_partial_result(entry->values[i], err);
         if (err->error_code != NO_ERROR)
         {
             free_value(value);
@@ -159,7 +159,7 @@ Value* convert_entry(const HashTableEntry* entry, ErrorInfo* err)
     return value;
 }
 
-PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
+PartialResult* convert_value_to_partial_result(const HashTableValue value, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -183,35 +183,34 @@ PartialResult* convert_value(const HashTableValue value, ErrorInfo* err)
         result->count = 0;
         result->value_case = PARTIAL_RESULT__VALUE__NOT_SET;
         result->type = RESULT_TYPE__UNKNOWN;
-        result->function = value.aggregate_function;
+        result->function = convert_aggregate(value.aggregate_function, err);
         return result;
-    }
-
-    switch (value.type)
-    {
-    case HASH_TABLE_INT:
-        result->type = RESULT_TYPE__INT;
-        result->int_value = value.value;
-        result->value_case = PARTIAL_RESULT__VALUE_INT_VALUE;
-        break;
-    case HASH_TABLE_FLOAT:
-        result->type = RESULT_TYPE__FLOAT;
-        result->float_value = value.float_value;
-        result->value_case = PARTIAL_RESULT__VALUE_FLOAT_VALUE;
-        break;
-    case HASH_TABLE_DOUBLE:
-        result->type = RESULT_TYPE__DOUBLE;
-        result->double_value = value.double_value;
-        result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
-        break;
-    default:
-        LOG_INTERNAL_ERR("Unsupported hash table type");
-        break;
     }
 
     result->is_null = false;
     result->count = value.count;
     result->function = convert_aggregate(value.aggregate_function, err);
+
+    switch (value.type) {
+        case HASH_TABLE_INT:
+            result->type = RESULT_TYPE__INT;
+            result->int_value = value.value;
+            result->value_case = PARTIAL_RESULT__VALUE_INT_VALUE;
+            break;
+        case HASH_TABLE_FLOAT:
+            result->type = RESULT_TYPE__FLOAT;
+            result->float_value = value.float_value;
+            result->value_case = PARTIAL_RESULT__VALUE_FLOAT_VALUE;
+            break;
+        case HASH_TABLE_DOUBLE:
+            result->type = RESULT_TYPE__DOUBLE;
+            result->double_value = value.double_value;
+            result->value_case = PARTIAL_RESULT__VALUE_DOUBLE_VALUE;
+            break;
+        default:
+            LOG_INTERNAL_ERR("Unsupported hash table type");
+            break;
+    }
 
     return result;
 }
@@ -243,7 +242,9 @@ void free_value(Value* value)
     if (value->grouping_value != NULL)
     {
         free(value->grouping_value);
+        value->grouping_value = NULL;
     }
+
     if (value->results != NULL)
     {
         for (int i = 0; i < value->n_results; i++)
@@ -251,11 +252,14 @@ void free_value(Value* value)
             if (value->results[i] != NULL)
             {
                 free(value->results[i]);
+                value->results[i] = NULL;
             }
         }
         free(value->results);
+        value->results = NULL;
     }
     free(value);
+    value = NULL;
 }
 
 
@@ -301,7 +305,7 @@ QueryResponse* convert_hash_table_to_query_response_optimized(const HashTable* t
         HashTableEntry* entry = table->table[i];
         if (entry != NULL && !entry->is_deleted)
         {
-            query_response->values[converted_values] = convert_entry(entry, err);
+            query_response->values[converted_values] = convert_entry_to_value(entry, err);
             if (err->error_code != NO_ERROR)
             {
                 LOG_ERR("Error converting hash table entry to query response value");

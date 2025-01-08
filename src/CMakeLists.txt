@@ -36,6 +36,12 @@ add_library(ExecutorLib STATIC
         hash_table/hash_table_interface.h
         hash_table/hash_table_interface.c
         hash_table/hash_table_struct.h
+        converters/hash_table_to_query_result_converter.c
+        converters/hash_table_to_query_result_converter.h
+        proto_definitions/error.pb-c.c
+        proto_definitions/error.pb-c.h
+        proto_definitions/result_type.pb-c.c
+        proto_definitions/result_type.pb-c.h
 )
 
 target_include_directories(ExecutorLib PUBLIC
@@ -57,7 +63,10 @@ target_include_directories(ExecutorLib PUBLIC
 
 target_link_libraries(ExecutorLib ${PARQUET_LIBRARIES} protobuf-c)
 
-add_executable(ExecutorApp main.c)
+add_executable(ExecutorApp main.c
+        proto_definitions/result_type.pb-c.c
+        proto_definitions/error.pb-c.c
+        proto_definitions/result_type.pb-c.h)
 
 target_link_libraries(ExecutorApp ExecutorLib)
 

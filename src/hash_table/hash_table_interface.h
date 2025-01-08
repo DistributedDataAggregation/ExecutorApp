@@ -5,6 +5,7 @@
 
 #include "error_handling.h"
 #include "query_response.pb-c.h"
+#include "query_result.pb-c.h"
 
 typedef struct HashTableInterface
 {
@@ -21,6 +22,7 @@ typedef struct HashTableInterface
     void (*combine_hash_tables)(HashTable* destination, const HashTable* source, ErrorInfo* err);
     void (*free_entry)(HashTableEntry* value);
     QueryResponse* (*convert_to_response)(const HashTable* table, ErrorInfo* err);
+    QueryResult* (*convert_to_result)(const HashTable* table, ErrorInfo* err);
 } HashTableInterface;
 
 
