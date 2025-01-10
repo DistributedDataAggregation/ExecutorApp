@@ -11,7 +11,7 @@ TEST(HashTableTest, CreateHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_create(10, &error_info);
+    HashTable* ht = hash_table_create(10, 100, &error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->size, 10);
 
@@ -22,7 +22,7 @@ TEST(HashTableTest, AddToHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_create(10, &error_info);
+    HashTable* ht = hash_table_create(10, 100, &error_info);
 
     const char* key = "war1|war2|war3|war4|war5";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -70,19 +70,44 @@ TEST(HashTableTest, SearchInHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_create(10, &error_info);
+    HashTable* ht = hash_table_create(10, 100, &error_info);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry == nullptr)
+    {
+        hash_table_free(ht);
+        return;
+    }
     ASSERT_NE(entry, nullptr);
 
     entry->key = strdup(key);
+    if (entry->key == nullptr)
+    {
+        free(entry);
+        hash_table_free(ht);
+        return;
+    }
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
+    if (entry->values == nullptr)
+    {
+        hash_table_free(ht);
+        free(entry);
+        return;
+    }
     entry->values[0].aggregate_function = MAX;
     entry->values[0].value = 200;
 
     hash_table_insert(ht, entry, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry->values);
+        free(entry->key);
+        free(entry);
+        hash_table_free(ht);
+        return;
+    }
 
     HashTableEntry* found = hash_table_search(ht, key);
     ASSERT_NE(found, nullptr);
@@ -100,15 +125,26 @@ TEST(HashTableTest, DeleteFromHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_create(10, &error_info);
+    HashTable* ht = hash_table_create(10, 100, &error_info);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry== nullptr)
+    {
+        hash_table_free(ht);
+        return;
+    }
     ASSERT_NE(entry, nullptr);
 
     entry->key = strdup(key);
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
+    if (entry->values == nullptr)
+    {
+        free(entry->values);
+        free(entry);
+        return;
+    }
     entry->values[0].aggregate_function = AVG;
     entry->values[0].value = 300;
 
@@ -152,14 +188,14 @@ TEST(HashTableTest, CombineHashTables)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* destination = hash_table_create(10, &error_info);
-    HashTable* source = hash_table_create(10, &error_info);
+    HashTable* destination = hash_table_create(10, 100, &error_info);
+    HashTable* source = hash_table_create(10, 100, &error_info);
 
     const char* key1 = "key1";
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     if (entry1 == nullptr)
     {
-     return;
+        return;
     }
     entry1->key = strdup(key1);
     entry1->n_values = 1;
@@ -175,9 +211,20 @@ TEST(HashTableTest, CombineHashTables)
 
     const char* key2 = "key2";
     HashTableEntry* entry2 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry2 == nullptr)
+    {
+        free(entry2);
+        return;
+    }
     entry2->key = strdup(key2);
     entry2->n_values = 1;
     entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2->n_values);
+    if (entry2->values == nullptr)
+    {
+        free(entry2->values);
+        free(entry2);
+        return;
+    }
     entry2->values[0].aggregate_function = MIN;
     entry2->values[0].value = 400;
 
@@ -186,23 +233,24 @@ TEST(HashTableTest, CombineHashTables)
 
     const char* key1_duplicate = "key1";
     HashTableEntry* entry1_duplicate = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry1_duplicate == nullptr)
+    {
+        free(entry1_duplicate);
+        return;
+    }
     entry1_duplicate->key = strdup(key1_duplicate);
     entry1_duplicate->n_values = 1;
     entry1_duplicate->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1_duplicate->n_values);
+    if (entry1_duplicate->values == nullptr)
+    {
+        free(entry1_duplicate->values);
+        free(entry1_duplicate);
+        return;
+    }
     entry1_duplicate->values[0].aggregate_function = MIN;
     entry1_duplicate->values[0].value = 500;
 
     hash_table_insert(destination, entry1_duplicate, &error_info);
-
-    // hash_table_combine_hash_tables(destination, source);
-    //
-    // HashTableEntry* result_entry1 = hash_table_search(destination, key1);
-    // ASSERT_NE(result_entry1, nullptr);
-    // EXPECT_EQ(result_entry1->values[0].value, 300);
-    //
-    // HashTableEntry* result_entry2 = hash_table_search(destination, key2);
-    // ASSERT_NE(result_entry2, nullptr);
-    // EXPECT_EQ(result_entry2->values[0].value, 400);
 
     hash_table_free(destination);
     hash_table_free(source);

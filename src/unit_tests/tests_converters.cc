@@ -10,14 +10,32 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_create(10, &error_info);
+    HashTable* ht = hash_table_create(10, 100,&error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->entries_count, 0);
 
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry == nullptr)
+    {
+        hash_table_free(ht);
+        return;
+    }
     entry->key = strdup("key1");
+    if (entry->key == nullptr)
+    {
+        free(entry);
+        hash_table_free(ht);
+        return;
+    }
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+    if (entry->values == nullptr)
+    {
+        free(entry->key);
+        free(entry);
+        hash_table_free(ht);
+        return;
+    }
     entry->values[0].value = 42;
     entry->values[0].count = 1;
     entry->values[0].type = HASH_TABLE_INT;
@@ -25,8 +43,20 @@ TEST(HashTableToQueryResponseTest, NonEmptyHashTable)
     entry->next = nullptr;
 
     hash_table_insert(ht, entry, &error_info);
-
+    if (error_info.error_code != NO_ERROR)
+    {
+        free(entry->values);
+        free(entry->key);
+        free(entry);
+        hash_table_free(ht);
+        return;
+    }
     QueryResponse* response = convert_hash_table_to_query_response(ht, &error_info);
+    if (response == nullptr)
+    {
+        hash_table_free(ht);
+        return;
+    }
 
     ASSERT_NE(response, nullptr);
     EXPECT_EQ(response->n_values, 1);

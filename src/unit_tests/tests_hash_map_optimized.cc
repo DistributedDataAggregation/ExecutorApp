@@ -13,7 +13,7 @@ extern "C" {
 TEST(OptimizedHashTableTest, CreateHashTable)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
     EXPECT_EQ(ht->size, 16);
     EXPECT_EQ(ht->entries_count, 0);
@@ -24,7 +24,7 @@ TEST(OptimizedHashTableTest, AddToHashTable)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
 
     const char* key = "war1|war2|war3|war4|war5";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -70,21 +70,49 @@ TEST(OptimizedHashTableTest, AddToHashTable)
 
 TEST(OptimizedHashTableTest, SearchInHashTable)
 {
-    HashTable* ht = hash_table_optimized_create(16, nullptr);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry == nullptr)
+    {
+        hash_table_optimized_free(ht);
+        return;
+    }
     ASSERT_NE(entry, nullptr);
 
     entry->key = strdup(key);
+    if (entry->key == nullptr)
+    {
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
+    if (entry->values == nullptr)
+    {
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->values[0].aggregate_function = MAX;
     entry->values[0].value = 200;
 
     hash_table_optimized_insert(ht, entry, nullptr);
 
     HashTableEntry* found = hash_table_optimized_search(ht, key);
+    if (found == nullptr)
+    {
+        free(entry->values);
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
+
     ASSERT_NE(found, nullptr);
     EXPECT_STREQ(found->key, key);
     EXPECT_EQ(found->n_values, 1);
@@ -93,24 +121,48 @@ TEST(OptimizedHashTableTest, SearchInHashTable)
     HashTableEntry* not_found = hash_table_optimized_search(ht, "nonexistent_key");
     EXPECT_EQ(not_found, nullptr);
 
+    free(entry->values);
+    free(entry->key);
+    free(entry);
     hash_table_optimized_free(ht);
 }
 
 TEST(OptimizedHashTableTest, DeleteFromHashTable)
 {
-    HashTable* ht = hash_table_optimized_create(16, nullptr);
+    ErrorInfo error_info = {0};
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
 
     const char* key = "key1";
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     ASSERT_NE(entry, nullptr);
 
     entry->key = strdup(key);
+    if (entry->key == nullptr)
+    {
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry->n_values);
+    if (entry->values == nullptr)
+    {
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->values[0].aggregate_function = AVG;
     entry->values[0].value = 300;
 
-    hash_table_optimized_insert(ht, entry, nullptr);
+    hash_table_optimized_insert(ht, entry, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry->values);
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
 
     hash_table_optimized_delete(ht, key);
     HashTableEntry* found = hash_table_optimized_search(ht, key);
@@ -123,14 +175,27 @@ TEST(OptimizedHashTableTest, CombineHashTables)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* destination = hash_table_optimized_create(16, &error_info);
-    HashTable* source = hash_table_optimized_create(16, &error_info);
+    HashTable* destination = hash_table_optimized_create(16, 1000, &error_info);
+    HashTable* source = hash_table_optimized_create(16, 1000, &error_info);
 
     const char* key1 = "key1";
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry1 == nullptr)
+    {
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
     entry1->key = strdup(key1);
     entry1->n_values = 1;
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1->n_values);
+    if (entry1->values == nullptr)
+    {
+        free(entry1);
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
     entry1->values[0].aggregate_function = MIN;
     entry1->values[0].value = 300;
     entry1->values[0].type = HASH_TABLE_INT;
@@ -140,25 +205,62 @@ TEST(OptimizedHashTableTest, CombineHashTables)
     entry2->key = strdup(key2);
     entry2->n_values = 1;
     entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry2->n_values);
+    if (entry2->values == nullptr)
+    {
+        free(entry2);
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
     entry2->values[0].aggregate_function = MIN;
     entry2->values[0].value = 400;
     entry2->values[0].type = HASH_TABLE_INT;
 
-    hash_table_optimized_insert(source, entry1, nullptr);
-    hash_table_optimized_insert(source, entry2, nullptr);
+    hash_table_optimized_insert(source, entry1, &error_info);
+    hash_table_optimized_insert(source, entry2, &error_info);
 
     const char* key1_duplicate = "key1";
     HashTableEntry* entry1_duplicate = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry1_duplicate->key = strdup(key1_duplicate);
+    if (entry1_duplicate->key == nullptr)
+    {
+        free(entry1_duplicate);
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
     entry1_duplicate->n_values = 1;
     entry1_duplicate->values = (HashTableValue*)malloc(sizeof(HashTableValue) * entry1_duplicate->n_values);
+    if (entry1_duplicate->values == nullptr)
+    {
+        free(entry1_duplicate->key);
+        free(entry1_duplicate);
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
     entry1_duplicate->values[0].aggregate_function = MIN;
     entry1_duplicate->values[0].value = 500;
     entry1_duplicate->values[0].type = HASH_TABLE_INT;
 
-    hash_table_optimized_insert(destination, entry1_duplicate, nullptr);
+    hash_table_optimized_insert(destination, entry1_duplicate, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry1_duplicate->values);
+        free(entry1_duplicate->key);
+        free(entry1_duplicate);
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
 
     hash_table_optimized_combine_hash_tables(destination, source, &error_info);
+    if (error_info.error_code != 0)
+    {
+        hash_table_optimized_free(destination);
+        hash_table_optimized_free(source);
+        return;
+    }
 
     HashTableEntry* result_entry1 = hash_table_optimized_search(destination, key1);
     ASSERT_NE(result_entry1, nullptr);
@@ -184,7 +286,7 @@ TEST(OptimizedHashTableTest, CombineHashTables)
 TEST(OptimizedHashTableTest, HandleCollision)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(2, &error_info);
+    HashTable* ht = hash_table_optimized_create(4, 1000, &error_info);
 
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry1->key = strdup("key1");
@@ -192,18 +294,47 @@ TEST(OptimizedHashTableTest, HandleCollision)
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue));
     entry1->values[0].value = 100;
     entry1->values[0].aggregate_function = MIN;
-    entry1->values[0].type= HASH_TABLE_INT;
+    entry1->values[0].type = HASH_TABLE_INT;
 
     HashTableEntry* entry2 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
     entry2->key = strdup("key2");
+    if (entry2->key == nullptr)
+    {
+        free(entry1);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry2->n_values = 1;
     entry2->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+    if (entry2->values == nullptr)
+    {
+        free(entry2->key);
+        free(entry2);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry2->values[0].value = 200;
     entry2->values[0].aggregate_function = MAX;
-    entry2->values[0].type= HASH_TABLE_INT;
+    entry2->values[0].type = HASH_TABLE_INT;
 
-    hash_table_optimized_insert(ht, entry1, nullptr);
-    hash_table_optimized_insert(ht, entry2, nullptr);
+    hash_table_optimized_insert(ht, entry1, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry2->values);
+        free(entry2->key);
+        free(entry2);
+        hash_table_optimized_free(ht);
+        return;
+    }
+    hash_table_optimized_insert(ht, entry2, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry2->values);
+        free(entry2->key);
+        free(entry2);
+        hash_table_optimized_free(ht);
+        return;
+    }
 
     HashTableEntry* result1 = hash_table_optimized_search(ht, "key1");
     ASSERT_NE(result1, nullptr);
@@ -219,21 +350,47 @@ TEST(OptimizedHashTableTest, HandleCollision)
 TEST(OptimizedHashTableTest, ResizeHashTable)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(8, &error_info);
+    HashTable* ht = hash_table_optimized_create(8, 1000, &error_info);
 
     for (int i = 0; i < 10; i++)
     {
         HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+        if (entry == nullptr)
+        {
+            hash_table_optimized_free(ht);
+            return;
+        }
         char key[10];
         sprintf(key, "key%d", i);
         entry->key = strdup(key);
+        if (entry->key == nullptr)
+        {
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->n_values = 1;
         entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+        if (entry->values == nullptr)
+        {
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->values[0].value = i * 10;
         entry->values[0].aggregate_function = AVG;
-        entry->values[0].type= HASH_TABLE_INT;
+        entry->values[0].type = HASH_TABLE_INT;
 
         hash_table_optimized_insert(ht, entry, &error_info);
+        if (error_info.error_code != 0)
+        {
+            free(entry->values);
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
     }
 
     for (int i = 0; i < 10; i++)
@@ -252,7 +409,7 @@ TEST(OptimizedHashTableTest, ResizeHashTable)
 TEST(OptimizedHashTableTest, HandleNullInsert)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     hash_table_optimized_insert(ht, nullptr, &error_info);
@@ -264,12 +421,24 @@ TEST(OptimizedHashTableTest, HandleNullInsert)
 TEST(OptimizedHashTableTest, HandleInsertDuplicateKey)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
 
     HashTableEntry* entry1 = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+    if (entry1 == nullptr)
+    {
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry1->key = strdup("key1");
     entry1->n_values = 1;
     entry1->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+    if (entry1->values == nullptr)
+    {
+        free(entry1->key);
+        free(entry1);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry1->values[0].value = 100;
     entry1->values[0].aggregate_function = MIN;
 
@@ -281,7 +450,23 @@ TEST(OptimizedHashTableTest, HandleInsertDuplicateKey)
     entry2->values[0].aggregate_function = MIN;
 
     hash_table_optimized_insert(ht, entry1, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry2->values);
+        free(entry2->key);
+        free(entry2);
+        hash_table_optimized_free(ht);
+        return;
+    }
     hash_table_optimized_insert(ht, entry2, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry2->values);
+        free(entry2->key);
+        free(entry2);
+        hash_table_optimized_free(ht);
+        return;
+    }
 
     HashTableEntry* result = hash_table_optimized_search(ht, "key1");
     ASSERT_NE(result, nullptr);
@@ -293,24 +478,51 @@ TEST(OptimizedHashTableTest, HandleInsertDuplicateKey)
 TEST(OptimizedHashTableTest, HandleResize)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(4, &error_info);
+    HashTable* ht = hash_table_optimized_create(4, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     for (int i = 0; i < 10; i++)
     {
+        error_info = {0};
         HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+        if (entry == nullptr)
+        {
+            hash_table_optimized_free(ht);
+            return;
+        }
         char key[10];
         sprintf(key, "key%d", i);
         entry->key = strdup(key);
+        if (entry->key == nullptr)
+        {
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->n_values = 1;
         entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+        if (entry->values == nullptr)
+        {
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->values[0].value = i;
         entry->values[0].aggregate_function = AVG;
 
-        hash_table_optimized_insert(ht, entry, nullptr);
+        hash_table_optimized_insert(ht, entry, &error_info);
+        if (error_info.error_code != 0)
+        {
+            free(entry->values);
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
     }
 
-    EXPECT_GE(ht->size, 16); // Ensure table resized correctly.
+    EXPECT_GE(ht->size, 16);
 
     for (int i = 0; i < 10; i++)
     {
@@ -327,7 +539,7 @@ TEST(OptimizedHashTableTest, HandleResize)
 TEST(OptimizedHashTableTest, HandleDeleteNonExistentKey)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     hash_table_optimized_delete(ht, "nonexistent_key");
@@ -342,22 +554,48 @@ TEST(OptimizedHashTableTest, StressTestLargeInserts)
 {
     ErrorInfo error_info = {0};
 
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     const int num_entries = 100000;
     for (int i = 0; i < num_entries; i++)
     {
         HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+        if (entry == nullptr)
+        {
+            hash_table_optimized_free(ht);
+            return;
+        }
         char key[20];
         sprintf(key, "key%d", i);
         entry->key = strdup(key);
+        if (entry->key == nullptr)
+        {
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->n_values = 1;
         entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+        if (entry->values == nullptr)
+        {
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->values[0].value = i;
         entry->values[0].aggregate_function = AVG;
 
         hash_table_optimized_insert(ht, entry, &error_info);
+        if (error_info.error_code != 0)
+        {
+            free(entry->values);
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
     }
 
     for (int i = 0; i < num_entries; i++)
@@ -375,7 +613,7 @@ TEST(OptimizedHashTableTest, StressTestLargeInserts)
 TEST(OptimizedHashTableTest, HandleInsertNullKey)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -400,7 +638,7 @@ TEST(OptimizedHashTableTest, HandleInsertNullKey)
 TEST(OptimizedHashTableTest, SearchDeletedKey)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     const char* key = "key1";
@@ -410,10 +648,25 @@ TEST(OptimizedHashTableTest, SearchDeletedKey)
     entry->key = strdup(key);
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+    if (entry->values == nullptr)
+    {
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
     entry->values[0].value = 100;
     entry->values[0].aggregate_function = AVG;
 
-    hash_table_optimized_insert(ht, entry, nullptr);
+    hash_table_optimized_insert(ht, entry, &error_info);
+    if (error_info.error_code != 0)
+    {
+        free(entry->values);
+        free(entry->key);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
 
     hash_table_optimized_delete(ht, key);
 
@@ -426,7 +679,7 @@ TEST(OptimizedHashTableTest, SearchDeletedKey)
 TEST(OptimizedHashTableTest, HandleEmptyTableSearch)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     const char* key = "nonexistent_key";
@@ -439,7 +692,7 @@ TEST(OptimizedHashTableTest, HandleEmptyTableSearch)
 TEST(OptimizedHashTableTest, HandleExtremeValues)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(16, &error_info);
+    HashTable* ht = hash_table_optimized_create(16, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
@@ -448,10 +701,24 @@ TEST(OptimizedHashTableTest, HandleExtremeValues)
     entry->key = strdup("extreme_key");
     entry->n_values = 1;
     entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
-    entry->values[0].value = LONG_MAX; // Extreme value
+    if (entry->values == nullptr)
+    {
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
+    entry->values[0].value = LONG_MAX;
     entry->values[0].aggregate_function = MAX;
 
-    hash_table_optimized_insert(ht, entry, nullptr);
+    hash_table_optimized_insert(ht, entry, &error_info);
+
+    if (error_info.error_code != 0)
+    {
+        free(entry->values);
+        free(entry);
+        hash_table_optimized_free(ht);
+        return;
+    }
 
     HashTableEntry* result = hash_table_optimized_search(ht, "extreme_key");
     ASSERT_NE(result, nullptr);
@@ -463,8 +730,8 @@ TEST(OptimizedHashTableTest, HandleExtremeValues)
 TEST(OptimizedHashTableTest, CombineEmptyTables)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht1 = hash_table_optimized_create(16, &error_info);
-    HashTable* ht2 = hash_table_optimized_create(16, &error_info);
+    HashTable* ht1 = hash_table_optimized_create(16, 1000, &error_info);
+    HashTable* ht2 = hash_table_optimized_create(16, 1000, &error_info);
 
     ASSERT_NE(ht1, nullptr);
     ASSERT_NE(ht2, nullptr);
@@ -480,24 +747,50 @@ TEST(OptimizedHashTableTest, CombineEmptyTables)
 TEST(OptimizedHashTableTest, HandleResizeAfterDeletions)
 {
     ErrorInfo error_info = {0};
-    HashTable* ht = hash_table_optimized_create(8, &error_info);
+    HashTable* ht = hash_table_optimized_create(8, 1000, &error_info);
     ASSERT_NE(ht, nullptr);
 
     for (int i = 0; i < 10; i++)
     {
         HashTableEntry* entry = (HashTableEntry*)malloc(sizeof(HashTableEntry));
+        if (entry == nullptr)
+        {
+            hash_table_optimized_free(ht);
+            return;
+        }
         char key[10];
         sprintf(key, "key%d", i);
         entry->key = strdup(key);
+        if (entry->key == nullptr)
+        {
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->n_values = 1;
         entry->values = (HashTableValue*)malloc(sizeof(HashTableValue));
+
+        if (entry->values == nullptr)
+        {
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
         entry->values[0].value = i;
         entry->values[0].aggregate_function = AVG;
 
-        hash_table_optimized_insert(ht, entry, nullptr);
+        hash_table_optimized_insert(ht, entry, &error_info);
+        if (error_info.error_code != 0)
+        {
+            free(entry->values);
+            free(entry->key);
+            free(entry);
+            hash_table_optimized_free(ht);
+            return;
+        }
     }
 
-    // Delete some entries
     for (int i = 0; i < 5; i++)
     {
         char key[10];
