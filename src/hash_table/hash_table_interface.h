@@ -10,7 +10,7 @@
 typedef struct HashTableInterface
 {
     unsigned int (*hash)(const char* string, int table_size);
-    HashTable* (*create)(int size, ErrorInfo* err);
+    HashTable* (*create)(int size, int max_size, ErrorInfo* err);
     void (*free)(HashTable* table);
     void (*insert)(HashTable* table, HashTableEntry* entry, ErrorInfo* err);
     HashTableEntry* (*search)(const HashTable* table, const char* key);

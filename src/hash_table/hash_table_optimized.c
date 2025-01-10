@@ -21,7 +21,7 @@ unsigned int hash_farm(const char* string, int table_size)
     return h64 & (table_size - 1);
 }
 
-HashTable* hash_table_optimized_create(int size, ErrorInfo* err)
+HashTable* hash_table_optimized_create(int size, int max_size, ErrorInfo* err)
 {
     HashTable* hash_table = malloc(sizeof(HashTable));
     if (hash_table == NULL)
@@ -32,6 +32,7 @@ HashTable* hash_table_optimized_create(int size, ErrorInfo* err)
     hash_table->entries_count = 0;
     hash_table->size = size;
     hash_table->table = (HashTableEntry**)(malloc(sizeof(HashTableEntry*) * size));
+    hash_table->max_size = max_size;
 
     if (hash_table->table == NULL)
     {
@@ -74,11 +75,11 @@ void hash_table_optimized_free(HashTable* table)
 
 void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err)
 {
-    // if (err == NULL)
-    // {
-    //       LOG_INTERNAL_ERR("Passed error info was NULL");
-    //       return;
-    // }
+    if (err == NULL)
+    {
+          LOG_INTERNAL_ERR("Passed error info was NULL");
+          return;
+    }
 
     if (entry == NULL)
     {
@@ -100,8 +101,15 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
         return;
     }
 
-    if (table->entries_count * 2 > (table->size))
+    if (table->entries_count * 2 >= table->size)
     {
+        if (table->size * 2 >= table->max_size)
+        {
+            LOG_INTERNAL_ERR("Failed to insert to a hash table: Table is full");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Table is full");
+            return;
+        }
+
         hash_table_resize_new(table);
     }
 

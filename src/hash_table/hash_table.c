@@ -50,7 +50,7 @@ void hash_table_free_entry(HashTableEntry* value)
     value = NULL;
 }
 
-HashTable* hash_table_create(const int size, ErrorInfo* err)
+HashTable* hash_table_create(int size, int max_size, ErrorInfo* err)
 {
     if (err == NULL)
     {
