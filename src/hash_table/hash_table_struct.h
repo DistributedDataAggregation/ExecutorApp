@@ -42,6 +42,7 @@ typedef struct HashTable
     int size;
     int entries_count;
     HashTableEntry** table;
+    int max_size;
 } HashTable;
 
 #endif //HASH_TABLE_STRUCT_H
