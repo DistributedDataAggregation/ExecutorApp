@@ -23,7 +23,10 @@ typedef enum _Aggregate {
   AGGREGATE__Minimum = 0,
   AGGREGATE__Maximum = 1,
   AGGREGATE__Average = 2,
-  AGGREGATE__Unknown = 3
+  AGGREGATE__Median = 3,
+  AGGREGATE__Sum = 4,
+  AGGREGATE__Count = 5,
+  AGGREGATE__Unknown = 6
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(AGGREGATE)
 } Aggregate;
 
