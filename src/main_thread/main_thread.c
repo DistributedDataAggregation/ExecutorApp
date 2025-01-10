@@ -252,7 +252,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             LOG("Collected from other nodes\n");
         }
 
-        prepare_and_send_response(client_fd, request->guid, ht_interface, ht, err);
+        prepare_and_send_result(client_fd, request->guid, ht_interface, ht, err);
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to send response to controller");

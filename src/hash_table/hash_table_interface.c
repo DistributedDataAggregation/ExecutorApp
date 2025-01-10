@@ -2,6 +2,7 @@
 #include "hash_table.h"
 #include "hash_table_optimized.h"
 #include "hash_table_to_query_response_converter.h"
+#include "hash_table_to_query_result_converter.h"
 
 HashTableInterface* create_default_hash_table_interface()
 {
@@ -47,7 +48,7 @@ HashTableInterface* create_optimized_hash_table_interface()
     optimized_interface->combine_with_response = hash_table_combine_table_with_response_optimized;
     optimized_interface->combine_hash_tables = hash_table_optimized_combine_hash_tables;
     optimized_interface->convert_to_response = convert_hash_table_to_query_response_optimized;
-
+    optimized_interface->convert_to_result = convert_hash_table_optimized_to_query_result;
     return optimized_interface;
 }
 

@@ -18,5 +18,7 @@ void prepare_and_send_response(int client_fd, const char* guid, HashTableInterfa
                                const HashTable* ht, ErrorInfo* err);
 void prepare_and_send_failure_response(int client_fd, const char* guid, ErrorInfo* err);
 void print_query_response(const QueryResponse* query_response);
+void prepare_and_send_result(const int client_fd, const char* guid, HashTableInterface* ht_interface,
+                               const HashTable* ht, ErrorInfo* err);
 
 #endif //REQUEST_PROTOCOL_H

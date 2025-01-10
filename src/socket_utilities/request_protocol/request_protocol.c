@@ -17,6 +17,9 @@
 
 void get_message_size(int client_fd, uint32_t* message_size, ErrorInfo* err);
 void get_packed_proto_buffer(int client_fd, uint32_t message_size, uint8_t* buffer, ErrorInfo* err);
+void get_returned_error(Error* error, ErrorInfo* err);
+void send_result(int client_fd, const QueryResult* result, ErrorInfo* err);
+void prepare_and_send_failure_result(int client_fd, const char* guid, ErrorInfo* err) ;
 
 void print_partial_result(const PartialResult* partial_result)
 {
@@ -178,6 +181,33 @@ void prepare_and_send_response(const int client_fd, const char* guid, HashTableI
     query_response__free_unpacked(response, NULL);
 }
 
+void prepare_and_send_result(const int client_fd, const char* guid, HashTableInterface* ht_interface,
+                               const HashTable* ht, ErrorInfo* err)
+{
+    if (err == NULL || err->error_code != NO_ERROR)
+    {
+        prepare_and_send_failure_response(client_fd, guid, err);
+        return;
+    }
+
+    QueryResult* result = ht_interface->convert_to_result(ht, err);
+    result->guid = strdup(guid);
+    if (err->error_code != NO_ERROR)
+    {
+        prepare_and_send_failure_result(client_fd, guid, err);
+        query_result__free_unpacked(result, NULL);
+        return;
+    }
+
+    send_result(client_fd, result, err);
+    if (err->error_code != NO_ERROR)
+    {
+        prepare_and_send_failure_result(client_fd, guid, err);
+    }
+
+    query_result__free_unpacked(result, NULL);
+}
+
 void prepare_and_send_failure_response(const int client_fd, const char* guid, ErrorInfo* err)
 {
     QueryResponse* response = malloc(sizeof(QueryResponse));
@@ -199,37 +229,108 @@ void prepare_and_send_failure_response(const int client_fd, const char* guid, Er
         return;
     }
 
-    error__init(response->error);
+    get_returned_error(response->error, err);
+
+    send_response(client_fd, response, err);
+    query_response__free_unpacked(response, NULL);
+}
+
+void prepare_and_send_failure_result(const int client_fd, const char* guid, ErrorInfo* err) {
+    if (err == NULL) {
+        LOG_INTERNAL_ERR("Passed in null err");
+        return;
+    }
+
+    QueryResult* result = malloc(sizeof(QueryResult));
+    query_result__init(result);
+
+    result->guid = strdup(guid);
+    result->error = malloc(sizeof(Error));
+    get_returned_error(result->error, err);
+
+    send_result(client_fd, result, err);
+    query_result__free_unpacked(result, NULL);
+}
+
+void send_result(const int client_fd, const QueryResult* result, ErrorInfo* err) {
+    const ssize_t size = (ssize_t)query_result__get_packed_size(result);
+    uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * size);
+    if (buffer == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for message buffer");
+        SET_ERR(err, errno, "Failed to allocate memory for message buffer", strerror(errno));
+        return;
+    }
+    memset(buffer, 0, size);
+
+    const int size_to_send = (int)htonl(size);
+    ssize_t bytes_written = write(client_fd, &size_to_send, sizeof(size_to_send));
+    if (bytes_written <= 0)
+    {
+        LOG_ERR("Failed to send message size to client");
+        SET_ERR(err, errno, "Failed to send message size to client", strerror(errno));
+        free(buffer);
+        return;
+    }
+    LOG("Sent %zd bytes for message size to client", bytes_written);
+
+    const int stored = (int)query_result__pack(result, buffer);
+    if (stored != size)
+    {
+        LOG_ERR("Failed to pack message buffer");
+        SET_ERR(err, errno, "Failed to pack message buffer", strerror(errno));
+        free(buffer);
+        return;
+    }
+    LOG("Packed %d bytes into message buffer", stored);
+
+    ssize_t bytes_sent = send(client_fd, buffer, size, 0);
+    if (bytes_sent != size)
+    {
+        LOG("Failed to send message to client. Sent %zd %zd bytes", bytes_sent, size);
+        LOG_ERR("Failed to send message to client");
+        SET_ERR(err, errno, "Failed to send message to client", strerror(errno));
+    }
+
+    LOG("Successfully sent %zd bytes to client", bytes_sent);
+
+    free(buffer);
+}
+
+void get_returned_error(Error* error, ErrorInfo* err) {
+
+    if (error == NULL ) {
+        LOG_INTERNAL_ERR("Passed in null error");
+        return;
+    }
+
+    error__init(error);
 
     if (err != NULL)
     {
-        response->error->message = malloc(sizeof(err->error_message) + 1);
-        if (response->error->message == NULL)
+        error->message = malloc(sizeof(err->error_message) + 1);
+        if (error->message == NULL)
         {
-            free(response->error);
-            free(response);
+            free(error);
             LOG_ERR("Failed to allocate memory for error message in response");
             // TODO handle
             return;
         }
-        response->error->inner_message = malloc(sizeof(err->inner_error_message) + 1);
-        if (response->error->inner_message == NULL)
+        error->inner_message = malloc(sizeof(err->inner_error_message) + 1);
+        if (error->inner_message == NULL)
         {
-            free(response->error->inner_message);
-            free(response->error);
-            free(response);
+            free(error->inner_message);
+            free(error);
             LOG_ERR("Failed to allocate memory for inner error message in response");
             // TODO handle
             return;
         }
-        strncpy(response->error->message, err->error_message, sizeof(err->error_message));
-        strncpy(response->error->inner_message, err->inner_error_message, sizeof(err->inner_error_message));
+        strncpy(error->message, err->error_message, sizeof(err->error_message));
+        strncpy(error->inner_message, err->inner_error_message, sizeof(err->inner_error_message));
 
         CLEAR_ERR(err);
     }
 
-    send_response(client_fd, response, err);
-    query_response__free_unpacked(response, NULL);
 }
 
 QueryResponse* parse_query_response(const int client_fd, ErrorInfo* err)
