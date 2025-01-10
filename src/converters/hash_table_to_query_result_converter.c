@@ -59,7 +59,7 @@ QueryResult* convert_hash_table_optimized_to_query_result(const HashTable* table
             query_result->values[converted_values] = convert_entry(entry, err);
             if (err->error_code != NO_ERROR)
             {
-                LOG_ERR("Error converting hash table entry to query response value");
+                LOG_INTERNAL_ERR("Error converting hash table entry to query response value");
                 free_result_values(query_result->values, converted_values);
                 free(query_result);
                 query_result = NULL;
@@ -145,7 +145,7 @@ CombinedResult* convert_value(const HashTableValue value, ErrorInfo* err)
         result->is_null = true;
         result->value_case = COMBINED_RESULT__VALUE__NOT_SET;
         result->type = RESULT_TYPE__UNKNOWN;
-        result->function = value.aggregate_function;
+        result->function =  convert_aggregate(value.aggregate_function, err);
         return result;
     }
     result->is_null = false;
