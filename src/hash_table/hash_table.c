@@ -586,6 +586,7 @@ HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorI
     }
 
     ht_value.is_null = pr_value->is_null;
+    ht_value.aggregate_function = convert_aggregate_function(pr_value->function, err);
     if (ht_value.is_null)
     {
         ht_value.type = RESULT_TYPE__UNKNOWN;
@@ -594,7 +595,6 @@ HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorI
         return ht_value;
     }
 
-    ht_value.aggregate_function = convert_aggregate_function(pr_value->function, err);
     ht_value.count = pr_value->count;
 
     switch (pr_value->type)
