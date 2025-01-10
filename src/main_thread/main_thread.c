@@ -105,6 +105,7 @@ int main_thread_run()
             {
                 main_thread_handle_client(controllers_client_array.clients[i], &executors_client_array,
                                           executors_socket_fd, &main_executors_sockets, &error_info);
+
                 if (error_info.error_code != NO_ERROR)
                 {
                     if (error_info.error_code == SOCKET_CLOSED || error_info.error_code == EAGAIN
@@ -146,7 +147,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
-    // to change hash_map
     //HashTableInterface* ht_interface = create_default_hash_table_interface();
     HashTableInterface* ht_interface = create_optimized_hash_table_interface();
 
@@ -252,6 +252,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to send response to controller");
+            SET_ERR(err, errno, "Failed to send response to controller", strerror(errno));
             // TODO handle failed send to controller, retry if EAGAIN lub EWOULDBLOCK? (closing in main thread)
         }
     }

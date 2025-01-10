@@ -46,6 +46,9 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
     int index_of_non_empty = 0;
     HashTableEntry* entry = table->table[index_of_non_empty];
 
+    printf("Entries Count: %d\n", table->entries_count);
+    printf("Entries Limit: %d\n", table->entries_limit);
+
     while (index_of_non_empty + 1 <= table->size && entry == NULL)
     {
         index_of_non_empty++;

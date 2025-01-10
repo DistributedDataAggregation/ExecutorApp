@@ -43,6 +43,7 @@ typedef struct thread_data
     ColumnDataType* select_columns_types;
 
     HashTableInterface* ht_interface;
+    int entries_limit;
 } ThreadData;
 
 #endif //THREAD_DATA_H

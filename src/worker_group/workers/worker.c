@@ -10,9 +10,7 @@
 #include "hash_table.h"
 #include "worker.h"
 #include "hash_table_interface.h"
-#include <stdbool.h>
-#include <sys/types.h>
-#include "logging.h"
+
 
 #define HASH_TABLE_SIZE 1024
 
@@ -29,7 +27,10 @@ void* compute_on_thread(void* arg)
     // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
     print_thread_data(data);
 
-    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, &err);
+    // TODO gdy limit jest zero to alokuj mala hashmape/
+    //  dosotsowanie rozmiaru do ilosci kolumn grupujacych
+    // nie wykonuj kodu jesli dany watek nie otrzymal ani jednej row groupy
+    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->entries_limit, &err);
 
     for (int i = 0; i < data->n_files; i++)
     {
@@ -270,6 +271,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 {
                     LOG_THREAD_ERR("Failed to allocate memory for hash table values", data->thread_index);
                     SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
+                    free(grouping_string);
                     worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
                                           select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
                                           columns_indices, new_columns_indices);
@@ -285,6 +287,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                                                                                select_index], err);
                     if (err->error_code != NO_ERROR)
                     {
+                        free(grouping_string);
                         worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
                                               select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
                                               columns_indices, new_columns_indices);
@@ -303,6 +306,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
                     if (new_entry == NULL)
                     {
+                        free(grouping_string);
                         LOG_THREAD_ERR("Failed to allocate memory for hash table entry", data->thread_index);
                         SET_ERR(err, errno, "Failed to allocate memory for hash table entry", strerror(errno));
                         worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
@@ -317,6 +321,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     new_entry->next = NULL;
                     new_entry->is_deleted = FALSE;
                     data->ht_interface->insert(hash_table, new_entry, err);
+
                     if (err->error_code != NO_ERROR)
                     {
                         free(hash_table_values);

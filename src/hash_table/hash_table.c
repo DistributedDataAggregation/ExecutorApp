@@ -50,7 +50,7 @@ void hash_table_free_entry(HashTableEntry* value)
     value = NULL;
 }
 
-HashTable* hash_table_create(const int size, ErrorInfo* err)
+HashTable* hash_table_create(const int size, int entries_limit, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -68,6 +68,7 @@ HashTable* hash_table_create(const int size, ErrorInfo* err)
 
     hash_table->entries_count = 0;
     hash_table->size = size;
+    hash_table->entries_limit = entries_limit;
     hash_table->table = (HashTableEntry**)(malloc(sizeof(HashTableEntry*) * size));
     if (hash_table->table == NULL)
     {
@@ -153,6 +154,13 @@ void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err)
     {
         LOG_INTERNAL_ERR("Failed to insert to a hash table: Uninitialized hash table");
         SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Uninitialized hash table");
+        return;
+    }
+
+    if (table->entries_count >= table->entries_limit)
+    {
+        LOG_ERR("Failed to insert to a hash table: Entries limit reached");
+        SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Entries limit reached");
         return;
     }
 
@@ -598,6 +606,7 @@ HashTableValue map_partial_result_to_table_value(PartialResult* pr_value, ErrorI
         ht_value.type = RESULT_TYPE__UNKNOWN;
         ht_value.count = 0;
         ht_value.value = 0;
+        ht_value.aggregate_function = pr_value->function;
         return ht_value;
     }
 

@@ -4,6 +4,7 @@
 
 #include <pthread.h>
 #include <stdio.h>
+#include <sys/sysinfo.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,6 +17,8 @@
 #include "workers/worker.h"
 
 #define NUM_THREADS 4
+#define MAX_RAM_USAGE 0.7
+
 
 // TODO() probably split this function
 void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
@@ -42,6 +45,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         return;
     }
 
+
     pthread_t* threads = (pthread_t*)malloc(sizeof(pthread_t) * threads_count);
     if (threads == NULL)
     {
@@ -59,12 +63,35 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         return;
     }
 
+    int* hash_tables_entries_limits = worker_group_hash_table_entries_limits(
+        row_group_ranges, threads_count, request->n_files_names, err);
+
+    if (err->error_code != NO_ERROR)
+    {
+        free(threads);
+        for (int i = 0; i < threads_count; i++)
+        {
+            free(row_group_ranges[i]);
+        }
+        free(row_group_ranges);
+        if (hash_tables_entries_limits != NULL)
+        {
+            free(hash_tables_entries_limits);
+        }
+        return;
+    }
+
     int* grouping_indices = (int*)malloc(sizeof(int) * request->n_group_columns);
     if (grouping_indices == NULL)
     {
         LOG_ERR("Failed to allocate memory for grouping indices");
         SET_ERR(err, errno, "Failed to allocate memory for grouping indices", strerror(errno));
+        free(hash_tables_entries_limits);
         free(threads);
+        for (int i = 0; i < threads_count; i++)
+        {
+            free(row_group_ranges[i]);
+        }
         free(row_group_ranges);
         return;
     }
@@ -74,7 +101,12 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     {
         LOG_ERR("Failed to allocate memory for select indices");
         SET_ERR(err, errno, "Failed to allocate memory for select indices", strerror(errno));
+        free(hash_tables_entries_limits);
         free(threads);
+        for (int i = 0; i < threads_count; i++)
+        {
+            free(row_group_ranges[i]);
+        }
         free(row_group_ranges);
         free(grouping_indices);
         return;
@@ -83,7 +115,12 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     worker_group_get_columns_indices(request, grouping_indices, select_indices, err);
     if (err->error_code != NO_ERROR)
     {
+        free(hash_tables_entries_limits);
         free(threads);
+        for (int i = 0; i < threads_count; i++)
+        {
+            free(row_group_ranges[i]);
+        }
         free(row_group_ranges);
         free(grouping_indices);
         free(select_indices);
@@ -96,7 +133,12 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         (int)request->n_select, request->files_names[0], err);
     if (err->error_code != NO_ERROR)
     {
+        free(hash_tables_entries_limits);
         free(threads);
+        for (int i = 0; i < threads_count; i++)
+        {
+            free(row_group_ranges[i]);
+        }
         free(row_group_ranges);
         free(grouping_indices);
         free(select_indices);
@@ -110,26 +152,35 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     {
         LOG_ERR("Failed to allocate memory for thread data");
         SET_ERR(err, errno, "Failed to allocate memory for thread data", strerror(errno));
+        free(hash_tables_entries_limits);
         free(threads);
-        free(row_group_ranges);
         free(grouping_indices);
         free(select_indices);
         free(grouping_columns_data_type);
         free(select_columns_data_type);
+        for (int i = 0; i < threads_count; i++)
+        {
+            free(row_group_ranges[i]);
+        }
+        free(row_group_ranges);
         return;
     }
-
+    // work is done
+    //
     for (int i = 0; i < threads_count; i++)
     {
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
                                                       grouping_indices, select_indices, grouping_columns_data_type,
-                                                      select_columns_data_type, hash_table_interface, err);
+                                                      select_columns_data_type, hash_table_interface,
+                                                      hash_tables_entries_limits,
+                                                      err);
         if (err->error_code != NO_ERROR)
         {
             for (int j = 0; j < i; j++)
             {
                 worker_group_free_thread_data(thread_data[j]);
             }
+            free(hash_tables_entries_limits);
             free(threads);
             free(row_group_ranges);
             free(grouping_indices);
@@ -149,6 +200,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
             {
                 worker_group_free_thread_data(thread_data[j]);
             }
+            free(hash_tables_entries_limits);
             free(threads);
             free(row_group_ranges);
             free(grouping_indices);
@@ -180,7 +232,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         else
         {
             hash_table_interface->combine_hash_tables(*request_hash_table, thread_ht, err);
-            //hash_table_combine_hash_tables(*request_hash_table, thread_ht, err);
             if (err->error_code != NO_ERROR)
             {
                 LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine_hash_tables hash tables");
@@ -188,24 +239,25 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
                 // TODO handle exit?? or we need to wait for other threads anyway (now)
             }
             hash_table_interface->free(thread_ht);
-            // hash_table_free(thread_ht);
         }
     }
 
+
+    free(hash_tables_entries_limits);
     free(threads);
-    free(row_group_ranges);
     free(grouping_indices);
     free(select_indices);
     free(grouping_columns_data_type);
     free(select_columns_data_type);
     free(thread_data);
+    free(row_group_ranges);
 }
 
 ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int thread_index, const int num_threads,
                                          RowGroupsRange* row_groups_ranges, int* grouping_indices,
                                          const int* select_indices,
                                          ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         HashTableInterface* ht_interface, ErrorInfo* err)
+                                         HashTableInterface* ht_interface, int* entries_limit, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -240,6 +292,7 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
     thread_data->n_select = (int)request->n_select;
 
     thread_data->ht_interface = ht_interface;
+    thread_data->entries_limit = entries_limit[thread_index];
 
     thread_data->file_names = (char**)malloc(sizeof(char*) * thread_data->n_files);
     if (thread_data->file_names == NULL)
@@ -325,9 +378,24 @@ void worker_group_free_thread_data(ThreadData* thread_data)
 RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** file_names, const int num_threads,
                                                    ErrorInfo* err)
 {
+    if (n_files <= 0)
+    {
+        LOG_ERR("Invalid number of files");
+        SET_ERR(err, errno, "Invalid number of files", "");
+        return NULL;
+    }
+
+    if (num_threads <= 0)
+    {
+        LOG_ERR("Invalid number of threads: %d");
+        SET_ERR(err, errno, "Invalid number of threads", "");
+        return NULL;
+    }
+
     if (err == NULL)
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
+        SET_ERR(err, errno, "Passed error info was NULL", "");
         return NULL;
     }
 
@@ -338,6 +406,10 @@ RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** fil
         SET_ERR(err, errno, "Failed to allocate memory for row_group_ranges", strerror(errno));
         return NULL;
     }
+    for (int i = 0; i < num_threads; i++)
+    {
+        row_group_ranges[i] = NULL;
+    }
 
     for (int i = 0; i < num_threads; i++)
     {
@@ -346,7 +418,7 @@ RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** fil
         {
             LOG_ERR("Failed to allocate memory for row_group_ranges");
             SET_ERR(err, errno, "Failed to allocate memory for row_group_ranges", strerror(errno));
-            worker_group_free_row_group_ranges(row_group_ranges, i);
+            worker_group_free_row_group_ranges(row_group_ranges, num_threads);
             return NULL;
         }
     }
@@ -356,11 +428,15 @@ RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** fil
         GError* error = NULL;
         LOG("File name: %s\n", file_names[i]);
         GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(file_names[i], &error);
-
         if (reader == NULL)
         {
             report_g_error(error, err, "Failed to open file");
-            worker_group_free_row_group_ranges(row_group_ranges, n_files);
+            if (error != NULL)
+            {
+                g_error_free(error);
+            }
+            report_g_error(error, err, "Failed to open file");
+            worker_group_free_row_group_ranges(row_group_ranges, num_threads);
             return NULL;
         }
 
@@ -368,7 +444,7 @@ RowGroupsRange** worker_group_get_row_group_ranges(const int n_files, char** fil
         if (row_groups_count < 0)
         {
             g_object_unref(reader);
-            worker_group_free_row_group_ranges(row_group_ranges, n_files);
+            worker_group_free_row_group_ranges(row_group_ranges, num_threads);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get row groups count", "");
             return NULL;
         }
@@ -397,10 +473,12 @@ void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, const
         if (row_group_ranges[i] != NULL)
         {
             free(row_group_ranges[i]);
+            row_group_ranges[i] = NULL;
         }
     }
 
     free(row_group_ranges);
+    row_group_ranges = NULL;
 }
 
 void worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices,
@@ -420,7 +498,6 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
     }
 
     GError* error = NULL;
-    // i assume all files have the same schema
     GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(request->files_names[0], &error);
     if (reader == NULL)
     {
@@ -450,7 +527,6 @@ void worker_group_get_columns_indices(const QueryRequest* request, int* grouping
         if (grouping_indices[i] == -1)
         {
             LOG_INTERNAL_ERR("Failed to get grouping indices: Cannot find provided column name");
-            fprintf(stderr, "Cannot find provided column: %s\n", request->group_columns[i]);
             SET_ERR(err, INTERNAL_ERROR, "Failed to get grouping indices", "Cannot find provided column name");
             g_object_unref(schema);
             g_object_unref(reader);
@@ -504,9 +580,13 @@ ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indi
         SET_ERR(err, errno, "Failed to allocate memory for columns data types", strerror(errno));
         return NULL;
     }
-
     GError* error = NULL;
-    GParquetArrowFileReader* reader = gparquet_arrow_file_reader_new_path(filename, &error);
+    GParquetArrowFileReader* reader = NULL;
+    GArrowSchema* schema = NULL;
+    GArrowDataType* data_type = NULL;
+
+    reader = gparquet_arrow_file_reader_new_path(filename, &error);
+
     if (reader == NULL)
     {
         report_g_error(error, err, "Failed to open file");
@@ -514,11 +594,12 @@ ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indi
         return NULL;
     }
 
-    GArrowSchema* schema = gparquet_arrow_file_reader_get_schema(reader, &error);
+    schema = gparquet_arrow_file_reader_get_schema(reader, &error);
     if (schema == NULL)
     {
         report_g_error(error, err, "Failed to get schema");
         free(data_types);
+        g_object_unref(reader);
         return NULL;
     }
 
@@ -529,33 +610,73 @@ ColumnDataType* worker_group_get_columns_data_types(const int* indices, int indi
         {
             report_g_error(error, err, "Failed to get field");
             free(data_types);
+            data_types = NULL;
             g_object_unref(field);
             g_object_unref(schema);
             g_object_unref(reader);
             return NULL;
         }
 
-        GArrowDataType* data_type = garrow_field_get_data_type(field);
+        data_type = garrow_field_get_data_type(field);
 
+        if (data_type == NULL)
+        {
+            LOG_INTERNAL_ERR("Failed to get columns data types");
+            SET_ERR(err, errno, "Failed to get columns data types", strerror(errno));
+            free(data_types);
+            data_types = NULL;
+            g_object_unref(schema);
+            g_object_unref(reader);
+            g_object_unref(field);
+
+            if (error != NULL)
+            {
+                g_error_free(error);
+            }
+            return NULL;
+        }
         gchar* data_type_string = garrow_data_type_to_string(data_type);
+        if (data_type_string == NULL)
+        {
+            LOG_INTERNAL_ERR("Failed to get columns data types");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to get columns data types", strerror(errno));
+
+            free(data_types);
+            g_object_unref(data_type);
+            g_object_unref(schema);
+            g_object_unref(reader);
+            g_object_unref(field);
+
+            if (error != NULL)
+            {
+                g_error_free(error);
+            }
+            return NULL;
+        }
+
         LOG("Column %d has datatype %s\n", i, data_type_string);
         g_free(data_type_string);
 
         data_types[i] = worker_group_map_arrow_data_type(data_type, err);
         if (err->error_code != NO_ERROR)
         {
+            LOG_INTERNAL_ERR("Failed to get columns data types");
+            SET_ERR(err, INTERNAL_ERROR, "Failed to get columns data types", strerror(errno));
             free(data_types);
-            g_object_unref(field);
             g_object_unref(schema);
             g_object_unref(reader);
+            if (error != NULL)
+            {
+                g_error_free(error);
+            }
             return NULL;
         }
-
         g_object_unref(field);
+        //g_object_unref(data_type); // po odkomentowaniu pojawia sie definitly lose
     }
 
-    g_object_unref(schema);
     g_object_unref(reader);
+    g_object_unref(schema);
 
     return data_types;
 }
@@ -566,6 +687,13 @@ ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, Error
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return -1;
+    }
+
+    if (data_type == NULL)
+    {
+        LOG_INTERNAL_ERR("Passed data_type was NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Passed data_type was NULL", "");
+        return COLUMN_DATA_TYPE_UNKNOWN;
     }
 
     if (GARROW_IS_INT32_DATA_TYPE(data_type))
@@ -601,4 +729,95 @@ ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, Error
     LOG_INTERNAL_ERR("Unknown data type");
     SET_ERR(err, INTERNAL_ERROR, "Unknown data type", "");
     return COLUMN_DATA_TYPE_UNKNOWN;
+}
+
+
+unsigned long int get_available_ram()
+{
+    struct sysinfo info;
+    if (sysinfo(&info) != 0)
+    {
+        perror("sysinfo failed");
+        return -1;
+    }
+    return info.freeram;
+}
+
+int* worker_group_hash_table_entries_limits(RowGroupsRange** row_group_ranges,
+                                            const int num_threads, const int num_files, ErrorInfo* err)
+{
+    if (row_group_ranges == NULL)
+    {
+        LOG_INTERNAL_ERR("Passed row_group_ranges was NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Passed row_group_ranges was NULL", "");
+        return NULL;
+    }
+    if (err == NULL)
+    {
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Passed error info was NULL", "");
+        return NULL;
+    }
+
+    int* thread_entries_limits = (int*)malloc(sizeof(int) * num_threads);
+
+    if (thread_entries_limits == NULL)
+    {
+        SET_ERR(err, errno, "Failed to allocate memory for thread_entries_limits", strerror(errno));
+        LOG_ERR("Failed to allocate memory for thread_entries_limits");
+        return NULL;
+    }
+
+    int* row_group_count_per_thread = (int*)malloc(sizeof(int) * num_threads);
+    if (row_group_count_per_thread == NULL)
+    {
+        SET_ERR(err, errno, "Failed to allocate memory for row_group_count_per_thread", strerror(errno));
+        LOG_ERR("Failed to allocate memory for row_group_count_per_thread");
+        free(thread_entries_limits);
+        return NULL;
+    }
+
+    for (int i = 0; i < num_threads; i++)
+    {
+        row_group_count_per_thread[i] = 0;
+    }
+
+
+    int total_row_groups = 0;
+    for (int i = 0; i < num_threads; i++)
+    {
+        for (int j = 0; j < num_files; j++)
+        {
+            total_row_groups += row_group_ranges[i][j].count;
+            row_group_count_per_thread[i] += row_group_ranges[i][j].count;
+        }
+    }
+
+    if (total_row_groups == 0)
+    {
+        SET_ERR(err, INTERNAL_ERROR, "Total row groups is 0", "");
+        LOG_ERR("Total row groups is 0");
+
+        free(thread_entries_limits);
+        free(row_group_count_per_thread);
+        return NULL;
+    }
+
+    unsigned long int available_ram = get_available_ram();
+    unsigned long int usable_ram = available_ram * MAX_RAM_USAGE;
+
+    int hash_table_entry_size = sizeof(HashTableEntry);
+    int hash_table_value_size = sizeof(HashTableValue);
+    int avg_entry_size = hash_table_entry_size + hash_table_value_size * 3;
+
+    unsigned long int total_usable_entries = usable_ram / avg_entry_size;
+    unsigned long entries_per_row_group = total_usable_entries / total_row_groups;
+    for (int i = 0; i < num_threads; i++)
+    {
+        thread_entries_limits[i] = (int)entries_per_row_group * row_group_count_per_thread[i];
+        printf("Thread %d has %d entries\n", i, thread_entries_limits[i]);
+    }
+
+    free(row_group_count_per_thread);
+    return thread_entries_limits;
 }

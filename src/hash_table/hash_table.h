@@ -11,7 +11,7 @@
 #include "hash_table_struct.h"
 
 unsigned int hash(const char* string, int table_size);
-HashTable* hash_table_create(int size, ErrorInfo* err);
+HashTable* hash_table_create(int size, int entries_limit, ErrorInfo* err);
 void hash_table_free(HashTable* table);
 void hash_table_insert(HashTable* table, HashTableEntry* entry, ErrorInfo* err);
 HashTableEntry* hash_table_search(const HashTable* table, const char* key);

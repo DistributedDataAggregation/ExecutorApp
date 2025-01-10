@@ -21,7 +21,7 @@ unsigned int hash_farm(const char* string, int table_size)
     return h64 & (table_size - 1);
 }
 
-HashTable* hash_table_optimized_create(int size, ErrorInfo* err)
+HashTable* hash_table_optimized_create(int size, int entries_limit, ErrorInfo* err)
 {
     HashTable* hash_table = malloc(sizeof(HashTable));
     if (hash_table == NULL)
@@ -31,6 +31,7 @@ HashTable* hash_table_optimized_create(int size, ErrorInfo* err)
 
     hash_table->entries_count = 0;
     hash_table->size = size;
+    hash_table->entries_limit = entries_limit;
     hash_table->table = (HashTableEntry**)(malloc(sizeof(HashTableEntry*) * size));
 
     if (hash_table->table == NULL)
@@ -99,6 +100,13 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
         SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Uninitialized hash table");
         return;
     }
+    if (table->entries_count >= table->entries_limit)
+    {
+        LOG_ERR("Failed to insert to a hash table: Hash table is full");
+        SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Hash table is full");
+        return;
+    }
+
 
     if (table->entries_count * 2 > (table->size))
     {
@@ -344,6 +352,7 @@ void hash_table_optimized_combine_hash_tables(HashTable* destination, const Hash
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return;
     }
+    destination->entries_limit += source->entries_limit;
 
     for (int i = 0; i < source->size; i++)
     {

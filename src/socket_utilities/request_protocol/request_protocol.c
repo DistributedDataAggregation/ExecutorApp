@@ -163,6 +163,7 @@ void prepare_and_send_response(const int client_fd, const char* guid, HashTableI
     if (err->error_code != NO_ERROR)
     {
         prepare_and_send_failure_response(client_fd, guid, err);
+
         query_response__free_unpacked(response, NULL);
         return;
     }

@@ -12,7 +12,7 @@
 
 unsigned int hash_farm(const char* string, const int table_size);
 
-HashTable* hash_table_optimized_create(int size, ErrorInfo* err);
+HashTable* hash_table_optimized_create(int size, int entries_limit, ErrorInfo* err);
 
 void hash_table_optimized_free(HashTable* table);
 

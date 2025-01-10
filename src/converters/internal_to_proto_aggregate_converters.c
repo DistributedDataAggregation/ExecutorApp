@@ -37,7 +37,7 @@ Aggregate convert_aggregate(AggregateFunction aggregate, ErrorInfo* err)
     if (err == NULL)
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
-        return UNKNOWN;
+        return AGGREGATE__Unknown;
     }
 
     switch (aggregate)
