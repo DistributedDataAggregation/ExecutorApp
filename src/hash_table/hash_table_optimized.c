@@ -12,7 +12,7 @@
 #include "farmhash-c.h"
 #include "error.h"
 
-void hash_table_resize_new(HashTable* ht);
+void hash_table_resize_new(HashTable* ht, ErrorInfo* err);
 
 unsigned int hash_farm(const char* string, int table_size)
 {
@@ -26,6 +26,8 @@ HashTable* hash_table_optimized_create(int size, int max_size, ErrorInfo* err)
     HashTable* hash_table = malloc(sizeof(HashTable));
     if (hash_table == NULL)
     {
+        SET_ERR(err, errno, "Failed to allocate memory for a hash table", strerror(errno));
+        LOG_ERR("Failed to allocate memory for a hash table");
         return NULL;
     }
 
@@ -36,6 +38,8 @@ HashTable* hash_table_optimized_create(int size, int max_size, ErrorInfo* err)
 
     if (hash_table->table == NULL)
     {
+        SET_ERR(err, errno, "Failed to allocate memory for a hash table table", strerror(errno));
+        LOG_ERR("Failed to allocate memory for a hash table table");
         return NULL;
     }
 
@@ -77,8 +81,9 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
 {
     if (err == NULL)
     {
-          LOG_INTERNAL_ERR("Passed error info was NULL");
-          return;
+        LOG_INTERNAL_ERR("Passed error info was NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Passed error info was NULL", "Passed error info was NULL");
+        return;
     }
 
     if (entry == NULL)
@@ -110,7 +115,11 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
             return;
         }
 
-        hash_table_resize_new(table);
+        hash_table_resize_new(table, err);
+        if (err->error_code != NO_ERROR)
+        {
+            return;
+        }
     }
 
     unsigned int hash_value = hash_farm(entry->key, table->size);
@@ -126,7 +135,7 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
 }
 
 
-void hash_table_resize_new(HashTable* ht)
+void hash_table_resize_new(HashTable* ht, ErrorInfo* err)
 {
     int new_size = ht->size * 2;
     HashTableEntry** new_table = calloc(new_size, sizeof(HashTableEntry*));
@@ -145,7 +154,13 @@ void hash_table_resize_new(HashTable* ht)
     {
         if (old_table[i] != NULL)
         {
-            hash_table_optimized_insert(ht, old_table[i], NULL);
+            hash_table_optimized_insert(ht, old_table[i], err);
+            if (err->error_code != NO_ERROR)
+            {
+                SET_ERR(err, INTERNAL_ERROR, "Failed to resize hash table", "Failed to resize hash table");
+                LOG_ERR("Failed to resize hash table");
+                return;
+            }
         }
     }
 
