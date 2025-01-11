@@ -146,10 +146,8 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     }
 
     HashTable* ht = NULL;
-    // to change hash_map
     //HashTableInterface* ht_interface = create_default_hash_table_interface();
     HashTableInterface* ht_interface = create_optimized_hash_table_interface();
-
 
     if (request->executor->is_current_node_main)
     {
@@ -247,10 +245,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             LOG_INTERNAL_ERR("Failed to collect from other executors");
             SET_ERR(err, INTERNAL_ERROR, "Failed to collect from other executors", "");
         }
-        else
-        {
-            LOG("Collected from other nodes\n");
-        }
 
         prepare_and_send_result(client_fd, request->guid, ht_interface, ht, err);
         if (err->error_code != NO_ERROR)
@@ -258,10 +252,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             LOG_INTERNAL_ERR("Failed to send response to controller");
             // TODO handle failed send to controller, retry if EAGAIN lub EWOULDBLOCK? (closing in main thread)
         }
-        else
-        {
-            LOG("Sent results to controller\n");
-        }
+        LOG("Sent results to controller\n");
     }
 
     else
@@ -289,10 +280,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                     CLEAR_ERR(err);
                 }
                 // TODO handle failed send to main, retry if EAGAIN lub EWOULDBLOCK, close if EPIPE, ECONNRESET?
-            }
-            else
-            {
-                LOG("Sent results to main\n");
             }
         }
     }

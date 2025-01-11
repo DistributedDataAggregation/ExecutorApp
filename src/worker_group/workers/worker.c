@@ -13,18 +13,33 @@
 
 #define HASH_TABLE_SIZE 1024
 
-void* compute_on_thread(void* arg)
+void* worker_compute_on_thread(void* arg)
 {
     ThreadData* data = (ThreadData*)arg;
     ErrorInfo err = {0};
     // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
-    print_thread_data(data);
+
+    // TODO:
+    // 1. Obsłuż przypadek, gdy limit wynosi zero:
+    //    - W takiej sytuacji należy alokować małą strukturę danych (np. hashmape)
+    //      o minimalnym rozmiarze, ponieważ nie ma potrzeby rezerwowania dużej ilości pamięci.
+    // 2. Dopasuj rozmiar struktury danych do liczby kolumn grupujących:
+    //    - Dynamicznie dostosuj alokację pamięci w zależności od ilości kolumn grupujących,
+    //      aby zoptymalizować wydajność i uniknąć nadmiarowej alokacji pamięci.
+    // 3. Optymalizacja działania wątków:
+    //    - Nie wykonuj dalszego kodu, jeśli dany wątek nie otrzymał żadnej grupy wierszy
+    //      ("row group") do przetworzenia. Ewentualnie w ogole tworz watku
 
     HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->ht_max_size, &err);
 
     for (int i = 0; i < data->n_files; i++)
     {
-        compute_file(i, data, ht, &err);
+        worker_compute_file(i, data, ht, &err);
+        if (err.error_code != NO_ERROR)
+        {
+            LOG_THREAD_ERR("Failed to compute file", data->thread_index);
+            SET_ERR(&err, INTERNAL_ERROR, "Unsupported data type", "");
+        }
         LOG("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
     }
 
@@ -33,7 +48,7 @@ void* compute_on_thread(void* arg)
     return ht;
 }
 
-void print_thread_data(ThreadData* data)
+void worker_print_thread_data(ThreadData* data)
 {
     if (!data) return;
 
@@ -94,7 +109,7 @@ void print_thread_data(ThreadData* data)
 // instead of the inside one f.e using variable i instead of j
 // renaming would probably be enough in that case
 
-void compute_file(const int index_of_the_file, const ThreadData* data, HashTable* hash_table, ErrorInfo* err)
+void worker_compute_file(const int index_of_the_file, const ThreadData* data, HashTable* hash_table, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -107,11 +122,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
     if (reader == NULL)
     {
         report_g_error(error, err, "Failed to open file");
-        // TODO: handle failing thread computation
         return;
     }
 
-    // TODO: actual computation of the aggregates
     const int start_row_group = data->file_row_groups_ranges[index_of_the_file].start;
     const int count_row_groups = data->file_row_groups_ranges[index_of_the_file].count;
     const int end = start_row_group + count_row_groups;
@@ -138,6 +151,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
     int* new_columns_indices = malloc(sizeof(int) * number_of_columns);
     if (!new_columns_indices)
     {
+        worker_free_resources(NULL, NULL, NULL, 0, NULL, 0, NULL, NULL, columns_indices, NULL);
         report_g_error(error, err, "Failed to allocate memory for new columns indices");
         return;
     }
@@ -155,9 +169,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         if (table == NULL)
         {
             report_g_error(error, err, "Failed to read row group");
-            g_object_unref(reader);
-            free(columns_indices);
-            free(new_columns_indices);
+            worker_free_resources(reader, NULL, NULL, 0, NULL, 0, NULL, NULL, columns_indices, new_columns_indices);
             return;
         }
 
@@ -166,10 +178,7 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         {
             LOG_THREAD_ERR("Failed to allocate memory for grouping chunked arrays", data->thread_index);
             SET_ERR(err, errno, "Failed to allocate memory for grouping chunked arrays", strerror(errno));
-            g_object_unref(reader);
-            free(columns_indices);
-            free(new_columns_indices);
-            g_object_unref(table);
+            worker_free_resources(reader, table, NULL, 0, NULL, 0, NULL, NULL, columns_indices, new_columns_indices);
             return;
         }
 
@@ -178,11 +187,8 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         {
             LOG_THREAD_ERR("Failed to allocate memory for select chunked arrays", data->thread_index);
             SET_ERR(err, errno, "Failed to allocate memory for select chunked arrays", strerror(errno));
-            g_object_unref(reader);
-            free(columns_indices);
-            free(new_columns_indices);
-            g_object_unref(table);
-            free(grouping_chunked_arrays);
+            worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns, NULL, 0, NULL, NULL,
+                                  columns_indices, new_columns_indices);
             return;
         }
 
@@ -193,16 +199,8 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             {
                 LOG_INTERNAL_THREAD_ERR("Failed to find grouping chunked arrays", data->thread_index);
                 SET_ERR(err, INTERNAL_ERROR, "Failed to find grouping chunked arrays", "");
-                g_object_unref(reader);
-                free(columns_indices);
-                free(new_columns_indices);
-                g_object_unref(table);
-                for (int grouping_index = 0; grouping_index < j; grouping_index++)
-                {
-                    g_object_unref(grouping_chunked_arrays[grouping_index]);
-                }
-                free(grouping_chunked_arrays);
-                free(select_chunked_arrays);
+                worker_free_resources(reader, table, grouping_chunked_arrays, j, select_chunked_arrays, 0, NULL, NULL,
+                                      columns_indices, new_columns_indices);
                 return;
             }
         }
@@ -215,20 +213,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             {
                 LOG_INTERNAL_THREAD_ERR("Failed to find select chunked arrays", data->thread_index);
                 SET_ERR(err, INTERNAL_ERROR, "Failed to find select chunked arrays", "");
-                g_object_unref(reader);
-                free(columns_indices);
-                free(new_columns_indices);
-                g_object_unref(table);
-                for (int grouping_index = 0; grouping_index < data->n_group_columns; grouping_index++)
-                {
-                    g_object_unref(grouping_chunked_arrays[grouping_index]);
-                }
-                for (int select_index = 0; select_index < j; select_index++)
-                {
-                    g_object_unref(select_chunked_arrays[select_index]);
-                }
-                free(grouping_chunked_arrays);
-                free(select_chunked_arrays);
+                worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                      select_chunked_arrays, data->n_select, NULL, NULL, columns_indices,
+                                      new_columns_indices);
                 return;
             }
         }
@@ -241,20 +228,9 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             {
                 LOG_THREAD_ERR("Failed to allocate memory for grouping arrays", data->thread_index);
                 SET_ERR(err, errno, "Failed to allocate memory for grouping arrays", strerror(errno));
-                g_object_unref(reader);
-                free(columns_indices);
-                free(new_columns_indices);
-                g_object_unref(table);
-                for (int grouping_index = 0; grouping_index < data->n_group_columns; grouping_index++)
-                {
-                    g_object_unref(grouping_chunked_arrays[grouping_index]);
-                }
-                for (int select_index = 0; select_index < data->n_select; select_index++)
-                {
-                    g_object_unref(select_chunked_arrays[select_index]);
-                }
-                free(grouping_chunked_arrays);
-                free(select_chunked_arrays);
+                worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                      select_chunked_arrays, data->n_select, NULL, NULL, columns_indices,
+                                      new_columns_indices);
                 return;
             }
 
@@ -267,7 +243,11 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
             GArrowArray** select_arrays = malloc(sizeof(GArrowArray*) * data->n_select);
             if (select_arrays == NULL)
             {
-                // TODO free allocated data
+                LOG_THREAD_ERR("Failed to allocate memory for select arrays", data->thread_index);
+                SET_ERR(err, errno, "Failed to allocate memory for select arrays", strerror(errno));
+                worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                      select_chunked_arrays, data->n_select, grouping_arrays, NULL, columns_indices,
+                                      new_columns_indices);
                 return;
             }
 
@@ -280,37 +260,43 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
 
             for (int row_index = 0; row_index < number_of_rows; row_index++)
             {
-                char* grouping_string = construct_grouping_string(data->n_group_columns, grouping_arrays, row_index,
-                                                                  data->group_columns_data_types, err);
+                char* grouping_string = worker_construct_grouping_string(
+                    data->n_group_columns, grouping_arrays, row_index,
+                    data->group_columns_data_types, err);
                 if (err->error_code != NO_ERROR)
                 {
-                    // TODO free allocated data
+                    worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                          select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
+                                          columns_indices, new_columns_indices);
                     return;
                 }
 
-                //LOG("Grouping string: %s\n", grouping_string);
-
-                // TODO:
-                //calculate the aggregates
                 HashTableValue* hash_table_values = malloc(sizeof(HashTableValue) * data->n_select);
                 if (hash_table_values == NULL)
                 {
                     LOG_THREAD_ERR("Failed to allocate memory for hash table values", data->thread_index);
                     SET_ERR(err, errno, "Failed to allocate memory for hash table values", strerror(errno));
-                    // TODO free allocated data
+                    free(grouping_string);
+                    worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                          select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
+                                          columns_indices, new_columns_indices);
                     return;
                 }
 
                 for (int select_index = 0; select_index < data->n_select; select_index++)
                 {
-                    hash_table_values[select_index] = get_hash_table_value(select_arrays[select_index],
-                                                                           row_index,
-                                                                           data->select_columns_types[select_index],
-                                                                           data->selects_aggregate_functions[
-                                                                               select_index], err);
+                    hash_table_values[select_index] = worker_get_hash_table_value(select_arrays[select_index],
+                        row_index,
+                        data->select_columns_types[select_index],
+                        data->selects_aggregate_functions[
+                            select_index], err);
                     if (err->error_code != NO_ERROR)
                     {
-                        // TODO free allocated data
+                        free(grouping_string);
+                        worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                              select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
+                                              columns_indices, new_columns_indices);
+                        free(hash_table_values);
                         SET_ERR(err, errno, "Failed to get hash table values for select", strerror(errno));
                         LOG_THREAD_ERR("Failed to get hash table values for select", data->thread_index);
                         return;
@@ -318,16 +304,17 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 }
 
                 const HashTableEntry* found = data->ht_interface->search(hash_table, grouping_string);
-                // const HashTableEntry* found = whash_table_search(hash_table, grouping_string);
                 if (found == NULL)
                 {
-                    // add grouping into hash table
                     HashTableEntry* new_entry = malloc(sizeof(HashTableEntry));
                     if (new_entry == NULL)
                     {
+                        free(grouping_string);
                         LOG_THREAD_ERR("Failed to allocate memory for hash table entry", data->thread_index);
                         SET_ERR(err, errno, "Failed to allocate memory for hash table entry", strerror(errno));
-                        // TODO free allocated data
+                        worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                              select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
+                                              columns_indices, new_columns_indices);
                         return;
                     }
 
@@ -337,9 +324,14 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                     new_entry->next = NULL;
                     new_entry->is_deleted = FALSE;
                     data->ht_interface->insert(hash_table, new_entry, err);
+
                     if (err->error_code != NO_ERROR)
                     {
-                        // TODO free allocated data
+                        free(hash_table_values);
+                        free(grouping_string);
+                        worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                              select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
+                                              columns_indices, new_columns_indices);
                         return;
                     }
                 }
@@ -347,21 +339,21 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
                 {
                     for (int value_index = 0; value_index < data->n_select; value_index++)
                     {
-                        // found->values[value_index] = hash_table_update_value(
-                        //     found->values[value_index], hash_table_values[value_index], err);
-
                         found->values[value_index] = data->ht_interface->update_value(
                             found->values[value_index], hash_table_values[value_index], err);
                         if (err->error_code != NO_ERROR)
                         {
-                            // TODO free allocated data
+                            free(grouping_string);
+                            free(hash_table_values);
+                            worker_free_resources(reader, table, grouping_chunked_arrays, data->n_group_columns,
+                                                  select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
+                                                  columns_indices, new_columns_indices);
                             return;
                         }
                     }
                     free(hash_table_values);
                     free(grouping_string);
                 }
-                // LOG("[%d] processed row index %d\n", data->thread_index, row_index);
             }
 
 
@@ -392,18 +384,16 @@ void compute_file(const int index_of_the_file, const ThreadData* data, HashTable
         g_object_unref(table);
         free(grouping_chunked_arrays);
         free(select_chunked_arrays);
-
-        //LOG("[%d] Finished row group number %d\n", data->thread_index, i);
     }
 
-    //LOG("[%d] Finished calculations for file\n", data->thread_index);
+    LOG("[%d] Finished calculations for file\n", data->thread_index);
     g_object_unref(reader);
     free(columns_indices);
     free(new_columns_indices);
 }
 
-char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data_type, const int row_index,
-                          ErrorInfo* err)
+char* worker_get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data_type, const int row_index,
+                                 ErrorInfo* err)
 {
     if (garrow_array_is_null(grouping_array, row_index))
     {
@@ -440,8 +430,8 @@ char* get_grouping_string(GArrowArray* grouping_array, const ColumnDataType data
 }
 
 
-char* construct_grouping_string(const int n_group_columns, GArrowArray** grouping_arrays, const int row_index,
-                                const ColumnDataType* group_columns_data_types, ErrorInfo* err)
+char* worker_construct_grouping_string(const int n_group_columns, GArrowArray** grouping_arrays, const int row_index,
+                                       const ColumnDataType* group_columns_data_types, ErrorInfo* err)
 {
     if (err == NULL)
     {
@@ -463,7 +453,7 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
 
     for (int grouping_col_index = 0; grouping_col_index < n_group_columns; grouping_col_index++)
     {
-        char* column_value_string = get_grouping_string(
+        char* column_value_string = worker_get_grouping_string(
             grouping_arrays[grouping_col_index],
             group_columns_data_types[grouping_col_index],
             row_index, err);
@@ -504,9 +494,9 @@ char* construct_grouping_string(const int n_group_columns, GArrowArray** groupin
     return grouping_string;
 }
 
-HashTableValue get_hash_table_value(GArrowArray* select_array, const int row_index,
-                                    const ColumnDataType select_columns_data_types,
-                                    const AggregateFunction aggregate_function, ErrorInfo* err)
+HashTableValue worker_get_hash_table_value(GArrowArray* select_array, const int row_index,
+                                           const ColumnDataType select_columns_data_types,
+                                           const AggregateFunction aggregate_function, ErrorInfo* err)
 {
     HashTableValue hash_table_value = hash_table_value_initialize();
 
@@ -639,4 +629,53 @@ HashTableValueType worker_map_column_data_type(const ColumnDataType column_data_
     default:
         return HASH_TABLE_UNSUPPORTED;
     }
+}
+
+void worker_free_resources(GParquetArrowFileReader* reader, GArrowTable* table,
+                           GArrowChunkedArray** grouping_chunked_arrays, int n_group_columns,
+                           GArrowChunkedArray** select_chunked_arrays, int n_select,
+                           GArrowArray** grouping_arrays, GArrowArray** select_arrays,
+                           gint* columns_indices, int* new_columns_indices)
+{
+    if (reader) g_object_unref(reader);
+    if (table) g_object_unref(table);
+
+    if (grouping_chunked_arrays)
+    {
+        for (int i = 0; i < n_group_columns; i++)
+        {
+            if (grouping_chunked_arrays[i]) g_object_unref(grouping_chunked_arrays[i]);
+        }
+        free(grouping_chunked_arrays);
+    }
+
+    if (select_chunked_arrays)
+    {
+        for (int i = 0; i < n_select; i++)
+        {
+            if (select_chunked_arrays[i]) g_object_unref(select_chunked_arrays[i]);
+        }
+        free(select_chunked_arrays);
+    }
+
+    if (grouping_arrays)
+    {
+        for (int i = 0; i < n_group_columns; i++)
+        {
+            if (grouping_arrays[i]) g_object_unref(grouping_arrays[i]);
+        }
+        free(grouping_arrays);
+    }
+
+    if (select_arrays)
+    {
+        for (int i = 0; i < n_select; i++)
+        {
+            if (select_arrays[i]) g_object_unref(select_arrays[i]);
+        }
+        free(select_arrays);
+    }
+
+    if (columns_indices) free(columns_indices);
+    if (new_columns_indices) free(new_columns_indices);
 }
