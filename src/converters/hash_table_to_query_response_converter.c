@@ -109,7 +109,7 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
 
     return query_response;
 }
-
+//TODO() dodaj testy jednostkowe
 Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
 {
     if (err == NULL)
@@ -133,7 +133,8 @@ Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
     {
         LOG_ERR("Failed to allocate memory for grouping_value");
         SET_ERR(err, errno, "Failed to allocate memory for grouping_value", strerror(errno));
-        free_value(value); // Use the cleanup function here
+        free(value->grouping_value);
+        free_value(value);
         return NULL;
     }
 
@@ -142,15 +143,20 @@ Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
     {
         LOG_ERR("Failed to allocate for query response value results");
         SET_ERR(err, errno, "Failed to allocate for query response value results", strerror(errno));
-        free_value(value); // Free all previously allocated resources
+        free(value->grouping_value);
+        free_value(value);
         return NULL;
     }
 
     for (int i = 0; i < entry->n_values; i++)
     {
         value->results[i] = convert_value_to_partial_result(entry->values[i], err);
-        if (err->error_code != NO_ERROR)
-        {
+        if (err->error_code != NO_ERROR) {
+            for (int j = 0; j < i; j++) {
+                partial_result__free_unpacked(value->results[j], NULL);
+            }
+            free(value->grouping_value);
+            free(value->results);
             free_value(value);
             return NULL;
         }
@@ -159,11 +165,13 @@ Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
     return value;
 }
 
+//TODO() dodaj testy jednostkowe
 PartialResult* convert_value_to_partial_result(const HashTableValue value, ErrorInfo* err)
 {
     if (err == NULL)
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
+        SET_ERR(err, INTERNAL_ERROR, "Passed error info was NULL", "Passed error info was NULL");
         return NULL;
     }
 
@@ -184,12 +192,24 @@ PartialResult* convert_value_to_partial_result(const HashTableValue value, Error
         result->value_case = PARTIAL_RESULT__VALUE__NOT_SET;
         result->type = RESULT_TYPE__UNKNOWN;
         result->function = convert_aggregate(value.aggregate_function, err);
+        if (err->error_code != NO_ERROR)
+        {
+            partial_result__free_unpacked(result, NULL);
+            free(result);
+            return NULL;
+        }
         return result;
     }
 
     result->is_null = false;
     result->count = value.count;
     result->function = convert_aggregate(value.aggregate_function, err);
+    if (err->error_code != NO_ERROR)
+    {
+        partial_result__free_unpacked(result, NULL);
+        free(result);
+        return NULL;
+    }
 
     switch (value.type) {
         case HASH_TABLE_INT:
@@ -209,7 +229,10 @@ PartialResult* convert_value_to_partial_result(const HashTableValue value, Error
             break;
         default:
             LOG_INTERNAL_ERR("Unsupported hash table type");
-            break;
+            SET_ERR(err, INTERNAL_ERROR, "Unsupported hash table type", "Unsupported hash table type");
+            partial_result__free_unpacked(result, NULL);
+            free(result);
+            return NULL;
     }
 
     return result;

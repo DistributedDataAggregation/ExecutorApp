@@ -34,6 +34,7 @@ Aggregate convert_aggregate(AggregateFunction aggregate, ErrorInfo* err)
 {
     if (err == NULL)
     {
+        SET_ERR(err, INTERNAL_ERROR, "Passed error info was NULL", "");
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return UNKNOWN;
     }

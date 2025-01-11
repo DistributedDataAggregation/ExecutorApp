@@ -275,7 +275,7 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                 LOG_INTERNAL_ERR("Failed to send response to main executor\n");
                 if (err->error_code == ECONNRESET || err->error_code == EPIPE)
                 {
-                    LOG("Removing main socket %d from main_excutors\n", main_executor_socket);
+                    LOG("Removing main socket %d from main_executors\n", main_executor_socket);
                     executors_server_remove_main_socket(main_executors_sockets, main_executor_socket);
                     CLEAR_ERR(err);
                 }
