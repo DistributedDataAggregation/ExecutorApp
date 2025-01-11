@@ -184,21 +184,20 @@ void prepare_and_send_response(const int client_fd, const char* guid, HashTableI
 void prepare_and_send_result(const int client_fd, const char* guid, HashTableInterface* ht_interface,
                                const HashTable* ht, ErrorInfo* err)
 {
-    if (err == NULL || err->error_code != NO_ERROR)
+    if (err->error_code != NO_ERROR)
     {
         prepare_and_send_failure_response(client_fd, guid, err);
         return;
     }
 
     QueryResult* result = ht_interface->convert_to_result(ht, err);
-    result->guid = strdup(guid);
     if (err->error_code != NO_ERROR)
     {
         prepare_and_send_failure_result(client_fd, guid, err);
         query_result__free_unpacked(result, NULL);
         return;
     }
-
+    result->guid = strdup(guid);
     send_result(client_fd, result, err);
     if (err->error_code != NO_ERROR)
     {

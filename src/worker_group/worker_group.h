@@ -40,6 +40,7 @@ void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, int c
 ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, ErrorInfo* err);
 
 int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges, int num_threads, int num_files,
+                                       int select_number, int group_number,
                                        ErrorInfo* err);
 
 
