@@ -181,7 +181,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
             return;
         }
 
-        const int ret = pthread_create(&threads[i], NULL, compute_on_thread, thread_data[i]);
+        const int ret = pthread_create(&threads[i], NULL, worker_compute_on_thread, thread_data[i]);
         if (ret != 0)
         {
             LOG_ERR("Failed to create worker group thread");
