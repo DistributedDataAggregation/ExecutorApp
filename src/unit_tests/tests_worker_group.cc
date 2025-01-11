@@ -127,7 +127,7 @@ TEST(WorkerGroupTests, GetThreadData_NullRequest)
 {
     ErrorInfo error_info = {0};
     ThreadData* thread_data = worker_group_get_thread_data(nullptr, 0, 1, nullptr, nullptr,
-                                                           nullptr, nullptr, nullptr, nullptr, 0,&error_info);
+                                                           nullptr, nullptr, nullptr, nullptr, 0, nulltpr, &error_info);
     EXPECT_EQ(thread_data, nullptr);
 }
 

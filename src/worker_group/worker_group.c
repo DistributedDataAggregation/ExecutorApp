@@ -56,7 +56,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     if (err->error_code != NO_ERROR)
     {
         free(threads);
-        free(row_group_ranges);
+        worker_group_free_row_group_ranges(row_group_ranges, threads_count);
         return;
     }
 
@@ -66,11 +66,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         LOG_ERR("Failed to allocate memory for grouping indices");
         SET_ERR(err, errno, "Failed to allocate memory for grouping indices", strerror(errno));
         free(threads);
-        for (int i = 0; i < threads_count; i++)
-        {
-            free(row_group_ranges[i]);
-        }
-        free(row_group_ranges);
+        worker_group_free_row_group_ranges(row_group_ranges, threads_count);
         return;
     }
 
@@ -80,11 +76,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         LOG_ERR("Failed to allocate memory for select indices");
         SET_ERR(err, errno, "Failed to allocate memory for select indices", strerror(errno));
         free(threads);
-        for (int i = 0; i < threads_count; i++)
-        {
-            free(row_group_ranges[i]);
-        }
-        free(row_group_ranges);
+        worker_group_free_row_group_ranges(row_group_ranges, threads_count);
         free(grouping_indices);
         return;
     }
@@ -93,11 +85,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     if (err->error_code != NO_ERROR)
     {
         free(threads);
-        for (int i = 0; i < threads_count; i++)
-        {
-            free(row_group_ranges[i]);
-        }
-        free(row_group_ranges);
+        worker_group_free_row_group_ranges(row_group_ranges, threads_count);
         free(grouping_indices);
         free(select_indices);
         return;
@@ -105,6 +93,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
 
     ColumnDataType* grouping_columns_data_type = worker_group_get_columns_data_types(grouping_indices,
         (int)request->n_group_columns, request->files_names[0], err);
+
     ColumnDataType* select_columns_data_type = worker_group_get_columns_data_types(select_indices,
         (int)request->n_select, request->files_names[0], err);
     if (err->error_code != NO_ERROR)
@@ -132,16 +121,21 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         {
             free(row_group_ranges[i]);
         }
-        free(row_group_ranges);
+
         if (hash_tables_max_size != NULL)
         {
             free(hash_tables_max_size);
         }
+        free(row_group_ranges);
+        free(grouping_indices);
+        free(select_indices);
+        free(grouping_columns_data_type);
+        free(select_columns_data_type);
         return;
     }
 
-    ThreadData** thread_data = (ThreadData**)malloc(sizeof(ThreadData*) * threads_count);
-    if (thread_data == NULL)
+    ErrorInfo* thread_errors = (ErrorInfo*)malloc(sizeof(ErrorInfo) * threads_count);
+    if (thread_errors == NULL)
     {
         LOG_ERR("Failed to allocate memory for thread data");
         SET_ERR(err, errno, "Failed to allocate memory for thread data", strerror(errno));
@@ -161,19 +155,42 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
 
     for (int i = 0; i < threads_count; i++)
     {
+        memset(&thread_errors[i], 0, sizeof(thread_errors[i]));
+    }
+
+    ThreadData** thread_data = (ThreadData**)malloc(sizeof(ThreadData*) * threads_count);
+    if (thread_data == NULL)
+    {
+        LOG_ERR("Failed to allocate memory for thread data");
+        SET_ERR(err, errno, "Failed to allocate memory for thread data", strerror(errno));
+        free(threads);
+        free(thread_errors);
+        free(hash_tables_max_size);
+        worker_group_free_row_group_ranges(row_group_ranges, threads_count);
+        free(grouping_indices);
+        free(select_indices);
+        free(grouping_columns_data_type);
+        free(select_columns_data_type);
+        return;
+    }
+
+
+    for (int i = 0; i < threads_count; i++)
+    {
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
                                                       grouping_indices, select_indices, grouping_columns_data_type,
                                                       select_columns_data_type, hash_table_interface,
-                                                      hash_tables_max_size[i], err);
+                                                      hash_tables_max_size[i], thread_errors, err);
         if (err->error_code != NO_ERROR)
         {
             for (int j = 0; j < i; j++)
             {
                 worker_group_free_thread_data(thread_data[j]);
             }
+            worker_group_free_row_group_ranges(row_group_ranges, threads_count);
+            free(thread_errors);
             free(hash_tables_max_size);
             free(threads);
-            free(row_group_ranges);
             free(grouping_indices);
             free(select_indices);
             free(grouping_columns_data_type);
@@ -191,6 +208,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
             {
                 worker_group_free_thread_data(thread_data[j]);
             }
+            free(thread_errors);
             free(hash_tables_max_size);
             free(threads);
             free(row_group_ranges);
@@ -203,6 +221,8 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         }
     }
 
+    bool thread_failed = false;
+
     for (int i = 0; i < threads_count; i++)
     {
         void* result = NULL;
@@ -211,9 +231,24 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         {
             LOG_ERR("Failed to join worker group thread");
             SET_ERR(err, ret, "Failed to join worker group thread", strerror(ret));
+            thread_failed = true;
             // TODO handle exit?? or we need to wait for other thread anyway (now)
         }
         worker_group_free_thread_data(thread_data[i]);
+
+        if (thread_errors[i].error_code != NO_ERROR)
+        {
+            LOG_ERR(thread_errors[i].error_message);
+            SET_ERR(err, errno, thread_errors[i].error_message, strerror(ret));
+            thread_failed = true;
+            continue;
+        }
+
+        if (thread_failed)
+        {
+            continue;
+        }
+
         HashTable* thread_ht = (HashTable*)result;
 
         if (*request_hash_table == NULL)
@@ -234,6 +269,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     }
 
     worker_group_free_row_group_ranges(row_group_ranges, threads_count);
+    free(thread_errors);
     free(hash_tables_max_size);
     free(threads);
     free(grouping_indices);
@@ -247,11 +283,19 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
                                          RowGroupsRange* row_groups_ranges, int* grouping_indices,
                                          const int* select_indices,
                                          ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         HashTableInterface* ht_interface, int hash_tables_max_size, ErrorInfo* err)
+                                         HashTableInterface* ht_interface, int hash_tables_max_size,
+                                         ErrorInfo* thread_errors, ErrorInfo* err)
 {
     if (err == NULL)
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
+        return NULL;
+    }
+
+    if (thread_errors == NULL)
+    {
+        LOG_INTERNAL_ERR("Passed errors array was NULL");
+        SET_ERR(err, errno, "Passed errors array was NULL", "");
         return NULL;
     }
 
@@ -283,6 +327,8 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, const int 
 
     thread_data->ht_interface = ht_interface;
     thread_data->ht_max_size = hash_tables_max_size;
+
+    thread_data->thread_error = &thread_errors[thread_index];
 
     thread_data->file_names = (char**)malloc(sizeof(char*) * thread_data->n_files);
     if (thread_data->file_names == NULL)
@@ -360,7 +406,6 @@ void worker_group_free_thread_data(ThreadData* thread_data)
     }
 
     free(thread_data->selects_indices);
-    free(thread_data->file_row_groups_ranges);
     free(thread_data->selects_aggregate_functions);
     free(thread_data);
 }

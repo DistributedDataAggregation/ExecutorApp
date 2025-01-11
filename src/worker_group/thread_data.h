@@ -44,6 +44,8 @@ typedef struct thread_data
 
     HashTableInterface* ht_interface;
     int ht_max_size;
+
+    ErrorInfo* thread_error;
 } ThreadData;
 
 #endif //THREAD_DATA_H
