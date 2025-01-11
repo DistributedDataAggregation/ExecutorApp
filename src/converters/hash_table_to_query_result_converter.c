@@ -160,8 +160,6 @@ CombinedResult* convert_value(const HashTableValue value, ErrorInfo* err)
             return NULL;
         }
         result->value_case = COMBINED_RESULT__VALUE_DOUBLE_VALUE;
-
-        // early return just for average
         return result;
     }
 

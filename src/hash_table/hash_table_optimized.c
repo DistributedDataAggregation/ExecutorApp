@@ -26,8 +26,8 @@ HashTable* hash_table_optimized_create(int size, int max_size, ErrorInfo* err)
     HashTable* hash_table = malloc(sizeof(HashTable));
     if (hash_table == NULL)
     {
-        SET_ERR(err, errno, "Failed to allocate memory for a hash table", strerror(errno));
         LOG_ERR("Failed to allocate memory for a hash table");
+        SET_ERR(err, errno, "Failed to allocate memory for a hash table", strerror(errno));
         return NULL;
     }
 
@@ -38,8 +38,8 @@ HashTable* hash_table_optimized_create(int size, int max_size, ErrorInfo* err)
 
     if (hash_table->table == NULL)
     {
-        SET_ERR(err, errno, "Failed to allocate memory for a hash table table", strerror(errno));
         LOG_ERR("Failed to allocate memory for a hash table table");
+        SET_ERR(err, errno, "Failed to allocate memory for a hash table table", strerror(errno));
         return NULL;
     }
 
@@ -110,8 +110,10 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
     {
         if (table->size * 2 >= table->max_size)
         {
-            LOG_INTERNAL_ERR("Failed to insert to a hash table: Table is full");
-            SET_ERR(err, INTERNAL_ERROR, "Failed to insert to a hash table", "Table is full");
+            LOG_ERR("Error: Not enough memory to process the query. Hash table maximum capacity reached.");
+            SET_ERR(err, INTERNAL_ERROR, "Not enough memory to process the query",
+                    "Consider reducing the size of the query.");
+
             return;
         }
 

@@ -48,8 +48,6 @@ void* worker_compute_on_thread(void* arg)
 
         if (data->thread_error->error_code != NO_ERROR)
         {
-            LOG_THREAD_ERR("Failed to compute file", data->thread_index);
-            SET_ERR(data->thread_error, INTERNAL_ERROR, "Unsupported data type", "");
             data->ht_interface->free(ht);
             return NULL;
         }

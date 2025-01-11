@@ -17,6 +17,10 @@
 #include "workers/worker.h"
 
 #define MAX_RAM_USAGE 0.7
+#define SAFETY_FACTOR 0.7
+#define MAX_STRING_LENGTH 50
+
+
 
 // TODO() probably split this function
 void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
@@ -112,7 +116,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     }
 
     int* hash_tables_max_size = worker_group_hash_tables_max_size(
-        row_group_ranges, threads_count, request->n_files_names, err);
+        row_group_ranges, threads_count, request->n_files_names, (int)request->n_select, (int)request->n_group_columns, err);
 
     if (err->error_code != NO_ERROR)
     {
@@ -221,8 +225,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         }
     }
 
-    bool thread_failed = false;
-
     for (int i = 0; i < threads_count; i++)
     {
         void* result = NULL;
@@ -231,7 +233,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         {
             LOG_ERR("Failed to join worker group thread");
             SET_ERR(err, ret, "Failed to join worker group thread", strerror(ret));
-            thread_failed = true;
             // TODO handle exit?? or we need to wait for other thread anyway (now)
         }
         worker_group_free_thread_data(thread_data[i]);
@@ -239,12 +240,11 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         if (thread_errors[i].error_code != NO_ERROR)
         {
             LOG_ERR(thread_errors[i].error_message);
-            SET_ERR(err, errno, thread_errors[i].error_message, strerror(ret));
-            thread_failed = true;
+            SET_ERR(err, thread_errors[i].error_code, thread_errors[i].error_message, thread_errors[i].inner_error_message);
             continue;
         }
 
-        if (thread_failed)
+        if (err->error_code != NO_ERROR)
         {
             continue;
         }
@@ -772,7 +772,7 @@ unsigned long int get_available_ram()
 }
 
 int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
-                                       const int num_threads, const int num_files, ErrorInfo* err)
+                                       const int num_threads, const int num_files, const int select_number, const int grouping_number, ErrorInfo* err)
 {
     if (row_group_ranges == NULL)
     {
@@ -833,11 +833,11 @@ int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
     unsigned long int available_ram = get_available_ram();
     unsigned long int usable_ram = (unsigned long int)available_ram * MAX_RAM_USAGE;
 
-    int hash_table_entry_size = sizeof(HashTableEntry);
-    int hash_table_value_size = sizeof(HashTableValue);
-    int avg_entry_size = hash_table_entry_size + hash_table_value_size * 3;
+    int hash_table_entry_size = sizeof(HashTableEntry) + 8;
+    int hash_table_value_size = sizeof(HashTableValue) + 8;
+    int avg_entry_size = hash_table_entry_size + (hash_table_value_size) * select_number + MAX_STRING_LENGTH * grouping_number;
 
-    unsigned long int total_usable_entries = usable_ram / avg_entry_size;
+    unsigned long int total_usable_entries = (usable_ram / avg_entry_size) * SAFETY_FACTOR;
     unsigned long entries_per_row_group = total_usable_entries / total_row_groups;
     for (int i = 0; i < num_threads; i++)
     {
