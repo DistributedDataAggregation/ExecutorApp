@@ -18,9 +18,7 @@
 
 #define MAX_RAM_USAGE 0.7
 #define SAFETY_FACTOR 0.7
-#define MAX_STRING_LENGTH 50
-
-
+#define MAX_STRING_LENGTH 100
 
 // TODO() probably split this function
 void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
@@ -116,7 +114,8 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     }
 
     int* hash_tables_max_size = worker_group_hash_tables_max_size(
-        row_group_ranges, threads_count, request->n_files_names, (int)request->n_select, (int)request->n_group_columns, err);
+        row_group_ranges, threads_count, request->n_files_names, (int)request->n_select, (int)request->n_group_columns,
+        err);
 
     if (err->error_code != NO_ERROR)
     {
@@ -240,7 +239,8 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         if (thread_errors[i].error_code != NO_ERROR)
         {
             LOG_ERR(thread_errors[i].error_message);
-            SET_ERR(err, thread_errors[i].error_code, thread_errors[i].error_message, thread_errors[i].inner_error_message);
+            SET_ERR(err, thread_errors[i].error_code, thread_errors[i].error_message,
+                    thread_errors[i].inner_error_message);
             continue;
         }
 
@@ -772,7 +772,8 @@ unsigned long int get_available_ram()
 }
 
 int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
-                                       const int num_threads, const int num_files, const int select_number, const int grouping_number, ErrorInfo* err)
+                                       const int num_threads, const int num_files, const int select_number,
+                                       const int grouping_number, ErrorInfo* err)
 {
     if (row_group_ranges == NULL)
     {
@@ -835,9 +836,11 @@ int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
 
     int hash_table_entry_size = sizeof(HashTableEntry) + 8;
     int hash_table_value_size = sizeof(HashTableValue) + 8;
-    int avg_entry_size = hash_table_entry_size + (hash_table_value_size) * select_number + MAX_STRING_LENGTH * grouping_number;
+    int avg_entry_size = hash_table_entry_size + (hash_table_value_size) * select_number + MAX_STRING_LENGTH *
+        grouping_number;
 
     unsigned long int total_usable_entries = (usable_ram / avg_entry_size) * SAFETY_FACTOR;
+    LOG("Total usable entries: %lu\n", total_usable_entries);
     unsigned long entries_per_row_group = total_usable_entries / total_row_groups;
     for (int i = 0; i < num_threads; i++)
     {

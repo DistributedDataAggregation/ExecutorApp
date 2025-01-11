@@ -759,7 +759,7 @@ TEST(OptimizedHashTableTest, HandleResizeAfterDeletions)
             return;
         }
         char key[10];
-        sprintf(key, "key%d", i);size
+        sprintf(key, "key%d", i);
         entry->key = strdup(key);
         if (entry->key == nullptr)
         {

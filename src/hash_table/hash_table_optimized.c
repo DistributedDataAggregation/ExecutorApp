@@ -11,6 +11,7 @@
 
 #include "farmhash-c.h"
 #include "error.h"
+#include "logging.h"
 
 void hash_table_resize_new(HashTable* ht, ErrorInfo* err);
 
@@ -110,6 +111,8 @@ void hash_table_optimized_insert(HashTable* table, HashTableEntry* entry, ErrorI
     {
         if (table->size * 2 >= table->max_size)
         {
+            LOG("Current Size: %d current entries: %d max size: %d", table->size, table->entries_count,
+                table->max_size);
             LOG_ERR("Error: Not enough memory to process the query. Hash table maximum capacity reached.");
             SET_ERR(err, INTERNAL_ERROR, "Not enough memory to process the query",
                     "Consider reducing the size of the query.");

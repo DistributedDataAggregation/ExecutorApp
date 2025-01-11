@@ -19,7 +19,7 @@ void get_message_size(int client_fd, uint32_t* message_size, ErrorInfo* err);
 void get_packed_proto_buffer(int client_fd, uint32_t message_size, uint8_t* buffer, ErrorInfo* err);
 void get_returned_error(Error* error, ErrorInfo* err);
 void send_result(int client_fd, const QueryResult* result, ErrorInfo* err);
-void prepare_and_send_failure_result(int client_fd, const char* guid, ErrorInfo* err) ;
+void prepare_and_send_failure_result(int client_fd, const char* guid, ErrorInfo* err);
 
 void print_partial_result(const PartialResult* partial_result)
 {
@@ -182,7 +182,7 @@ void prepare_and_send_response(const int client_fd, const char* guid, HashTableI
 }
 
 void prepare_and_send_result(const int client_fd, const char* guid, HashTableInterface* ht_interface,
-                               const HashTable* ht, ErrorInfo* err)
+                             const HashTable* ht, ErrorInfo* err)
 {
     if (err->error_code != NO_ERROR)
     {
@@ -234,8 +234,10 @@ void prepare_and_send_failure_response(const int client_fd, const char* guid, Er
     query_response__free_unpacked(response, NULL);
 }
 
-void prepare_and_send_failure_result(const int client_fd, const char* guid, ErrorInfo* err) {
-    if (err == NULL) {
+void prepare_and_send_failure_result(const int client_fd, const char* guid, ErrorInfo* err)
+{
+    if (err == NULL)
+    {
         LOG_INTERNAL_ERR("Passed in null err");
         return;
     }
@@ -251,7 +253,8 @@ void prepare_and_send_failure_result(const int client_fd, const char* guid, Erro
     query_result__free_unpacked(result, NULL);
 }
 
-void send_result(const int client_fd, const QueryResult* result, ErrorInfo* err) {
+void send_result(const int client_fd, const QueryResult* result, ErrorInfo* err)
+{
     const ssize_t size = (ssize_t)query_result__get_packed_size(result);
     uint8_t* buffer = (uint8_t*)malloc(sizeof(uint8_t) * size);
     if (buffer == NULL)
@@ -296,9 +299,10 @@ void send_result(const int client_fd, const QueryResult* result, ErrorInfo* err)
     free(buffer);
 }
 
-void get_returned_error(Error* error, ErrorInfo* err) {
-
-    if (error == NULL ) {
+void get_returned_error(Error* error, ErrorInfo* err)
+{
+    if (error == NULL)
+    {
         LOG_INTERNAL_ERR("Passed in null error");
         return;
     }
@@ -329,7 +333,6 @@ void get_returned_error(Error* error, ErrorInfo* err) {
 
         CLEAR_ERR(err);
     }
-
 }
 
 QueryResponse* parse_query_response(const int client_fd, ErrorInfo* err)
@@ -360,7 +363,6 @@ QueryResponse* parse_query_response(const int client_fd, ErrorInfo* err)
         return NULL;
     }
 
-    // TODO () sprawdzanie czy to wiadomosc to fail
     QueryResponse* response = query_response__unpack(NULL, message_size, buffer);
     free(buffer);
     if (response == NULL)
