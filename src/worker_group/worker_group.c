@@ -123,7 +123,7 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     }
 
     int* hash_tables_max_size = worker_group_hash_tables_max_size(
-    row_group_ranges, threads_count, request->n_files_names, err);
+        row_group_ranges, threads_count, request->n_files_names, err);
 
     if (err->error_code != NO_ERROR)
     {
@@ -163,7 +163,8 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
     {
         thread_data[i] = worker_group_get_thread_data(request, i, threads_count, row_group_ranges[i],
                                                       grouping_indices, select_indices, grouping_columns_data_type,
-                                                      select_columns_data_type, hash_table_interface, hash_tables_max_size[i], err);
+                                                      select_columns_data_type, hash_table_interface,
+                                                      hash_tables_max_size[i], err);
         if (err->error_code != NO_ERROR)
         {
             for (int j = 0; j < i; j++)
@@ -466,7 +467,6 @@ void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, const
 
     free(row_group_ranges);
     row_group_ranges = NULL;
-
 }
 
 void worker_group_get_columns_indices(const QueryRequest* request, int* grouping_indices, int* select_indices,
@@ -727,7 +727,7 @@ unsigned long int get_available_ram()
 }
 
 int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
-                                            const int num_threads, const int num_files, ErrorInfo* err)
+                                       const int num_threads, const int num_files, ErrorInfo* err)
 {
     if (row_group_ranges == NULL)
     {
@@ -765,7 +765,6 @@ int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
         row_group_count_per_thread[i] = 0;
     }
 
-
     int total_row_groups = 0;
     for (int i = 0; i < num_threads; i++)
     {
@@ -787,7 +786,7 @@ int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
     }
 
     unsigned long int available_ram = get_available_ram();
-    unsigned long int usable_ram = (unsigned long int) available_ram * MAX_RAM_USAGE;
+    unsigned long int usable_ram = (unsigned long int)available_ram * MAX_RAM_USAGE;
 
     int hash_table_entry_size = sizeof(HashTableEntry);
     int hash_table_value_size = sizeof(HashTableValue);
@@ -798,7 +797,6 @@ int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges,
     for (int i = 0; i < num_threads; i++)
     {
         thread_entries_limits[i] = (int)entries_per_row_group * row_group_count_per_thread[i];
-        printf("Thread %d has %d entries\n", i, thread_entries_limits[i]);
     }
 
     free(row_group_count_per_thread);

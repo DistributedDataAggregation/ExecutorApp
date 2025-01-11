@@ -126,6 +126,7 @@ CombinedResult* convert_value(const HashTableValue value, ErrorInfo* err)
 {
     if (err == NULL)
     {
+        SET_ERR(err, INTERNAL_ERROR, "Passed error info was NULL", "Passed error info was NULL");
         LOG_INTERNAL_ERR("Passed error info was NULL");
         return NULL;
     }
@@ -182,6 +183,7 @@ CombinedResult* convert_value(const HashTableValue value, ErrorInfo* err)
         break;
         default:
             LOG_INTERNAL_ERR("Unsupported hash table type");
+            SET_ERR(err, INTERNAL_ERROR, "Unsupported hash table type", "INT, FLOAT and DOUBLE are supported");
         break;
     }
 
