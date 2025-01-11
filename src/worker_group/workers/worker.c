@@ -16,9 +16,19 @@
 void* worker_compute_on_thread(void* arg)
 {
     ThreadData* data = (ThreadData*)arg;
-    ErrorInfo err = {0};
-    // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
+    if (data == NULL)
+    {
+        LOG_INTERNAL_THREAD_ERR("Passed thread data was NULL", data->thread_index);
+        return NULL;
+    }
 
+    if (data->thread_error == NULL)
+    {
+        LOG_INTERNAL_THREAD_ERR("Passed error info was NULL", data->thread_index);
+        return NULL;
+    }
+
+    // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
     // TODO:
     // 1. Obsłuż przypadek, gdy limit wynosi zero:
     //    - W takiej sytuacji należy alokować małą strukturę danych (np. hashmape)
@@ -30,15 +40,18 @@ void* worker_compute_on_thread(void* arg)
     //    - Nie wykonuj dalszego kodu, jeśli dany wątek nie otrzymał żadnej grupy wierszy
     //      ("row group") do przetworzenia. Ewentualnie w ogole tworz watku
 
-    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->ht_max_size, &err);
+    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->ht_max_size, data->thread_error);
 
     for (int i = 0; i < data->n_files; i++)
     {
-        worker_compute_file(i, data, ht, &err);
-        if (err.error_code != NO_ERROR)
+        worker_compute_file(i, data, ht, data->thread_error);
+
+        if (data->thread_error->error_code != NO_ERROR)
         {
             LOG_THREAD_ERR("Failed to compute file", data->thread_index);
-            SET_ERR(&err, INTERNAL_ERROR, "Unsupported data type", "");
+            SET_ERR(data->thread_error, INTERNAL_ERROR, "Unsupported data type", "");
+            data->ht_interface->free(ht);
+            return NULL;
         }
         LOG("[%d] Finished file: %s\n", data->thread_index, data->file_names[i]);
     }

@@ -25,7 +25,8 @@ ThreadData* worker_group_get_thread_data(const QueryRequest* request, int thread
                                          RowGroupsRange* row_groups_ranges, int* grouping_indices,
                                          const int* select_indices,
                                          ColumnDataType* group_columns_types, ColumnDataType* select_columns_types,
-                                         HashTableInterface* hash_table_interface, int hash_tables_max_size, ErrorInfo* err);
+                                         HashTableInterface* hash_table_interface, int hash_tables_max_size,
+                                         ErrorInfo* thread_errors, ErrorInfo* err);
 
 void worker_group_free_thread_data(ThreadData* thread_data);
 
@@ -39,7 +40,7 @@ void worker_group_free_row_group_ranges(RowGroupsRange** row_group_ranges, int c
 ColumnDataType worker_group_map_arrow_data_type(GArrowDataType* data_type, ErrorInfo* err);
 
 int* worker_group_hash_tables_max_size(RowGroupsRange** row_group_ranges, int num_threads, int num_files,
-                                            ErrorInfo* err);
+                                       ErrorInfo* err);
 
 
 #ifdef __cplusplus

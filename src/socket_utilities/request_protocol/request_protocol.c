@@ -361,6 +361,7 @@ QueryResponse* parse_query_response(const int client_fd, ErrorInfo* err)
         return NULL;
     }
 
+    // TODO () sprawdzanie czy to wiadomosc to fail
     QueryResponse* response = query_response__unpack(NULL, message_size, buffer);
     free(buffer);
     if (response == NULL)
