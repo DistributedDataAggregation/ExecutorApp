@@ -40,7 +40,8 @@ void* worker_compute_on_thread(void* arg)
     //    - Nie wykonuj dalszego kodu, jeśli dany wątek nie otrzymał żadnej grupy wierszy
     //      ("row group") do przetworzenia. Ewentualnie w ogole tworz watku
 
-    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->ht_max_size, data->thread_error);
+    HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->ht_max_size,
+                                               data->thread_error);
 
     for (int i = 0; i < data->n_files; i++)
     {
@@ -138,8 +139,15 @@ void worker_compute_file(const int index_of_the_file, const ThreadData* data, Ha
 
     const int start_row_group = data->file_row_groups_ranges[index_of_the_file].start;
     const int count_row_groups = data->file_row_groups_ranges[index_of_the_file].count;
-    const int end = start_row_group + count_row_groups;
 
+    if (count_row_groups == 0)
+    {
+        worker_free_resources(reader, NULL, NULL, 0, NULL, 0, NULL, NULL, NULL,NULL);
+        LOG("[%d] Finished calculations for file\n", data->thread_index);
+        return;
+    }
+
+    const int end = start_row_group + count_row_groups;
     const int number_of_columns = (data->n_group_columns + data->n_select);
 
     gint* columns_indices = malloc(sizeof(gint) * number_of_columns);
@@ -162,7 +170,7 @@ void worker_compute_file(const int index_of_the_file, const ThreadData* data, Ha
     int* new_columns_indices = malloc(sizeof(int) * number_of_columns);
     if (!new_columns_indices)
     {
-        worker_free_resources(NULL, NULL, NULL, 0, NULL, 0, NULL, NULL, columns_indices, NULL);
+        worker_free_resources(reader, NULL, NULL, 0, NULL, 0, NULL, NULL, columns_indices, NULL);
         report_g_error(error, err, "Failed to allocate memory for new columns indices");
         return;
     }
