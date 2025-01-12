@@ -26,3 +26,24 @@ jobs:
     - name: Push Docker image
       run: |
         docker push ${{ secrets.DOCKER_USERNAME }}/executor-image:latest
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1 
+      
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      
+    - name: Retag Docker image for AWS ECR
+      run: |
+          docker tag ${{ secrets.DOCKER_USERNAME }}/executor-image:latest 640168426421.dkr.ecr.eu-north-1.amazonaws.com/ddas/executor-image:latest
+
+      # 8. Push the Docker image to AWS ECR
+    - name: Push Docker image to AWS ECR
+      run: |
+          docker push 640168426421.dkr.ecr.eu-north-1.amazonaws.com/ddas/executor-image:latest
+      
