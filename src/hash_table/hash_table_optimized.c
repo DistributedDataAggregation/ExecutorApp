@@ -22,6 +22,16 @@ unsigned int hash_farm(const char* string, int table_size)
     return h64 & (table_size - 1);
 }
 
+unsigned long hash_djb2(const char* str, int table_size)
+{
+    unsigned long hash = 5381;
+    int c;
+    while ((c = *str++))
+        hash = ((hash << 5) + hash) + c;
+    return hash % table_size;
+}
+
+
 HashTable* hash_table_optimized_create(int size, int max_size, ErrorInfo* err)
 {
     HashTable* hash_table = malloc(sizeof(HashTable));
