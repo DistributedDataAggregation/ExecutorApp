@@ -61,3 +61,8 @@ void free_hash_table_interface(HashTableInterface* interface)
 
     free(interface);
 }
+
+void set_hash_function(HashTableInterface* interface, unsigned int (*hash)(const char* key, int table_size))
+{
+    interface->hash = hash;
+}

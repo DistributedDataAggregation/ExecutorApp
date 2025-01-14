@@ -29,6 +29,17 @@ unsigned int hash(const char* string, const int table_size)
     return hash_value % table_size;
 }
 
+unsigned int naive_hash(const char* string, const int table_size)
+{
+    unsigned int hash_value = 0;
+    while (*string)
+    {
+        hash_value += *string;
+        string++;
+    }
+    return hash_value % table_size;
+}
+
 void hash_table_free_entry(HashTableEntry* value)
 {
     if (value == NULL)

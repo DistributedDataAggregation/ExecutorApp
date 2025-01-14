@@ -12,6 +12,7 @@
 #include "hash_table_interface.h"
 
 #define HASH_TABLE_SIZE 1024
+#define MAX_STRING_LENGTH 100
 
 void* worker_compute_on_thread(void* arg)
 {
@@ -419,33 +420,59 @@ char* worker_get_grouping_string(GArrowArray* grouping_array, const ColumnDataTy
         return strdup("null");
     }
 
+    char* result = NULL;
+
     switch (data_type)
     {
     case COLUMN_DATA_TYPE_INT32:
-        GArrowInt32Array* int32_array = GARROW_INT32_ARRAY(grouping_array);
-        const int int32_value = garrow_int32_array_get_value(int32_array, row_index);
-        return g_strdup_printf("%d", int32_value);
+        {
+            GArrowInt32Array* int32_array = GARROW_INT32_ARRAY(grouping_array);
+            const int int32_value = garrow_int32_array_get_value(int32_array, row_index);
+            result = g_strdup_printf("%d", int32_value);
+            break;
+        }
     case COLUMN_DATA_TYPE_INT64:
-        GArrowInt64Array* int64_array = GARROW_INT64_ARRAY(grouping_array);
-        const long int64_value = garrow_int64_array_get_value(int64_array, row_index);
-        return g_strdup_printf("%ld", int64_value);
+        {
+            GArrowInt64Array* int64_array = GARROW_INT64_ARRAY(grouping_array);
+            const long int64_value = garrow_int64_array_get_value(int64_array, row_index);
+            result = g_strdup_printf("%ld", int64_value);
+            break;
+        }
     case COLUMN_DATA_TYPE_STRING:
-        GArrowStringArray* string_array = GARROW_STRING_ARRAY(grouping_array);
-        return garrow_string_array_get_string(string_array, row_index);
+        {
+            GArrowStringArray* string_array = GARROW_STRING_ARRAY(grouping_array);
+            result = garrow_string_array_get_string(string_array, row_index);
+            break;
+        }
     case COLUMN_DATA_TYPE_DOUBLE:
-        GArrowDoubleArray* double_array = GARROW_DOUBLE_ARRAY(grouping_array);
-        const double double_value = garrow_double_array_get_value(double_array, row_index);
-        return g_strdup_printf("%f", double_value);
+        {
+            GArrowDoubleArray* double_array = GARROW_DOUBLE_ARRAY(grouping_array);
+            const double double_value = garrow_double_array_get_value(double_array, row_index);
+            result = g_strdup_printf("%f", double_value);
+            break;
+        }
     case COLUMN_DATA_TYPE_FLOAT:
-        GArrowFloatArray* float_array = GARROW_FLOAT_ARRAY(grouping_array);
-        const float float_value = garrow_float_array_get_value(float_array, row_index);
-        return g_strdup_printf("%f", float_value);
+        {
+            GArrowFloatArray* float_array = GARROW_FLOAT_ARRAY(grouping_array);
+            const float float_value = garrow_float_array_get_value(float_array, row_index);
+            result = g_strdup_printf("%f", float_value);
+            break;
+        }
     case COLUMN_DATA_TYPE_UNKNOWN:
     default:
         LOG_INTERNAL_ERR("Unsupported data type");
         SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
         return NULL;
     }
+
+    if (result != NULL && strlen(result) > MAX_STRING_LENGTH)
+    {
+        char* truncated_result = g_strndup(result, MAX_STRING_LENGTH);
+        g_free(result);
+        return truncated_result;
+    }
+
+    return result;
 }
 
 
