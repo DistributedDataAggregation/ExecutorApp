@@ -316,8 +316,6 @@ void worker_compute_file(const int index_of_the_file, const ThreadData* data, Ha
                                               select_chunked_arrays, data->n_select, grouping_arrays, select_arrays,
                                               columns_indices, new_columns_indices);
                         free(hash_table_values);
-                        SET_ERR(err, errno, "Failed to get hash table values for select", strerror(errno));
-                        LOG_THREAD_ERR("Failed to get hash table values for select", data->thread_index);
                         return;
                     }
                 }
@@ -573,8 +571,8 @@ HashTableValue worker_get_hash_table_value(GArrowArray* select_array, const int 
     case COLUMN_DATA_TYPE_BOOLEAN:
     case COLUMN_DATA_TYPE_STRING:
     case COLUMN_DATA_TYPE_UNKNOWN:
-        LOG_INTERNAL_ERR("Unsupported data type for aggregation. Only integer types are allowed");
-        SET_ERR(err, INTERNAL_ERROR, "Unsupported data type", "");
+        LOG_INTERNAL_ERR("Unsupported data type for aggregation. Only integer, float and double types are allowed");
+        SET_ERR(err, INTERNAL_ERROR, "Unsupported data type for aggregation. Only integer, float and double types are allowed", "");
     }
 
     if (COLUMN_DATA_TYPE_FLOAT == select_columns_data_types)
