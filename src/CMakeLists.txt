@@ -42,6 +42,8 @@ add_library(ExecutorLib STATIC
         proto_definitions/error.pb-c.h
         proto_definitions/result_type.pb-c.c
         proto_definitions/result_type.pb-c.h
+        converters/ht_value_type_to_proto_value_type.c
+        converters/ht_value_type_to_proto_value_type.h
 )
 
 target_include_directories(ExecutorLib PUBLIC
