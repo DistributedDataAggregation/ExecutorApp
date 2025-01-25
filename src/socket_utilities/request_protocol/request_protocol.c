@@ -213,7 +213,6 @@ void prepare_and_send_failure_response(const int client_fd, const char* guid, Er
     if (response == NULL)
     {
         LOG_ERR("Failed to allocate memory for response");
-        // TODO handle
         return;
     }
 
@@ -224,7 +223,6 @@ void prepare_and_send_failure_response(const int client_fd, const char* guid, Er
     {
         free(response);
         LOG_ERR("Failed to allocate memory for error in response");
-        // TODO handle
         return;
     }
 
@@ -316,7 +314,6 @@ void get_returned_error(Error* error, ErrorInfo* err)
         {
             free(error);
             LOG_ERR("Failed to allocate memory for error message in response");
-            // TODO handle
             return;
         }
         error->inner_message = malloc(sizeof(err->inner_error_message) + 1);
@@ -325,7 +322,6 @@ void get_returned_error(Error* error, ErrorInfo* err)
             free(error->inner_message);
             free(error);
             LOG_ERR("Failed to allocate memory for inner error message in response");
-            // TODO handle
             return;
         }
         strncpy(error->message, err->error_message, sizeof(err->error_message));

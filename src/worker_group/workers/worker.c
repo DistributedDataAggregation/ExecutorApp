@@ -29,18 +29,6 @@ void* worker_compute_on_thread(void* arg)
         return NULL;
     }
 
-    // TODO change that to array of errorinfo for each thread that will be checked after join by main thread
-    // TODO:
-    // 1. Obsłuż przypadek, gdy limit wynosi zero:
-    //    - W takiej sytuacji należy alokować małą strukturę danych (np. hashmape)
-    //      o minimalnym rozmiarze, ponieważ nie ma potrzeby rezerwowania dużej ilości pamięci.
-    // 2. Dopasuj rozmiar struktury danych do liczby kolumn grupujących:
-    //    - Dynamicznie dostosuj alokację pamięci w zależności od ilości kolumn grupujących,
-    //      aby zoptymalizować wydajność i uniknąć nadmiarowej alokacji pamięci.
-    // 3. Optymalizacja działania wątków:
-    //    - Nie wykonuj dalszego kodu, jeśli dany wątek nie otrzymał żadnej grupy wierszy
-    //      ("row group") do przetworzenia. Ewentualnie w ogole tworz watku
-
     HashTable* ht = data->ht_interface->create(HASH_TABLE_SIZE, data->ht_max_size,
                                                data->thread_error);
 
@@ -115,12 +103,6 @@ void worker_print_thread_data(ThreadData* data)
     }
 }
 
-
-// TODO: refactor this method
-// split up the code into multiple functions
-// f.e. i have made lots of mistakes with loop indexing where in nested loops i have used the outer loop iterator
-// instead of the inside one f.e using variable i instead of j
-// renaming would probably be enough in that case
 
 void worker_compute_file(const int index_of_the_file, const ThreadData* data, HashTable* hash_table, ErrorInfo* err)
 {
@@ -623,7 +605,6 @@ HashTableValue worker_get_hash_table_value(GArrowArray* select_array, const int 
     return hash_table_value;
 }
 
-// TODO () move this function before thread?
 void worker_calculate_new_column_indices(int* new_column_indices, const gint* old_column_indices,
                                          const int number_of_columns)
 {

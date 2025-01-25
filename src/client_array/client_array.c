@@ -52,7 +52,7 @@ void client_array_add_client(ClientArray* array, const int client_fd, ErrorInfo*
             LOG_ERR("Failed to reallocate memory for a client array");
             SET_ERR(err, errno, "Failed to reallocate memory for a client array", strerror(errno));
             return;
-        } // TODO handle exit?? or we need to wait for other thread anyway (now)
+        }
     }
     array->clients[array->count++] = client_fd;
 }

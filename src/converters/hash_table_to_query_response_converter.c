@@ -16,8 +16,6 @@ Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err);
 void free_values(Value** values, int count);
 void free_value(Value* value);
 
-// TODO check for memory leaks
-
 QueryResponse* convert_hash_table_to_query_response(const HashTable* table, ErrorInfo* err)
 {
     if (err == NULL)
@@ -109,7 +107,6 @@ QueryResponse* convert_hash_table_to_query_response(const HashTable* table, Erro
 
     return query_response;
 }
-//TODO() dodaj testy jednostkowe
 Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
 {
     if (err == NULL)
@@ -165,7 +162,6 @@ Value* convert_entry_to_value(const HashTableEntry* entry, ErrorInfo* err)
     return value;
 }
 
-//TODO() dodaj testy jednostkowe
 PartialResult* convert_value_to_partial_result(const HashTableValue value, ErrorInfo* err)
 {
     if (err == NULL)

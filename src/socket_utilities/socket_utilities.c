@@ -61,7 +61,6 @@ int create_tcp_socket(const char* address_string, const int so_reuse, const int 
 
     if (setsockopt(socket_fd, IPPROTO_TCP, TCP_NODELAY, (int[]){1}, sizeof(int)) == -1)
     {
-        // TODO is IPPROTO_TCP ok?
         close(socket_fd);
         LOG_ERR("Failed to set TCP_NODELAY on a socket");
         SET_ERR(err, errno, "Failed to set TCP_NODELAY on a socket", strerror(errno));

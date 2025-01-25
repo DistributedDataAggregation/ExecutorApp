@@ -20,7 +20,6 @@
 #define SAFETY_FACTOR 0.7
 #define MAX_STRING_LENGTH 100
 
-// TODO() probably split this function
 void worker_group_run_request(const QueryRequest* request, HashTable** request_hash_table,
                               HashTableInterface* hash_table_interface, ErrorInfo* err)
 {
@@ -232,7 +231,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
         {
             LOG_ERR("Failed to join worker group thread");
             SET_ERR(err, ret, "Failed to join worker group thread", strerror(ret));
-            // TODO handle exit?? or we need to wait for other thread anyway (now)
         }
         worker_group_free_thread_data(thread_data[i]);
 
@@ -262,7 +260,6 @@ void worker_group_run_request(const QueryRequest* request, HashTable** request_h
             {
                 LOG_INTERNAL_ERR("Failed to run worker group: Failed to combine_hash_tables hash tables");
                 SET_ERR(err, INTERNAL_ERROR, "Failed to run worker group", "Failed to combine_hash_tables hash tables");
-                // TODO handle exit?? or we need to wait for other threads anyway (now)
             }
             hash_table_interface->free(thread_ht);
         }
