@@ -8,6 +8,7 @@
 #include <string.h>
 #include "hash_table_to_query_result_converter.h"
 #include "internal_to_proto_aggregate_converters.h"
+#include "ht_value_type_to_proto_value_type.h"
 
 void free_result_values(ResultValue** values, int converted_values);
 void free_result_value(ResultValue* value);
@@ -140,12 +141,11 @@ CombinedResult* convert_value(const HashTableValue value, ErrorInfo* err)
     }
 
     combined_result__init(result);
-
+    result->type = convert_ht_value_type_to_result_type(value.type);
     if (true == value.is_null)
     {
         result->is_null = true;
         result->value_case = COMBINED_RESULT__VALUE__NOT_SET;
-        result->type = RESULT_TYPE__UNKNOWN;
         result->function =  convert_aggregate(value.aggregate_function, err);
         return result;
     }
