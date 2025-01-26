@@ -96,7 +96,7 @@ int main_thread_run()
         client_array_accept_clients(&controllers_client_array, controllers_socket_fd, &read_fds, &error_info);
         if (error_info.error_code != NO_ERROR)
         {
-            CLEAR_ERR(&error_info); // TODO handle failed connection from controller
+            CLEAR_ERR(&error_info);
         }
 
         for (size_t i = 0; i < controllers_client_array.count; i++)
@@ -114,7 +114,6 @@ int main_thread_run()
                         client_array_remove_client(&controllers_client_array, i);
                         i--;
                     }
-                    // TODO handle failed request from controller (connections errors and error while sending failure response)
                     CLEAR_ERR(&error_info);
                 }
                 fflush(stdout);
@@ -136,13 +135,13 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
     if (err == NULL)
     {
         LOG_INTERNAL_ERR("Passed error info was NULL");
-        return; // TODO handle ??
+        return;
     }
 
     QueryRequest* request = parse_incoming_request(client_fd, err);
     if (err->error_code != NO_ERROR)
     {
-        return; // TODO handle ?? error message should be send to controller but we dont know with executor is main
+        return;
     }
 
     HashTable* ht = NULL;
@@ -156,7 +155,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
 
         if (err->error_code != NO_ERROR)
         {
-            // TODO send_failure response right away or wait for other executors to send their response?
             // if we wait, we need to initialize the hash table because it may be null
         }
 
@@ -186,13 +184,13 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
             {
                 LOG_ERR("Failed on select waiting for other executors");
                 SET_ERR(err, errno, "Failed on select waiting for other executors", strerror(errno));
-                break; // TODO or exit_failure??
+                break;
             }
 
             client_array_accept_clients(executors_client_array, executors_socket_fd, &read_fds, err);
             if (err->error_code != NO_ERROR)
             {
-                CLEAR_ERR(err); // TODO handle failed connection from executor
+                CLEAR_ERR(err);
             }
 
             for (size_t i = 0; i < executors_client_array->count && collected < others_count; i++)
@@ -209,7 +207,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                             i--;
                             CLEAR_ERR(err);
                         }
-                        // TODO send_failure response right away or wait for other executors to send their response?
                     }
                     else
                     {
@@ -219,8 +216,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                             {
                                 LOG_INTERNAL_ERR("Received failure response from a slave executor");
                                 SET_ERR(err, INTERNAL_ERROR, response->error->message, response->error->inner_message);
-                                // TODO test it
-                                // TODO send_failure response right away or wait for other executors to send their response?
                             }
                             else
                             {
@@ -230,7 +225,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                                 {
                                     LOG("ERROR Combining response for query of id: %s", response->guid);
                                     LOG_INTERNAL_ERR("Combining response for query");
-                                    // TODO send_failure response right away or wait for other executors to send their response?
                                 }
                             }
                             collected++;
@@ -250,7 +244,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to send response to controller");
-            // TODO handle failed send to controller, retry if EAGAIN lub EWOULDBLOCK? (closing in main thread)
         }
         LOG("Sent results to controller\n");
     }
@@ -263,7 +256,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
         if (err->error_code != NO_ERROR)
         {
             LOG_INTERNAL_ERR("Failed to connect to main executor\n");
-            // TODO handle failed connection to main
             CLEAR_ERR(err);
         }
         else
@@ -279,7 +271,6 @@ void main_thread_handle_client(const int client_fd, ClientArray* executors_clien
                     executors_server_remove_main_socket(main_executors_sockets, main_executor_socket);
                     CLEAR_ERR(err);
                 }
-                // TODO handle failed send to main, retry if EAGAIN lub EWOULDBLOCK, close if EPIPE, ECONNRESET?
             }
         }
     }
