@@ -1,21 +1,28 @@
-# How to run multiple containers
-Make sure you have docker and docker-compose
+# Distributed Data Aggregation System - ExecutorApp
+The executor is a compute node within the aggregation system. It receives tasks to calculate aggregates on tables stored in Parquet files. The executor processes these tasks, then either sends the results to the main executor in the system or gathers intermediate results from other executors, combines them, and sends the final output back to the controller.
 
-## 1. Prerequisites
-You'll need to create folder for data under ***/home/data***
-and store files for queries there
+For public API, please refer to repository of controller module: https://github.com/DistributedDataAggregation/ControllerApp
 
-## 2. Build the image for executor app
+## How to run
+The recommended way of running the executor app is through Docker. Just run the script file to build docker image
+
+### 1. Specify enviroment variables
+In .env file you'll need to specify two variables
+```
+EXECUTOR_CONTROLLER_PORT=8080
+EXECUTOR_EXECUTOR_PORT=8081
+```
+
+### 2. Build docker image
+
 ```bash
 ./build-docker-image.sh
 ```
-
-## 3. To start containers with compose (in detached state "-d flag")
+### 3. Run the container 
 ```bash
-docker-compose up -d 
+./run_docker.sh
 ```
 
-## 4. Tear down containers
-```bash
-docker-compose down
-```
+## Build locally
+For local builds, please refer to Dockerfile.
+Each instruction matches exactly the process of installing on clear ubuntu setup.
